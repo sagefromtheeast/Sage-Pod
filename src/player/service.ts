@@ -1,3 +1,4 @@
+import Constants from 'expo-constants';
 import {
   createAudioPlayer,
   setAudioModeAsync,
@@ -217,16 +218,25 @@ class PlayerService {
   }
 
   private publishLockScreenMetadata(episode: EpisodeWithFeed): void {
-    this.player?.setActiveForLockScreen(
-      true,
-      {
-        title: episode.title,
-        artist: episode.feed_author ?? episode.feed_title,
-        albumTitle: episode.feed_title,
-        artworkUrl: episode.image_url ?? episode.feed_image_url ?? undefined,
-      },
-      { showSeekForward: true, showSeekBackward: true, isLiveStream: false }
-    );
+    // Expo Go does not include the native AudioControlsService foreground service
+    // in its pre-compiled manifest. Attempting to activate lock screen controls in
+    // Expo Go triggers a native service binding failure.
+    if (Constants.appOwnership === 'expo') return;
+
+    try {
+      this.player?.setActiveForLockScreen(
+        true,
+        {
+          title: episode.title,
+          artist: episode.feed_author ?? episode.feed_title,
+          albumTitle: episode.feed_title,
+          artworkUrl: episode.image_url ?? episode.feed_image_url ?? undefined,
+        },
+        { showSeekForward: true, showSeekBackward: true, isLiveStream: false }
+      );
+    } catch {
+      // Graceful fallback if native lock screen binding fails.
+    }
   }
 
   private teardownPlayer(): void {
@@ -236,7 +246,9 @@ class PlayerService {
 
     if (this.player) {
       try {
-        this.player.clearLockScreenControls();
+        if (Constants.appOwnership !== 'expo') {
+          this.player.clearLockScreenControls();
+        }
         this.player.remove();
       } catch {
         // The engine may already have released the player; nothing to undo.
