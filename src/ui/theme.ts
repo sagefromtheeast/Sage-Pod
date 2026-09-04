@@ -1,0 +1,100 @@
+/**
+ * Sage Pod design tokens.
+ *
+ * A single palette object per scheme keeps every screen consistent and makes
+ * the light/dark swap a one-line lookup (`useTheme()`), rather than scattering
+ * `useColorScheme()` conditionals through the component tree.
+ */
+export type ColorScheme = 'light' | 'dark';
+
+export type Palette = {
+  scheme: ColorScheme;
+  /** App background, behind everything. */
+  bg: string;
+  /** Cards, rows, sheets that sit on `bg`. */
+  surface: string;
+  /** Pressed/selected state for a `surface`. */
+  surfaceAlt: string;
+  /** Hairlines and dividers. */
+  border: string;
+  /** Primary body copy. */
+  text: string;
+  /** Secondary copy: timestamps, bylines, metadata. */
+  textMuted: string;
+  /** Tertiary copy: disabled state, faint hints. */
+  textFaint: string;
+  /** Brand green — play buttons, active tab, progress fill. */
+  accent: string;
+  /** Text/icon colour that sits legibly on `accent`. */
+  onAccent: string;
+  /** Destructive actions. */
+  danger: string;
+  /** Track behind a progress fill. */
+  track: string;
+  /** Scrim over artwork for legibility. */
+  scrim: string;
+};
+
+const dark: Palette = {
+  scheme: 'dark',
+  bg: '#0E1512',
+  surface: '#17201C',
+  surfaceAlt: '#1F2A25',
+  border: '#26332C',
+  text: '#ECF3EE',
+  textMuted: '#9BAAA1',
+  textFaint: '#6B7A72',
+  accent: '#4ADE80',
+  onAccent: '#06291A',
+  danger: '#F87171',
+  track: '#2A3830',
+  scrim: 'rgba(14, 21, 18, 0.72)',
+};
+
+const light: Palette = {
+  scheme: 'light',
+  bg: '#F7FAF8',
+  surface: '#FFFFFF',
+  surfaceAlt: '#EDF3EF',
+  border: '#DDE7E1',
+  text: '#101A15',
+  textMuted: '#5A6A62',
+  textFaint: '#8A9992',
+  accent: '#16A34A',
+  onAccent: '#FFFFFF',
+  danger: '#DC2626',
+  track: '#DFE9E3',
+  scrim: 'rgba(247, 250, 248, 0.78)',
+};
+
+export const palettes: Record<ColorScheme, Palette> = { light, dark };
+
+/** Spacing scale, in points. Multiples of 4 keep vertical rhythm predictable. */
+export const space = {
+  xs: 4,
+  sm: 8,
+  md: 12,
+  lg: 16,
+  xl: 24,
+  xxl: 32,
+} as const;
+
+export const radius = {
+  sm: 6,
+  md: 10,
+  lg: 16,
+  xl: 24,
+  pill: 999,
+} as const;
+
+export const type = {
+  title: { fontSize: 28, fontWeight: '700' },
+  heading: { fontSize: 20, fontWeight: '700' },
+  subheading: { fontSize: 16, fontWeight: '600' },
+  body: { fontSize: 15, fontWeight: '400' },
+  label: { fontSize: 13, fontWeight: '500' },
+  caption: { fontSize: 12, fontWeight: '400' },
+} as const;
+
+/** Height of the mini player, so screens can pad their scroll content past it. */
+export const MINI_PLAYER_HEIGHT = 64;

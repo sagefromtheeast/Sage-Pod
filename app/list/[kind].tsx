@@ -1,0 +1,108 @@
+import { Ionicons } from '@expo/vector-icons';
+import { Stack, useLocalSearchParams } from 'expo-router';
+import { useCallback } from 'react';
+import { FlatList, Pressable, StyleSheet } from 'react-native';
+
+import { listDownloaded, listFavorites, listHistory } from '@/db/episodes';
+import { enqueue } from '@/db/queue';
+import type { EpisodeWithFeed } from '@/db/types';
+import { useQuery } from '@/db/useQuery';
+import { player } from '@/player';
+import { deleteDownload } from '@/player/downloads';
+import { EmptyState } from '@/ui/EmptyState';
+import { EpisodeRow } from '@/ui/EpisodeRow';
+import { MINI_PLAYER_HEIGHT, space } from '@/ui/theme';
+import { useTheme } from '@/ui/useTheme';
+
+type Kind = 'favorites' | 'downloads' | 'history';
+
+const VIEWS: Record<
+  Kind,
+  { title: string; load: () => Promise<EpisodeWithFeed[]>; empty: string; icon: 'heart-outline' | 'arrow-down-circle-outline' | 'time-outline' }
+> = {
+  favorites: {
+    title: 'Favourites',
+    load: () => listFavorites(),
+    empty: 'Episodes you mark with a heart collect here.',
+    icon: 'heart-outline',
+  },
+  downloads: {
+    title: 'Downloads',
+    load: () => listDownloaded(),
+    empty: 'Downloaded episodes play without a connection and appear here.',
+    icon: 'arrow-down-circle-outline',
+  },
+  history: {
+    title: 'History',
+    load: () => listHistory(),
+    empty: 'Episodes you have listened to appear here.',
+    icon: 'time-outline',
+  },
+};
+
+/** Shared screen for the library's three saved views. */
+export default function ListScreen() {
+  const theme = useTheme();
+  const { kind } = useLocalSearchParams<{ kind: string }>();
+
+  const view = VIEWS[(kind as Kind) in VIEWS ? (kind as Kind) : 'favorites'];
+
+  const { data: episodes = [], loading } = useQuery<EpisodeWithFeed[]>(
+    () => view.load(),
+    ['episodes', 'feeds'],
+    [kind]
+  );
+
+  const play = useCallback((episode: EpisodeWithFeed) => {
+    const current = player.getState();
+    if (current.episode?.id === episode.id) player.togglePlayPause();
+    else void player.playEpisode(episode);
+  }, []);
+
+  return (
+    <>
+      <Stack.Screen options={{ title: view.title }} />
+      <FlatList
+        data={episodes}
+        keyExtractor={(episode) => String(episode.id)}
+        contentContainerStyle={styles.content}
+        ListEmptyComponent={
+          loading ? null : <EmptyState icon={view.icon} title={view.title} message={view.empty} />
+        }
+        renderItem={({ item }) => (
+          <EpisodeRow
+            episode={item}
+            onPlay={play}
+            trailing={
+              kind === 'downloads' ? (
+                <Pressable
+                  onPress={() => void deleteDownload(item.id)}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Delete download"
+                >
+                  <Ionicons name="trash-outline" size={19} color={theme.textFaint} />
+                </Pressable>
+              ) : (
+                <Pressable
+                  onPress={() => void enqueue(item.id)}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Add to queue"
+                >
+                  <Ionicons name="add-circle-outline" size={20} color={theme.textMuted} />
+                </Pressable>
+              )
+            }
+          />
+        )}
+      />
+    </>
+  );
+}
+
+const styles = StyleSheet.create({
+  content: {
+    paddingBottom: MINI_PLAYER_HEIGHT + space.xl,
+  },
+});
