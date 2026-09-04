@@ -1,28 +1,24 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { BottomTabBar, Tabs, type BottomTabBarProps } from 'expo-router/js-tabs';
 import type { ComponentProps } from 'react';
-import { View } from 'react-native';
+import { Pressable, View } from 'react-native';
 
+import { getInboxCount } from '@/db/episodes';
+import { useQuery } from '@/db/useQuery';
 import { MiniPlayer } from '@/ui/MiniPlayer';
 import { useTheme } from '@/ui/useTheme';
 
 type IconName = ComponentProps<typeof Ionicons>['name'];
 
 const TABS: { name: string; title: string; icon: IconName; iconActive: IconName }[] = [
-  { name: 'index', title: 'Queue', icon: 'list-outline', iconActive: 'list' },
+  { name: 'index', title: 'Home', icon: 'home-outline', iconActive: 'home' },
+  { name: 'queue', title: 'Queue', icon: 'list-outline', iconActive: 'list' },
   { name: 'inbox', title: 'Inbox', icon: 'file-tray-outline', iconActive: 'file-tray' },
   { name: 'discover', title: 'Discover', icon: 'search-outline', iconActive: 'search' },
   { name: 'library', title: 'Library', icon: 'library-outline', iconActive: 'library' },
-  { name: 'settings', title: 'Settings', icon: 'settings-outline', iconActive: 'settings' },
 ];
 
-/**
- * Tab bar with the mini player stacked directly on top of it.
- *
- * Rendering the mini player here rather than in each screen keeps it mounted
- * across tab switches — so playback controls never flicker, and the audio never
- * hitches from a component remount.
- */
 function TabBarWithMiniPlayer(props: BottomTabBarProps) {
   return (
     <View>
@@ -32,8 +28,27 @@ function TabBarWithMiniPlayer(props: BottomTabBarProps) {
   );
 }
 
+function SettingsButton() {
+  const router = useRouter();
+  const theme = useTheme();
+  return (
+    <Pressable
+      onPress={() => router.push('/settings')}
+      hitSlop={12}
+      style={{ marginRight: 16 }}
+    >
+      <Ionicons name="settings-outline" size={24} color={theme.text} />
+    </Pressable>
+  );
+}
+
 export default function TabsLayout() {
   const theme = useTheme();
+  
+  const { data: inboxCount = 0 } = useQuery(
+    () => getInboxCount(),
+    ['episodes']
+  );
 
   return (
     <Tabs
@@ -51,18 +66,28 @@ export default function TabsLayout() {
         tabBarInactiveTintColor: theme.textFaint,
       }}
     >
-      {TABS.map(({ name, title, icon, iconActive }) => (
-        <Tabs.Screen
-          key={name}
-          name={name}
-          options={{
-            title,
-            tabBarIcon: ({ color, size, focused }) => (
-              <Ionicons name={focused ? iconActive : icon} size={size} color={color} />
-            ),
-          }}
-        />
-      ))}
+      {TABS.map(({ name, title, icon, iconActive }) => {
+        let badgeValue = undefined;
+        if (name === 'inbox' && inboxCount > 0) {
+          badgeValue = inboxCount > 99 ? '99+' : String(inboxCount);
+        }
+
+        return (
+          <Tabs.Screen
+            key={name}
+            name={name}
+            options={{
+              title,
+              tabBarIcon: ({ color, size, focused }) => (
+                <Ionicons name={focused ? iconActive : icon} size={size} color={color} />
+              ),
+              tabBarBadge: badgeValue,
+              tabBarBadgeStyle: { backgroundColor: theme.danger, color: '#fff' },
+              headerRight: (name === 'index' || name === 'library') ? () => <SettingsButton /> : undefined,
+            }}
+          />
+        );
+      })}
     </Tabs>
   );
 }

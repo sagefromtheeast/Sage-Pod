@@ -98,6 +98,7 @@ export default function RootLayout() {
           />
           <Stack.Screen name="feed/[id]" options={{ title: '' }} />
           <Stack.Screen name="episode/[id]" options={{ title: '' }} />
+          <Stack.Screen name="settings" options={{ title: 'Settings', presentation: 'modal' }} />
         </Stack>
       </SafeAreaProvider>
     </GestureHandlerRootView>

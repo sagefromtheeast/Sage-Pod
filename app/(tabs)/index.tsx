@@ -1,158 +1,315 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useCallback } from 'react';
-import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useState } from 'react';
+import { FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
+import { getInboxCount, listInProgressEpisodes, listRandomUnplayedEpisodes } from '@/db/episodes';
+import { listFeeds } from '@/db/feeds';
+import type { EpisodeWithFeed, FeedWithCounts } from '@/db/types';
 import { useQuery } from '@/db/useQuery';
-import { clearQueue, dequeue, listQueue, reorderQueue } from '@/db/queue';
-import type { EpisodeWithFeed } from '@/db/types';
+import { refreshAllFeeds } from '@/feed/sync';
 import { player } from '@/player';
-import { EmptyState } from '@/ui/EmptyState';
-import { EpisodeRow } from '@/ui/EpisodeRow';
-import { MINI_PLAYER_HEIGHT, space, type as typography } from '@/ui/theme';
+import { Artwork } from '@/ui/Artwork';
+import { ProgressBar } from '@/ui/ProgressBar';
+import { MINI_PLAYER_HEIGHT, radius, space, type as typography } from '@/ui/theme';
 import { useTheme } from '@/ui/useTheme';
-import { formatDuration } from '@/util/time';
+import { formatRemaining } from '@/util/time';
 
-export default function QueueScreen() {
+function ContinueCard({ episode, onPlay }: { episode: EpisodeWithFeed; onPlay: () => void }) {
+  const theme = useTheme();
+  const router = useRouter();
+  const duration = episode.duration ?? 0;
+  const progress = duration > 0 ? episode.position / duration : 0;
+
+  return (
+    <Pressable
+      onPress={() => router.push(`/episode/${episode.id}`)}
+      style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}
+    >
+      <Artwork uri={episode.image_url ?? episode.feed_image_url} size={48} borderRadius={radius.sm} />
+      <View style={styles.cardBody}>
+        <Text style={[styles.cardTitle, { color: theme.text }]} numberOfLines={2}>
+          {episode.title}
+        </Text>
+        <Text style={[styles.cardMeta, { color: theme.textMuted }]} numberOfLines={1}>
+          {formatRemaining(duration - episode.position) || episode.feed_title}
+        </Text>
+        <ProgressBar progress={progress} />
+      </View>
+      <Pressable onPress={onPlay} hitSlop={8}>
+        <Ionicons name="play-circle" size={32} color={theme.accent} />
+      </Pressable>
+    </Pressable>
+  );
+}
+
+function FeedBadge({ feed }: { feed: FeedWithCounts }) {
   const theme = useTheme();
   const router = useRouter();
 
-  const { data: queue = [], loading } = useQuery<EpisodeWithFeed[]>(
-    () => listQueue(),
-    ['queue', 'episodes', 'feeds']
+  return (
+    <Pressable
+      onPress={() => router.push(`/feed/${feed.id}`)}
+      style={styles.feedBadge}
+    >
+      <Artwork uri={feed.image_url} size={72} borderRadius={radius.md} />
+      <Text style={[styles.feedBadgeText, { color: theme.text }]} numberOfLines={1}>
+        {feed.title}
+      </Text>
+    </Pressable>
+  );
+}
+
+function SurpriseCard({ episode, onPlay }: { episode: EpisodeWithFeed; onPlay: () => void }) {
+  const theme = useTheme();
+  const router = useRouter();
+
+  return (
+    <Pressable
+      onPress={() => router.push(`/episode/${episode.id}`)}
+      style={[styles.surpriseCard, { backgroundColor: theme.surface, borderColor: theme.border }]}
+    >
+      <Artwork uri={episode.image_url ?? episode.feed_image_url} size={64} borderRadius={radius.md} />
+      <View style={styles.surpriseCardBody}>
+        <Text style={[styles.cardMeta, { color: theme.textMuted }]} numberOfLines={1}>
+          {episode.feed_title}
+        </Text>
+        <Text style={[styles.cardTitle, { color: theme.text }]} numberOfLines={2}>
+          {episode.title}
+        </Text>
+      </View>
+      <Pressable onPress={onPlay} hitSlop={8}>
+        <Ionicons name="play-circle" size={32} color={theme.accent} />
+      </Pressable>
+    </Pressable>
+  );
+}
+
+export default function HomeScreen() {
+  const theme = useTheme();
+  const router = useRouter();
+  const [refreshing, setRefreshing] = useState(false);
+
+  const { data: inProgress = [] } = useQuery<EpisodeWithFeed[]>(
+    () => listInProgressEpisodes(5),
+    ['episodes']
+  );
+
+  const { data: inboxCount = 0 } = useQuery(
+    () => getInboxCount(),
+    ['episodes']
+  );
+
+  const { data: feeds = [] } = useQuery<FeedWithCounts[]>(
+    () => listFeeds(),
+    ['feeds']
+  );
+
+  const { data: surprise = [] } = useQuery<EpisodeWithFeed[]>(
+    () => listRandomUnplayedEpisodes(3),
+    ['episodes']
   );
 
   const play = useCallback((episode: EpisodeWithFeed) => {
     const current = player.getState();
     if (current.episode?.id === episode.id) player.togglePlayPause();
-    else void player.load(episode, { autoPlay: true });
+    else void player.playEpisode(episode);
   }, []);
 
-  /** Moves an episode one slot up or down by rewriting the whole order. */
-  const move = useCallback(
-    (episodeId: number, direction: -1 | 1) => {
-      const ids = queue.map((episode) => episode.id);
-      const from = ids.indexOf(episodeId);
-      const to = from + direction;
-      if (from < 0 || to < 0 || to >= ids.length) return;
-
-      [ids[from], ids[to]] = [ids[to], ids[from]];
-      void reorderQueue(ids);
-    },
-    [queue]
-  );
-
-  const confirmClear = useCallback(() => {
-    Alert.alert('Clear queue?', 'This removes every episode from the queue. Downloads are kept.', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Clear', style: 'destructive', onPress: () => void clearQueue() },
-    ]);
+  const refresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await refreshAllFeeds({ force: true });
+    } finally {
+      setRefreshing(false);
+    }
   }, []);
-
-  const totalSeconds = queue.reduce((sum, episode) => {
-    const remaining = (episode.duration ?? 0) - episode.position;
-    return sum + Math.max(0, remaining);
-  }, 0);
-
-  if (!loading && queue.length === 0) {
-    return (
-      <EmptyState
-        icon="list-outline"
-        title="Your queue is empty"
-        message="Add episodes from a podcast or your inbox and they will line up here, ready to play back to back."
-        action={{ label: 'Find podcasts', onPress: () => router.push('/discover') }}
-      />
-    );
-  }
 
   return (
-    <FlatList
-      data={queue}
-      keyExtractor={(episode) => String(episode.id)}
+    <ScrollView
       contentContainerStyle={styles.content}
-      ListHeaderComponent={
-        queue.length > 0 ? (
-          <View style={styles.header}>
-            <Text style={[styles.headerText, { color: theme.textMuted }]}>
-              {queue.length} episode{queue.length === 1 ? '' : 's'} ·{' '}
-              {formatDuration(totalSeconds)} left
-            </Text>
-            <Pressable onPress={confirmClear} hitSlop={8} accessibilityRole="button">
-              <Text style={[styles.clear, { color: theme.danger }]}>Clear</Text>
-            </Pressable>
-          </View>
-        ) : null
-      }
-      renderItem={({ item, index }) => (
-        <EpisodeRow
-          episode={item}
-          onPlay={play}
-          trailing={
-            <View style={styles.trailing}>
-              <Pressable
-                onPress={() => move(item.id, -1)}
-                disabled={index === 0}
-                hitSlop={6}
-                accessibilityRole="button"
-                accessibilityLabel="Move up"
-              >
-                <Ionicons
-                  name="chevron-up"
-                  size={18}
-                  color={index === 0 ? theme.textFaint : theme.textMuted}
-                />
-              </Pressable>
-              <Pressable
-                onPress={() => move(item.id, 1)}
-                disabled={index === queue.length - 1}
-                hitSlop={6}
-                accessibilityRole="button"
-                accessibilityLabel="Move down"
-              >
-                <Ionicons
-                  name="chevron-down"
-                  size={18}
-                  color={index === queue.length - 1 ? theme.textFaint : theme.textMuted}
-                />
-              </Pressable>
-              <Pressable
-                onPress={() => void dequeue(item.id)}
-                hitSlop={6}
-                accessibilityRole="button"
-                accessibilityLabel="Remove from queue"
-              >
-                <Ionicons name="close" size={18} color={theme.textFaint} />
-              </Pressable>
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={theme.accent} />}
+    >
+      {/* Inbox Quick Access */}
+      <Pressable 
+        style={[styles.inboxBanner, { backgroundColor: theme.surfaceAlt }]} 
+        onPress={() => router.push('/inbox')}
+      >
+        <View style={styles.inboxBannerLeft}>
+          <Ionicons name="file-tray-full-outline" size={24} color={theme.accent} />
+          <Text style={[styles.inboxBannerText, { color: theme.text }]}>
+            Inbox
+          </Text>
+        </View>
+        <View style={styles.inboxBannerRight}>
+          {inboxCount > 0 ? (
+            <View style={[styles.badge, { backgroundColor: theme.danger }]}>
+              <Text style={styles.badgeText}>{inboxCount}</Text>
             </View>
-          }
-        />
+          ) : (
+            <Text style={[styles.inboxBannerSub, { color: theme.textMuted }]}>Zero</Text>
+          )}
+          <Ionicons name="chevron-forward" size={20} color={theme.textMuted} />
+        </View>
+      </Pressable>
+
+      {/* Continue Listening */}
+      {inProgress.length > 0 && (
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Continue Listening</Text>
+          <FlatList
+            horizontal
+            data={inProgress}
+            keyExtractor={(e) => `continue-${e.id}`}
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.shelfContent}
+            renderItem={({ item }) => <ContinueCard episode={item} onPlay={() => play(item)} />}
+          />
+        </View>
       )}
-    />
+
+      {/* Surprise Me */}
+      {surprise.length > 0 && (
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Surprise Me</Text>
+          <FlatList
+            horizontal
+            data={surprise}
+            keyExtractor={(e) => `surprise-${e.id}`}
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.shelfContent}
+            renderItem={({ item }) => <SurpriseCard episode={item} onPlay={() => play(item)} />}
+          />
+        </View>
+      )}
+
+      {/* Subscriptions */}
+      {feeds.length > 0 && (
+        <View style={styles.section}>
+          <Text style={[styles.sectionTitle, { color: theme.text }]}>Subscriptions</Text>
+          <FlatList
+            horizontal
+            data={feeds}
+            keyExtractor={(f) => String(f.id)}
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.shelfContent}
+            renderItem={({ item }) => <FeedBadge feed={item} />}
+          />
+        </View>
+      )}
+
+      {/* Empty State Help if no feeds */}
+      {feeds.length === 0 && (
+        <View style={styles.emptyContainer}>
+          <Text style={[styles.emptyText, { color: theme.textMuted }]}>
+            Subscribe to podcasts in Discover to populate your home dashboard.
+          </Text>
+        </View>
+      )}
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   content: {
-    // Clears the mini player so the last row is never hidden behind it.
     paddingBottom: MINI_PLAYER_HEIGHT + space.xl,
+    paddingTop: space.md,
+    gap: space.lg,
   },
-  header: {
+  inboxBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: space.lg,
-    paddingTop: space.md,
-    paddingBottom: space.sm,
+    padding: space.lg,
+    marginHorizontal: space.lg,
+    borderRadius: radius.lg,
   },
-  headerText: {
-    ...typography.caption,
-  },
-  clear: {
-    ...typography.caption,
-    fontWeight: '600',
-  },
-  trailing: {
+  inboxBannerLeft: {
+    flexDirection: 'row',
     alignItems: 'center',
     gap: space.sm,
+  },
+  inboxBannerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.xs,
+  },
+  inboxBannerText: {
+    ...typography.subheading,
+  },
+  inboxBannerSub: {
+    ...typography.body,
+  },
+  badge: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: radius.pill,
+  },
+  badgeText: {
+    ...typography.caption,
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  section: {
+    gap: space.sm,
+  },
+  sectionTitle: {
+    ...typography.subheading,
+    paddingHorizontal: space.lg,
+  },
+  shelfContent: {
+    paddingHorizontal: space.lg,
+    gap: space.md,
+  },
+  card: {
+    width: 260,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+    padding: space.md,
+    borderRadius: radius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  cardBody: {
+    flex: 1,
+    gap: space.xs,
+  },
+  cardTitle: {
+    ...typography.label,
+    fontWeight: '600',
+    lineHeight: 17,
+  },
+  cardMeta: {
+    ...typography.caption,
+  },
+  surpriseCard: {
+    width: 300,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+    padding: space.md,
+    borderRadius: radius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  surpriseCardBody: {
+    flex: 1,
+    gap: space.xs,
+  },
+  feedBadge: {
+    width: 72,
+    alignItems: 'center',
+    gap: space.xs,
+  },
+  feedBadgeText: {
+    ...typography.caption,
+    textAlign: 'center',
+  },
+  emptyContainer: {
+    padding: space.xl,
+    alignItems: 'center',
+  },
+  emptyText: {
+    ...typography.body,
+    textAlign: 'center',
   },
 });

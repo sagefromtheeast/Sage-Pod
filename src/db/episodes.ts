@@ -192,3 +192,38 @@ export async function listAutoDownloadCandidates(
     limit
   );
 }
+
+export async function listInboxEpisodes(limit = 100): Promise<EpisodeWithFeed[]> {
+  return getDb().getAllAsync<EpisodeWithFeed>(
+    `${EPISODE_WITH_FEED}
+      WHERE e.is_new = 1 AND e.is_played = 0
+      ORDER BY e.published_at DESC, e.id DESC
+      LIMIT ?`,
+    limit
+  );
+}
+
+export async function getInboxCount(): Promise<number> {
+  const row = await getDb().getFirstAsync<{ count: number }>(
+    `SELECT COUNT(*) AS count FROM episodes WHERE is_new = 1 AND is_played = 0`
+  );
+  return row?.count ?? 0;
+}
+
+export async function dismissFromInbox(episodeId: number): Promise<void> {
+  await getDb().runAsync('UPDATE episodes SET is_new = 0 WHERE id = ?', episodeId);
+}
+
+export async function dismissAllFromInbox(): Promise<void> {
+  await getDb().runAsync('UPDATE episodes SET is_new = 0 WHERE is_new = 1');
+}
+
+export async function listRandomUnplayedEpisodes(limit = 10, seed = 0): Promise<EpisodeWithFeed[]> {
+  return getDb().getAllAsync<EpisodeWithFeed>(
+    `${EPISODE_WITH_FEED}
+      WHERE e.is_played = 0 AND e.position = 0
+      ORDER BY RANDOM()
+      LIMIT ?`,
+    limit
+  );
+}
