@@ -461,6 +461,13 @@ class PlayerService {
   private shakeSubscription: any = null;
   private sleepMinutes: number = 0;
 
+  /** Starts the sleep timer to fire when the current episode finishes. */
+  startSleepTimerUntilEndOfEpisode(): void {
+    const { position, duration } = this.state;
+    const remainingSeconds = Math.max(10, (duration || 0) - position);
+    this.startSleepTimer(remainingSeconds / 60);
+  }
+
   /** Starts (or restarts) the sleep timer. */
   startSleepTimer(minutes: number): void {
     this.cancelSleepTimer();

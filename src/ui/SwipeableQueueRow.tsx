@@ -5,6 +5,7 @@ import Swipeable from 'react-native-gesture-handler/Swipeable';
 
 import type { EpisodeWithFeed } from '@/db/types';
 import { EpisodeRow } from './EpisodeRow';
+import { triggerHaptic } from './haptics';
 import { useTheme } from './useTheme';
 
 type Props = {
@@ -64,8 +65,14 @@ export const SwipeableQueueRow = memo(function SwipeableQueueRow({
     <Swipeable
       renderLeftActions={renderLeftActions}
       renderRightActions={renderRightActions}
-      onSwipeableLeftOpen={() => onMoveToTop(episode)}
-      onSwipeableRightOpen={() => onRemove(episode)}
+      onSwipeableLeftOpen={() => {
+        triggerHaptic('medium');
+        onMoveToTop(episode);
+      }}
+      onSwipeableRightOpen={() => {
+        triggerHaptic('medium');
+        onRemove(episode);
+      }}
       leftThreshold={50}
       rightThreshold={50}
     >

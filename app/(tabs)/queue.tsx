@@ -1,15 +1,16 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useCallback } from 'react';
+import { useCallback, useRef } from 'react';
 import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useQuery } from '@/db/useQuery';
 import { clearQueue, dequeue, listQueue, reorderQueue } from '@/db/queue';
 import type { EpisodeWithFeed } from '@/db/types';
-import { player } from '@/player';
+import { player, usePlayerState } from '@/player';
 import { EmptyState } from '@/ui/EmptyState';
+import { triggerHaptic } from '@/ui/haptics';
 import { SwipeableQueueRow } from '@/ui/SwipeableQueueRow';
-import { MINI_PLAYER_HEIGHT, space, type as typography } from '@/ui/theme';
+import { MINI_PLAYER_HEIGHT, radius, space, type as typography } from '@/ui/theme';
 import { useTheme } from '@/ui/useTheme';
 import { formatDuration } from '@/util/time';
 
@@ -21,6 +22,10 @@ export default function QueueScreen() {
     () => listQueue(),
     ['queue', 'episodes', 'feeds']
   );
+
+  const { episode: currentEpisode } = usePlayerState();
+  const listRef = useRef<FlatList>(null);
+  const activeIndex = queue.findIndex((e) => e.id === currentEpisode?.id);
 
   const play = useCallback((episode: EpisodeWithFeed) => {
     const current = player.getState();
@@ -79,9 +84,16 @@ export default function QueueScreen() {
 
   return (
     <FlatList
+      ref={listRef}
       data={queue}
       keyExtractor={(episode) => String(episode.id)}
       contentContainerStyle={styles.content}
+      onScrollToIndexFailed={(info) => {
+        listRef.current?.scrollToOffset({
+          offset: info.averageItemLength * info.index,
+          animated: true,
+        });
+      }}
       ListHeaderComponent={
         queue.length > 0 ? (
           <View style={styles.header}>
@@ -89,9 +101,32 @@ export default function QueueScreen() {
               {queue.length} episode{queue.length === 1 ? '' : 's'} ·{' '}
               {formatDuration(totalSeconds)} left
             </Text>
-            <Pressable onPress={confirmClear} hitSlop={8} accessibilityRole="button">
-              <Text style={[styles.clear, { color: theme.danger }]}>Clear</Text>
-            </Pressable>
+            <View style={styles.headerRight}>
+              {activeIndex >= 0 ? (
+                <Pressable
+                  onPress={() => {
+                    triggerHaptic('selection');
+                    listRef.current?.scrollToIndex({
+                      index: activeIndex,
+                      animated: true,
+                      viewPosition: 0.2,
+                    });
+                  }}
+                  hitSlop={8}
+                  style={[styles.jumpBadge, { backgroundColor: theme.surfaceAlt }]}
+                  accessibilityRole="button"
+                  accessibilityLabel="Scroll to playing episode"
+                >
+                  <Ionicons name="play" size={10} color={theme.accent} />
+                  <Text style={[styles.jumpBadgeText, { color: theme.accent }]}>
+                    #{activeIndex + 1}
+                  </Text>
+                </Pressable>
+              ) : null}
+              <Pressable onPress={confirmClear} hitSlop={8} accessibilityRole="button">
+                <Text style={[styles.clear, { color: theme.danger }]}>Clear</Text>
+              </Pressable>
+            </View>
           </View>
         ) : null
       }
@@ -164,6 +199,24 @@ const styles = StyleSheet.create({
   clear: {
     ...typography.caption,
     fontWeight: '600',
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+  },
+  jumpBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: space.sm,
+    paddingVertical: 3,
+    borderRadius: radius.pill,
+  },
+  jumpBadgeText: {
+    ...typography.caption,
+    fontWeight: '700',
+    fontSize: 11,
   },
   trailing: {
     alignItems: 'center',

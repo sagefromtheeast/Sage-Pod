@@ -9,8 +9,10 @@ import { getSettings } from '@/db/settings';
 import { PLAYBACK_RATES, player, usePlayerState } from '@/player';
 import { useChapters } from '@/player/useChapters';
 import { Artwork } from '@/ui/Artwork';
+import { triggerHaptic } from '@/ui/haptics';
 import { radius, space, type as typography } from '@/ui/theme';
 import { useTheme } from '@/ui/useTheme';
+import { shareEpisode } from '@/util/share';
 import { formatDuration } from '@/util/time';
 
 const SLEEP_TIMER_OPTIONS = [5, 10, 15, 30, 45, 60] as const;
@@ -32,6 +34,7 @@ export default function PlayerScreen() {
   const displayPosition = scrubbing ?? position;
 
   const commitSeek = useCallback(async (value: number) => {
+    triggerHaptic('selection');
     await player.seekTo(value);
     setScrubbing(null);
   }, []);
@@ -69,14 +72,31 @@ export default function PlayerScreen() {
         <Text style={[styles.topBarTitle, { color: theme.textMuted }]} numberOfLines={1}>
           {episode.feed_title}
         </Text>
-        <Pressable
-          onPress={() => router.push(`/episode/${episode.id}`)}
-          hitSlop={10}
-          accessibilityRole="button"
-          accessibilityLabel="Episode details"
-        >
-          <Ionicons name="information-circle-outline" size={26} color={theme.textMuted} />
-        </Pressable>
+        <View style={styles.topBarRight}>
+          <Pressable
+            onPress={() =>
+              void shareEpisode({
+                title: episode.title,
+                podcastTitle: episode.feed_title,
+                url: episode.link ?? episode.media_url,
+                positionSeconds: displayPosition,
+              })
+            }
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel="Share episode"
+          >
+            <Ionicons name="share-outline" size={22} color={theme.textMuted} />
+          </Pressable>
+          <Pressable
+            onPress={() => router.push(`/episode/${episode.id}`)}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel="Episode details"
+          >
+            <Ionicons name="information-circle-outline" size={24} color={theme.textMuted} />
+          </Pressable>
+        </View>
       </View>
 
       <View style={styles.artworkWrap}>
@@ -116,7 +136,10 @@ export default function PlayerScreen() {
 
       <View style={styles.transport}>
         <Pressable
-          onPress={() => void player.skipBackward()}
+          onPress={() => {
+            triggerHaptic('light');
+            void player.skipBackward();
+          }}
           hitSlop={10}
           style={styles.skip}
           accessibilityRole="button"
@@ -127,7 +150,10 @@ export default function PlayerScreen() {
         </Pressable>
 
         <Pressable
-          onPress={() => player.togglePlayPause()}
+          onPress={() => {
+            triggerHaptic('medium');
+            player.togglePlayPause();
+          }}
           style={[styles.playButton, { backgroundColor: theme.accent }]}
           accessibilityRole="button"
           accessibilityLabel={playing ? 'Pause' : 'Play'}
@@ -141,7 +167,10 @@ export default function PlayerScreen() {
         </Pressable>
 
         <Pressable
-          onPress={() => void player.skipForward()}
+          onPress={() => {
+            triggerHaptic('light');
+            void player.skipForward();
+          }}
           hitSlop={10}
           style={styles.skip}
           accessibilityRole="button"
@@ -180,6 +209,16 @@ export default function PlayerScreen() {
 
       {showSleepOptions ? (
         <View style={styles.sleepOptions}>
+          <Pressable
+            onPress={() => {
+              player.startSleepTimerUntilEndOfEpisode();
+              setShowSleepOptions(false);
+            }}
+            style={[styles.sleepChip, { backgroundColor: theme.surfaceAlt }]}
+            accessibilityRole="button"
+          >
+            <Text style={[styles.pillLabel, { color: theme.text }]}>End of episode</Text>
+          </Pressable>
           {SLEEP_TIMER_OPTIONS.map((minutes) => (
             <Pressable
               key={minutes}
@@ -339,6 +378,11 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'center',
     fontWeight: '600',
+  },
+  topBarRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
   },
   artworkWrap: {
     alignItems: 'center',

@@ -5,7 +5,7 @@
  * the light/dark swap a one-line lookup (`useTheme()`), rather than scattering
  * `useColorScheme()` conditionals through the component tree.
  */
-export type ColorScheme = 'light' | 'dark';
+export type ColorScheme = 'light' | 'dark' | 'oled';
 
 export type Palette = {
   scheme: ColorScheme;
@@ -67,7 +67,23 @@ const light: Palette = {
   scrim: 'rgba(247, 250, 248, 0.78)',
 };
 
-export const palettes: Record<ColorScheme, Palette> = { light, dark };
+const oled: Palette = {
+  scheme: 'oled',
+  bg: '#000000',
+  surface: '#0A0A0A',
+  surfaceAlt: '#141414',
+  border: '#1F1F1F',
+  text: '#F5F5F5',
+  textMuted: '#A0A0A0',
+  textFaint: '#666666',
+  accent: '#4ADE80',
+  onAccent: '#000000',
+  danger: '#F87171',
+  track: '#1C1C1C',
+  scrim: 'rgba(0, 0, 0, 0.85)',
+};
+
+export const palettes: Record<ColorScheme, Palette> = { light, dark, oled };
 
 /** Spacing scale, in points. Multiples of 4 keep vertical rhythm predictable. */
 export const space = {

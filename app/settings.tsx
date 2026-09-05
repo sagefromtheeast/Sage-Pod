@@ -25,6 +25,7 @@ const SKIP_FORWARD_OPTIONS = [10, 15, 30, 45, 60] as const;
 const SKIP_BACKWARD_OPTIONS = [5, 10, 15, 30] as const;
 const REFRESH_OPTIONS = [15, 30, 60, 180, 720] as const;
 const AUTO_DOWNLOAD_OPTIONS = [0, 1, 3, 5, 10] as const;
+const THEME_OPTIONS = ['system', 'light', 'dark', 'oled'] as const;
 
 export default function SettingsScreen() {
   const theme = useTheme();
@@ -136,6 +137,16 @@ export default function SettingsScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.content}>
+      <SettingsSection title="Appearance" />
+      <SettingsOptions
+        label="Theme"
+        description="System matches your device. OLED provides pure black backgrounds."
+        value={settings.themePreference}
+        options={THEME_OPTIONS}
+        format={(theme) => (theme === 'oled' ? 'OLED' : theme[0].toUpperCase() + theme.slice(1))}
+        onChange={(value) => void update('themePreference', value)}
+      />
+
       <SettingsSection title="Playback" />
       <SettingsOptions
         label="Skip forward"

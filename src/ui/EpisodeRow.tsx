@@ -24,6 +24,16 @@ type Props = {
   hideFeedTitle?: boolean;
 };
 
+function formatEpisodeBadge(
+  season: number | null | undefined,
+  episodeNumber: number | null | undefined
+): string | null {
+  if (season && episodeNumber) return `S${season} · E${episodeNumber}`;
+  if (episodeNumber) return `Ep. ${episodeNumber}`;
+  if (season) return `Season ${season}`;
+  return null;
+}
+
 /**
  * One episode in a list.
  *
@@ -84,6 +94,16 @@ export const EpisodeRow = memo(function EpisodeRow({
         </Text>
 
         <View style={styles.meta}>
+          {formatEpisodeBadge(episode.season, episode.episode_number) ? (
+            <>
+              <View style={[styles.episodeBadge, { backgroundColor: theme.surfaceAlt }]}>
+                <Text style={[styles.episodeBadgeText, { color: theme.textMuted }]}>
+                  {formatEpisodeBadge(episode.season, episode.episode_number)}
+                </Text>
+              </View>
+              <Text style={[styles.metaText, { color: theme.textFaint }]}>·</Text>
+            </>
+          ) : null}
           <Text style={[styles.metaText, { color: theme.textFaint }]}>
             {formatPublishDate(episode.published_at)}
           </Text>
@@ -164,6 +184,17 @@ const styles = StyleSheet.create({
   },
   metaText: {
     ...typography.caption,
+  },
+  episodeBadge: {
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderRadius: radius.sm,
+  },
+  episodeBadgeText: {
+    ...typography.caption,
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.2,
   },
   progress: {
     marginTop: space.xs,

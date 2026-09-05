@@ -22,6 +22,8 @@ export type Settings = {
   deleteAfterFinished: boolean;
   /** Refresh feeds automatically when the app opens, at most this often (minutes). */
   refreshIntervalMinutes: number;
+  /** UI appearance mode: system, light, dark, or OLED true black. */
+  themePreference: 'system' | 'light' | 'dark' | 'oled';
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -35,6 +37,7 @@ export const DEFAULT_SETTINGS: Settings = {
   autoDownloadLimit: 3,
   deleteAfterFinished: false,
   refreshIntervalMinutes: 60,
+  themePreference: 'system',
 };
 
 let cache: Settings = { ...DEFAULT_SETTINGS };
@@ -54,6 +57,7 @@ export function getSettings(): Settings {
 function coerce<K extends keyof Settings>(key: K, raw: string): Settings[K] {
   const fallback = DEFAULT_SETTINGS[key];
   if (typeof fallback === 'boolean') return (raw === '1' || raw === 'true') as Settings[K];
+  if (typeof fallback === 'string') return raw as Settings[K];
   const num = Number(raw);
   return (Number.isFinite(num) ? num : fallback) as Settings[K];
 }

@@ -15,6 +15,8 @@ import { ProgressBar } from '@/ui/ProgressBar';
 import { MINI_PLAYER_HEIGHT, radius, space, type as typography } from '@/ui/theme';
 import { useTheme } from '@/ui/useTheme';
 import { extractLinks, htmlToPlainText } from '@/util/html';
+import { shareEpisode } from '@/util/share';
+import { parseTimestamps } from '@/util/timestamps';
 import { formatDuration, formatPublishDate } from '@/util/time';
 
 export default function EpisodeScreen() {
@@ -42,6 +44,30 @@ export default function EpisodeScreen() {
     if (isCurrent) player.togglePlayPause();
     else void player.playEpisode(episode);
   }, [episode, isCurrent]);
+
+  const seekToTimestamp = useCallback(
+    (seconds: number) => {
+      if (!episode) return;
+      if (isCurrent) {
+        void player.seekTo(seconds);
+      } else {
+        Alert.alert(
+          'Play this episode?',
+          `Jump to ${formatDuration(seconds)} and start listening to this episode.`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            {
+              text: 'Play',
+              onPress: () => {
+                void player.load(episode, { startAt: seconds, autoPlay: true });
+              },
+            },
+          ]
+        );
+      }
+    },
+    [episode, isCurrent]
+  );
 
   if (!episode) {
     return <View style={[styles.root, { backgroundColor: theme.bg }]} />;
@@ -132,6 +158,18 @@ export default function EpisodeScreen() {
             active={episode.is_played === 1}
             onPress={() => void markPlayed(episode.id, episode.is_played !== 1)}
           />
+          <IconAction
+            icon="share-outline"
+            label="Share"
+            onPress={() =>
+              void shareEpisode({
+                title: episode.title,
+                podcastTitle: episode.feed_title,
+                url: episode.link ?? episode.media_url,
+                positionSeconds: position,
+              })
+            }
+          />
         </View>
 
         {episode.download_state === 'error' ? (
@@ -143,7 +181,21 @@ export default function EpisodeScreen() {
         {notes ? (
           <View style={styles.notes}>
             <Text style={[styles.sectionTitle, { color: theme.text }]}>Show notes</Text>
-            <Text style={[styles.notesBody, { color: theme.textMuted }]}>{notes}</Text>
+            <Text style={[styles.notesBody, { color: theme.textMuted }]}>
+              {parseTimestamps(notes).map((segment, index) =>
+                segment.type === 'text' ? (
+                  segment.value
+                ) : (
+                  <Text
+                    key={index}
+                    onPress={() => seekToTimestamp(segment.seconds)}
+                    style={{ color: theme.accent, fontWeight: '600' }}
+                  >
+                    {segment.raw}
+                  </Text>
+                )
+              )}
+            </Text>
           </View>
         ) : null}
 
