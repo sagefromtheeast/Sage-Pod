@@ -126,6 +126,13 @@ export const EpisodeRow = memo(function EpisodeRow({
                 </Text>
               ) : null}
             </View>
+          ) : episode.download_state === 'downloading' || episode.download_state === 'queued' ? (
+            <View style={styles.downloadMeta}>
+              <Ionicons name="arrow-down-circle-outline" size={13} color={theme.accent} />
+              <Text style={[styles.metaText, { color: theme.accent }]}>
+                {episode.download_state === 'downloading' ? 'Downloading' : 'Queued'}
+              </Text>
+            </View>
           ) : null}
           {episode.is_favorite ? (
             <Ionicons name="heart" size={13} color={theme.danger} />

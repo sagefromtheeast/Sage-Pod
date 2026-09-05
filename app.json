@@ -24,6 +24,7 @@
       "package": "app.sagepod.player",
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
+      "usesCleartextTraffic": true,
       "adaptiveIcon": {
         "backgroundColor": "#0E1512",
         "foregroundImage": "./assets/android-icon-foreground.png",

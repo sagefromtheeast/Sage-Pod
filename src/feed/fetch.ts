@@ -9,7 +9,7 @@ export type FetchedFeed = {
   notModified: boolean;
 };
 
-const USER_AGENT = 'SagePod/0.1 (+https://github.com/sagefromtheeast/sage-pod)';
+export const USER_AGENT = 'SagePod/0.1 (+https://github.com/sagefromtheeast/sage-pod)';
 const REQUEST_TIMEOUT_MS = 20_000;
 /** Feeds with decades of episodes exist; refuse to hold one entirely in memory. */
 const MAX_FEED_BYTES = 12 * 1024 * 1024;

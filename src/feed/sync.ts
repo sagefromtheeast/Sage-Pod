@@ -182,7 +182,7 @@ export async function refreshFeed(feed: FeedRow): Promise<SyncResult> {
     for (const episodeId of await autoDownloadCandidates(feed.id)) {
       // Fire and forget: the download manager queues and throttles these, and
       // a refresh should not block waiting for audio to arrive.
-      void queueDownload(episodeId);
+      void queueDownload(episodeId, { isAuto: true });
     }
   }
 

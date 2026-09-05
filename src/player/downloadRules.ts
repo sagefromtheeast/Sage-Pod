@@ -41,3 +41,41 @@ export function shouldAutoDownloadEpisode(episode: {
 
   return true;
 }
+
+export const KNOWN_AUDIO_EXTENSIONS = new Set([
+  'mp3',
+  'm4a',
+  'aac',
+  'ogg',
+  'opus',
+  'wav',
+  'flac',
+  'm4b',
+  'mp4',
+]);
+
+export function guessExtension(mimeType: string | null | undefined): string {
+  if (!mimeType) return 'mp3';
+  const lower = mimeType.toLowerCase();
+  if (lower.includes('mp4') || lower.includes('m4a') || lower.includes('aac')) return 'm4a';
+  if (lower.includes('ogg')) return 'ogg';
+  if (lower.includes('opus')) return 'opus';
+  if (lower.includes('wav')) return 'wav';
+  if (lower.includes('flac')) return 'flac';
+  return 'mp3';
+}
+
+/** Derives a stable, collision-free filename for an episode. */
+export function fileNameFor(episode: {
+  id: number;
+  media_url: string;
+  media_type?: string | null;
+}): string {
+  const fromUrl = /\.([a-z0-9]{2,5})(?:\?|#|$)/i.exec(episode.media_url)?.[1]?.toLowerCase();
+  const extension =
+    fromUrl && KNOWN_AUDIO_EXTENSIONS.has(fromUrl)
+      ? fromUrl
+      : guessExtension(episode.media_type);
+  return `episode-${episode.id}.${extension}`;
+}
+

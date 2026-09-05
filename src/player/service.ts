@@ -15,7 +15,7 @@ import {
   savePosition,
 } from '@/db/episodes';
 import { dequeue, enqueueFront, nextInQueue } from '@/db/queue';
-import { deleteDownload } from '@/player/downloads';
+import { deleteDownload, getLocalEpisodePath } from '@/player/downloads';
 import { getMeta, getSettings, setMeta } from '@/db/settings';
 import type { EpisodeWithFeed } from '@/db/types';
 
@@ -154,10 +154,8 @@ class PlayerService {
     this.teardownPlayer();
 
     const settings = getSettings();
-    const source =
-      episode.download_state === 'done' && episode.local_path
-        ? episode.local_path
-        : episode.media_url;
+    const localUri = episode.download_state === 'done' ? getLocalEpisodePath(episode) : null;
+    const source = localUri ?? episode.media_url;
 
     const skipIntro = episode.feed_skip_intro_seconds ?? 0;
     // Only rewind on resume when the listener has been away long enough to

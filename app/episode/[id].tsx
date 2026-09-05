@@ -9,7 +9,13 @@ import { dequeue, enqueue, isQueued } from '@/db/queue';
 import type { EpisodeWithFeed } from '@/db/types';
 import { useQuery } from '@/db/useQuery';
 import { player, useEpisodePlayback } from '@/player';
-import { cancelDownload, deleteDownload, queueDownload } from '@/player/downloads';
+import {
+  cancelDownload,
+  deleteDownload,
+  formatBytes,
+  queueDownload,
+  useDownloadProgress,
+} from '@/player/downloads';
 import { Artwork } from '@/ui/Artwork';
 import { ProgressBar } from '@/ui/ProgressBar';
 import { MINI_PLAYER_HEIGHT, radius, space, type as typography } from '@/ui/theme';
@@ -81,6 +87,7 @@ export default function EpisodeScreen() {
   const links = extractLinks(episode.description);
   const downloading = episode.download_state === 'downloading' || episode.download_state === 'queued';
   const downloaded = episode.download_state === 'done';
+  const downloadProgress = useDownloadProgress(episode.id);
 
   return (
     <>
@@ -171,6 +178,25 @@ export default function EpisodeScreen() {
             }
           />
         </View>
+
+        {downloading ? (
+          <View style={styles.downloadProgressBlock}>
+            <View style={styles.downloadProgressMeta}>
+              <Text style={[styles.downloadProgressLabel, { color: theme.textMuted }]}>
+                {downloadProgress?.progress != null
+                  ? `Downloading ${(downloadProgress.progress * 100).toFixed(0)}%`
+                  : 'Downloading…'}
+              </Text>
+              {downloadProgress?.bytesWritten ? (
+                <Text style={[styles.downloadProgressBytes, { color: theme.textFaint }]}>
+                  {formatBytes(downloadProgress.bytesWritten)}
+                  {downloadProgress.totalBytes ? ` / ${formatBytes(downloadProgress.totalBytes)}` : ''}
+                </Text>
+              ) : null}
+            </View>
+            <ProgressBar progress={downloadProgress?.progress ?? 0} height={4} />
+          </View>
+        ) : null}
 
         {episode.download_state === 'error' ? (
           <Text style={[styles.error, { color: theme.danger }]}>
@@ -312,6 +338,21 @@ const styles = StyleSheet.create({
     ...typography.caption,
     fontSize: 11,
     textAlign: 'center',
+  },
+  downloadProgressBlock: {
+    gap: space.xs,
+  },
+  downloadProgressMeta: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  downloadProgressLabel: {
+    ...typography.caption,
+    fontWeight: '600',
+  },
+  downloadProgressBytes: {
+    ...typography.caption,
   },
   error: {
     ...typography.caption,

@@ -1,3 +1,4 @@
+import { deleteFeedDownloads } from '@/player/downloads';
 import { getDb } from './index';
 import type { FeedRow, FeedWithCounts } from './types';
 
@@ -61,6 +62,8 @@ export async function listFeedsToRefresh(staleAfterMs: number): Promise<FeedRow[
 }
 
 export async function deleteFeed(id: number): Promise<void> {
+  // Clean up any downloaded media files on disk for this feed
+  await deleteFeedDownloads(id);
   // ON DELETE CASCADE clears the feed's episodes, and the queue's cascade
   // clears any of those episodes that were queued.
   await getDb().runAsync('DELETE FROM feeds WHERE id = ?', id);
