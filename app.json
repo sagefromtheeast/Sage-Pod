@@ -2,7 +2,7 @@
   "expo": {
     "name": "Sage Pod",
     "slug": "sage-pod",
-    "version": "0.1.0",
+    "version": "0.2.0",
     "orientation": "portrait",
     "scheme": "sagepod",
     "icon": "./assets/icon.png",
@@ -18,7 +18,8 @@
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true
         }
-      }
+      },
+      "buildNumber": "200"
     },
     "android": {
       "package": "app.sagepod.player",
@@ -37,7 +38,8 @@
         "android.permission.FOREGROUND_SERVICE",
         "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
         "android.permission.POST_NOTIFICATIONS"
-      ]
+      ],
+      "versionCode": 200
     },
     "web": {
       "bundler": "metro",
