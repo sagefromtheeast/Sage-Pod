@@ -4,7 +4,7 @@ import * as Network from 'expo-network';
 import { useEffect, useState } from 'react';
 
 import { getEpisode, listDownloaded, listPendingDownloads, setDownloadState } from '@/db/episodes';
-import { listQueue } from '@/db/queue';
+import { listQueue, onEpisodeQueued } from '@/db/queue';
 import { getSettings } from '@/db/settings';
 import type { EpisodeWithFeed } from '@/db/types';
 import { USER_AGENT } from '@/feed/fetch';
@@ -15,6 +15,11 @@ import {
   KNOWN_AUDIO_EXTENSIONS,
   shouldAutoDownloadEpisode,
 } from './downloadRules';
+import {
+  classifyDownloadError,
+  type DownloadFailure,
+  type DownloadLogEntry,
+} from './types';
 
 /**
  * Episode download manager.
@@ -26,6 +31,30 @@ import {
 const DOWNLOAD_DIRECTORY = 'episodes';
 /** Concurrent downloads. Phones throttle hard above a handful of transfers. */
 const MAX_CONCURRENT = 2;
+const MAX_LOGS = 50;
+
+const downloadLogs: DownloadLogEntry[] = [];
+
+/** Recent download history / error logs for user diagnostics. */
+export function getDownloadLogs(): DownloadLogEntry[] {
+  return [...downloadLogs];
+}
+
+export function clearDownloadLogs(): void {
+  downloadLogs.length = 0;
+}
+
+function recordLog(entry: DownloadLogEntry): void {
+  downloadLogs.unshift(entry);
+  if (downloadLogs.length > MAX_LOGS) downloadLogs.pop();
+}
+
+// Reactive queue auto-download (AntennaPod prefEnableAutoDlQueue)
+onEpisodeQueued((episodeId) => {
+  if (getSettings().autoDownloadQueue) {
+    void queueDownload(episodeId, { isAuto: true });
+  }
+});
 
 
 export type DownloadProgress = {
@@ -173,7 +202,7 @@ async function pump(): Promise<void> {
   }
 }
 
-async function run(episodeId: number, isAuto: boolean): Promise<void> {
+async function run(episodeId: number, isAuto: boolean, attempt = 0): Promise<void> {
   const episode = await getEpisode(episodeId);
   if (!episode || cancelledIds.has(episodeId)) {
     cancelledIds.delete(episodeId);
@@ -198,7 +227,9 @@ async function run(episodeId: number, isAuto: boolean): Promise<void> {
   active.set(episodeId, { cancel: () => task.cancel() });
   await setDownloadState(episodeId, 'downloading');
 
+  let expectedTotalBytes: number | null = null;
   const subscription = task.addListener('progress', ({ bytesWritten, totalBytes }) => {
+    if (totalBytes > 0) expectedTotalBytes = totalBytes;
     emit({
       episodeId,
       progress: totalBytes > 0 ? bytesWritten / totalBytes : null,
@@ -217,6 +248,44 @@ async function run(episodeId: number, isAuto: boolean): Promise<void> {
       return;
     }
     if (!file) throw new DownloadError('The download did not complete.');
+
+    // Captive portal / HTML detection (AntennaPod HttpDownloader)
+    if (file.size != null && file.size < 100 * 1024) {
+      try {
+        const preview = (await file.slice(0, 512).text()).toLowerCase();
+        if (
+          preview.includes('<!doctype html') ||
+          preview.includes('<html') ||
+          preview.includes('<head') ||
+          preview.includes('captive')
+        ) {
+          if (destination.exists) destination.delete();
+          throw new DownloadError('A captive Wi-Fi login page or HTML error was received instead of audio.');
+        }
+      } catch (e) {
+        if (e instanceof DownloadError) throw e;
+      }
+    }
+
+    // Truncated stream verification (AntennaPod #8319)
+    if (expectedTotalBytes != null && expectedTotalBytes > 0 && file.size != null) {
+      if (file.size < expectedTotalBytes * 0.95) {
+        if (destination.exists) destination.delete();
+        throw new DownloadError(
+          `Download stream truncated: received ${file.size} of ${expectedTotalBytes} bytes.`
+        );
+      }
+    }
+
+    recordLog({
+      id: `${episodeId}-${Date.now()}`,
+      episodeId,
+      episodeTitle: episode.title,
+      url: episode.media_url,
+      status: 'success',
+      timestamp: Date.now(),
+    });
+
     await setDownloadState(episodeId, 'done', file.uri, file.size ?? null);
   } catch (error) {
     if (cancelledIds.has(episodeId)) {
@@ -233,7 +302,32 @@ async function run(episodeId: number, isAuto: boolean): Promise<void> {
     } catch {
       // Best effort
     }
-    console.warn(`[downloads] Download failed for episode ${episodeId}:`, error);
+
+    const failure = classifyDownloadError(error);
+
+    // 1 immediate retry on transient network drops (AntennaPod #8691)
+    if (failure.isRetryable && attempt === 0 && !cancelledIds.has(episodeId)) {
+      console.warn(
+        `[downloads] Transient error (${failure.code}) for episode ${episodeId}, retrying once immediately:`,
+        error
+      );
+      subscription.remove();
+      task.release();
+      active.delete(episodeId);
+      return run(episodeId, isAuto, 1);
+    }
+
+    console.warn(`[downloads] Download failed for episode ${episodeId} (${failure.code}):`, error);
+    recordLog({
+      id: `${episodeId}-${Date.now()}`,
+      episodeId,
+      episodeTitle: episode.title,
+      url: episode.media_url,
+      status: 'failed',
+      errorCode: failure.code,
+      errorMessage: failure.message,
+      timestamp: Date.now(),
+    });
     await setDownloadState(episodeId, 'error');
   } finally {
     subscription.remove();
@@ -300,17 +394,65 @@ export function downloadedBytes(): number {
   }
 }
 
-/** Run auto-cleanup and auto-downloads for the queue (called from app startup). */
+/**
+ * Detects episodes marked 'done' whose audio files are missing from disk
+ * (e.g. after sandbox UUID shifts or storage cleaners), resetting them to 'none'.
+ * (AntennaPod PR #8428 self-healing pattern).
+ */
+export async function reconcileStaleDownloads(): Promise<number> {
+  const downloaded = await listDownloaded();
+  let reconciled = 0;
+  for (const ep of downloaded) {
+    const validPath = getLocalEpisodePath(ep);
+    if (!validPath) {
+      console.warn(`[downloads] Reconciling stale download for episode ${ep.id}: file missing on disk`);
+      await setDownloadState(ep.id, 'none');
+      reconciled++;
+    }
+  }
+  return reconciled;
+}
+
+/**
+ * Prunes played, unstarred episodes not currently in the queue
+ * to make room for new downloads when storage cap is reached.
+ * Implements AntennaPod's APCleanupAlgorithm.
+ */
+export async function pruneOldEpisodesForStorage(episodesNeeded = 1): Promise<number> {
+  if (episodesNeeded <= 0) return 0;
+
+  const downloaded = await listDownloaded();
+  const queue = await listQueue();
+  const queuedIds = new Set(queue.map((q) => q.id));
+
+  // Candidates for eviction: played, not favorited, not in queue
+  const candidates = downloaded
+    .filter((ep) => ep.is_played === 1 && ep.is_favorite === 0 && !queuedIds.has(ep.id))
+    .sort((a, b) => (a.played_at ?? 0) - (b.played_at ?? 0)); // Oldest played first
+
+  let pruned = 0;
+  for (const candidate of candidates) {
+    if (pruned >= episodesNeeded) break;
+    await deleteDownload(candidate.id);
+    pruned++;
+  }
+  return pruned;
+}
+
+/** Run auto-cleanup, stale reconciliation, and auto-downloads (called from app startup). */
 export async function manageAutoDownloads(): Promise<void> {
   const settings = getSettings();
 
-  // 1. Resume any interrupted downloads from previous app run
+  // 1. Reconcile stale downloads (disk vs SQLite, AntennaPod #8428)
+  await reconcileStaleDownloads();
+
+  // 2. Resume any interrupted downloads from previous app run
   const pending = await listPendingDownloads();
   for (const ep of pending) {
     void queueDownload(ep.id, { isAuto: true });
   }
 
-  // 2. Cleanup finished episodes if configured
+  // 3. Cleanup finished episodes if configured
   if (settings.deleteAfterFinished) {
     const downloaded = await listDownloaded();
     for (const ep of downloaded) {
@@ -320,13 +462,30 @@ export async function manageAutoDownloads(): Promise<void> {
     }
   }
 
-  // 3. Queue auto-downloads up to user limit
+  // 4. Enforce storage cap if configured (AntennaPod #5236)
+  if (settings.maxDownloadedEpisodes > 0) {
+    const currentCount = (await listDownloaded()).length;
+    if (currentCount > settings.maxDownloadedEpisodes) {
+      await pruneOldEpisodesForStorage(currentCount - settings.maxDownloadedEpisodes);
+    }
+  }
+
+  // 5. Queue auto-downloads up to user limit
   if (settings.autoDownloadLimit > 0 && (await networkAllowsDownload(true))) {
     const queue = await listQueue();
     let queuedToDownload = 0;
     for (const ep of queue) {
       if (queuedToDownload >= settings.autoDownloadLimit) break;
       if (ep.download_state === 'none' && shouldAutoDownloadEpisode(ep)) {
+        if (settings.maxDownloadedEpisodes > 0) {
+          const currentCount = (await listDownloaded()).length;
+          if (currentCount + queuedToDownload >= settings.maxDownloadedEpisodes) {
+            const freed = await pruneOldEpisodesForStorage(1);
+            if (freed === 0 && currentCount + queuedToDownload >= settings.maxDownloadedEpisodes) {
+              break;
+            }
+          }
+        }
         void queueDownload(ep.id, { isAuto: true });
         queuedToDownload++;
       }

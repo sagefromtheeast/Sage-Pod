@@ -18,6 +18,10 @@ export type Settings = {
   downloadOnWifiOnly: boolean;
   /** Episodes auto-downloaded per feed that has auto-download enabled. */
   autoDownloadLimit: number;
+  /** Automatically download episodes when added to the playback queue. */
+  autoDownloadQueue: boolean;
+  /** Maximum number of downloaded episodes to store (0 = unlimited). */
+  maxDownloadedEpisodes: number;
   /** Delete a downloaded file once its episode is finished. */
   deleteAfterFinished: boolean;
   /** Refresh feeds automatically when the app opens, at most this often (minutes). */
@@ -35,6 +39,8 @@ export const DEFAULT_SETTINGS: Settings = {
   continuousPlayback: true,
   downloadOnWifiOnly: true,
   autoDownloadLimit: 3,
+  autoDownloadQueue: false,
+  maxDownloadedEpisodes: 20,
   deleteAfterFinished: false,
   refreshIntervalMinutes: 60,
   themePreference: 'system',

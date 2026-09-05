@@ -33,6 +33,27 @@ async function bounds(): Promise<{ min: number; max: number }> {
   return { min: row?.lo ?? 0, max: row?.hi ?? 0 };
 }
 
+type QueueListener = (episodeId: number) => void;
+const queueListeners = new Set<QueueListener>();
+
+/** Subscribes to episodes being added to the play queue. */
+export function onEpisodeQueued(listener: QueueListener): () => void {
+  queueListeners.add(listener);
+  return () => {
+    queueListeners.delete(listener);
+  };
+}
+
+function notifyEpisodeQueued(episodeId: number): void {
+  for (const listener of queueListeners) {
+    try {
+      listener(episodeId);
+    } catch {
+      // Best effort notification
+    }
+  }
+}
+
 /** Appends to the end of the queue. No-op if already queued. */
 export async function enqueue(episodeId: number): Promise<void> {
   if (await isQueued(episodeId)) return;
@@ -43,6 +64,7 @@ export async function enqueue(episodeId: number): Promise<void> {
     max + 1,
     Date.now()
   );
+  notifyEpisodeQueued(episodeId);
 }
 
 /** Puts an episode next without disturbing what is currently playing. */
@@ -68,6 +90,7 @@ export async function enqueueNext(episodeId: number): Promise<void> {
     order,
     Date.now()
   );
+  notifyEpisodeQueued(episodeId);
 }
 
 /** Moves an episode to the very front — used when the user hits play. */
@@ -81,6 +104,7 @@ export async function enqueueFront(episodeId: number): Promise<void> {
     min - 1,
     Date.now()
   );
+  notifyEpisodeQueued(episodeId);
 }
 
 export async function dequeue(episodeId: number): Promise<void> {

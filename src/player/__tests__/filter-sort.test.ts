@@ -8,6 +8,7 @@ import {
   shouldAutoDownloadEpisode,
 } from '../downloadRules';
 import { sortQueueEpisodes } from '../queueSorting';
+import { classifyDownloadError } from '../types';
 
 describe('shouldAutoDownloadEpisode — AntennaPod-style Auto-Download Filter Rules', () => {
   it('allows normal full-length episodes', () => {
@@ -207,5 +208,52 @@ describe('sortQueueEpisodes — Queue Batch Sorting & Reordering', () => {
     assert.ok(shuffled.includes(1));
     assert.ok(shuffled.includes(2));
     assert.ok(shuffled.includes(3));
+  });
+});
+
+describe('classifyDownloadError — AntennaPod-style Error Taxonomy', () => {
+  it('identifies 404 / not found as fatal non-retryable NOT_FOUND', () => {
+    const res = classifyDownloadError(new Error('HTTP status 404: Not Found'));
+    assert.equal(res.code, 'NOT_FOUND');
+    assert.equal(res.isRetryable, false);
+    assert.equal(res.httpStatus, 404);
+  });
+
+  it('identifies 403 / forbidden as fatal non-retryable FORBIDDEN', () => {
+    const res = classifyDownloadError(new Error('Server responded with 403 Forbidden'));
+    assert.equal(res.code, 'FORBIDDEN');
+    assert.equal(res.isRetryable, false);
+  });
+
+  it('identifies 401 / unauthorized as fatal non-retryable UNAUTHORIZED', () => {
+    const res = classifyDownloadError(new Error('401 Unauthorized for private feed'));
+    assert.equal(res.code, 'UNAUTHORIZED');
+    assert.equal(res.isRetryable, false);
+  });
+
+  it('identifies captive portal / html response as fatal non-retryable CAPTIVE_PORTAL', () => {
+    const res = classifyDownloadError(
+      new Error('A captive Wi-Fi login page or HTML error was received instead of audio.')
+    );
+    assert.equal(res.code, 'CAPTIVE_PORTAL');
+    assert.equal(res.isRetryable, false);
+  });
+
+  it('identifies storage space full as fatal non-retryable INSUFFICIENT_SPACE', () => {
+    const res = classifyDownloadError(new Error('ENOSPC: no space left on device'));
+    assert.equal(res.code, 'INSUFFICIENT_SPACE');
+    assert.equal(res.isRetryable, false);
+  });
+
+  it('identifies truncated / premature stream end as retryable CORRUPTED_STREAM', () => {
+    const res = classifyDownloadError(new Error('Download stream truncated: received 500 of 1000 bytes.'));
+    assert.equal(res.code, 'CORRUPTED_STREAM');
+    assert.equal(res.isRetryable, true);
+  });
+
+  it('identifies network socket timeouts as retryable NETWORK_TIMEOUT', () => {
+    const res = classifyDownloadError(new Error('Network request failed: socket timeout'));
+    assert.equal(res.code, 'NETWORK_TIMEOUT');
+    assert.equal(res.isRetryable, true);
   });
 });

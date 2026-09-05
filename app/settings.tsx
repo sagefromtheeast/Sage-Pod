@@ -25,6 +25,7 @@ const SKIP_FORWARD_OPTIONS = [10, 15, 30, 45, 60] as const;
 const SKIP_BACKWARD_OPTIONS = [5, 10, 15, 30] as const;
 const REFRESH_OPTIONS = [15, 30, 60, 180, 720] as const;
 const AUTO_DOWNLOAD_OPTIONS = [0, 1, 3, 5, 10] as const;
+const EPISODE_STORAGE_OPTIONS = [10, 20, 50, 100, 0] as const;
 const THEME_OPTIONS = ['system', 'light', 'dark', 'oled'] as const;
 
 export default function SettingsScreen() {
@@ -202,6 +203,12 @@ export default function SettingsScreen() {
         value={settings.downloadOnWifiOnly}
         onValueChange={(value) => void update('downloadOnWifiOnly', value)}
       />
+      <SettingsSwitch
+        label="Download queue automatically"
+        description="Fetch episode audio whenever an episode is added to the queue."
+        value={settings.autoDownloadQueue}
+        onValueChange={(value) => void update('autoDownloadQueue', value)}
+      />
       <SettingsOptions
         label="Auto-download per podcast"
         description="Newest episodes fetched for podcasts with auto-download on."
@@ -209,6 +216,14 @@ export default function SettingsScreen() {
         options={AUTO_DOWNLOAD_OPTIONS}
         format={(count) => (count === 0 ? 'Off' : String(count))}
         onChange={(value) => void update('autoDownloadLimit', value)}
+      />
+      <SettingsOptions
+        label="Storage episode limit"
+        description="Keeps newest episodes and prunes oldest played episodes when full."
+        value={settings.maxDownloadedEpisodes}
+        options={EPISODE_STORAGE_OPTIONS}
+        format={(count) => (count === 0 ? 'Unlimited' : `${count} episodes`)}
+        onChange={(value) => void update('maxDownloadedEpisodes', value)}
       />
       <SettingsSwitch
         label="Delete when finished"
