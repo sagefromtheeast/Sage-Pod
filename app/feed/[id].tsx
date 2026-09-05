@@ -13,10 +13,26 @@ import { player } from '@/player';
 import { Artwork } from '@/ui/Artwork';
 import { EmptyState } from '@/ui/EmptyState';
 import { EpisodeRow } from '@/ui/EpisodeRow';
+import { GlassSegmentedControl, type SegmentOption } from '@/ui/glass';
 import { triggerHaptic } from '@/ui/haptics';
 import { MINI_PLAYER_HEIGHT, radius, space, type as typography } from '@/ui/theme';
 import { useTheme } from '@/ui/useTheme';
 import { excerpt } from '@/util/html';
+
+type FeedFilterKey = 'all' | 'unplayed' | 'downloaded' | 'favorites';
+
+const FILTER_SEGMENTS: readonly SegmentOption<FeedFilterKey>[] = [
+  { key: 'all', label: 'All' },
+  { key: 'unplayed', label: 'Unplayed' },
+  { key: 'downloaded', label: 'Downloaded' },
+  { key: 'favorites', label: 'Favorites' },
+];
+
+const SORT_SEGMENTS: readonly SegmentOption<EpisodeSortKey>[] = [
+  { key: 'date_desc', label: 'Newest' },
+  { key: 'date_asc', label: 'Oldest' },
+  { key: 'season_asc', label: 'Season' },
+];
 
 export default function FeedScreen() {
   const theme = useTheme();
@@ -24,20 +40,16 @@ export default function FeedScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const feedId = Number(id);
 
+  const [filter, setFilter] = useState<FeedFilterKey>('all');
   const [sort, setSort] = useState<EpisodeSortKey>('date_desc');
-  const [unplayedOnly, setUnplayedOnly] = useState(false);
-  const [downloadedOnly, setDownloadedOnly] = useState(false);
-  const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
-  const hasActiveFilters = unplayedOnly || downloadedOnly || favoritesOnly;
+  const hasActiveFilters = filter !== 'all';
 
   const clearFilters = useCallback(() => {
     triggerHaptic('selection');
-    setUnplayedOnly(false);
-    setDownloadedOnly(false);
-    setFavoritesOnly(false);
+    setFilter('all');
   }, []);
 
   const { data: feed } = useQuery<FeedWithCounts | null>(
@@ -50,10 +62,14 @@ export default function FeedScreen() {
     () =>
       listEpisodesForFeed(feedId, {
         sort,
-        filters: { unplayedOnly, downloadedOnly, favoritesOnly },
+        filters: {
+          unplayedOnly: filter === 'unplayed',
+          downloadedOnly: filter === 'downloaded',
+          favoritesOnly: filter === 'favorites',
+        },
       }),
     ['episodes'],
-    [feedId, sort, unplayedOnly, downloadedOnly, favoritesOnly]
+    [feedId, sort, filter]
   );
 
   const play = useCallback((episode: EpisodeWithFeed) => {
@@ -186,104 +202,19 @@ export default function FeedScreen() {
               />
             </View>
 
-            <View style={styles.filterBar}>
-              <View style={styles.filterPills}>
-                <Pressable
-                  onPress={() => {
-                    triggerHaptic('selection');
-                    setUnplayedOnly((v) => !v);
-                  }}
-                  style={[
-                    styles.filterPill,
-                    { backgroundColor: unplayedOnly ? theme.accent : theme.surfaceAlt },
-                  ]}
-                  accessibilityRole="button"
-                >
-                  <Text
-                    style={[
-                      styles.filterPillText,
-                      { color: unplayedOnly ? theme.onAccent : theme.textMuted },
-                    ]}
-                  >
-                    Unplayed
-                  </Text>
-                </Pressable>
-
-                <Pressable
-                  onPress={() => {
-                    triggerHaptic('selection');
-                    setDownloadedOnly((v) => !v);
-                  }}
-                  style={[
-                    styles.filterPill,
-                    { backgroundColor: downloadedOnly ? theme.accent : theme.surfaceAlt },
-                  ]}
-                  accessibilityRole="button"
-                >
-                  <Text
-                    style={[
-                      styles.filterPillText,
-                      { color: downloadedOnly ? theme.onAccent : theme.textMuted },
-                    ]}
-                  >
-                    Downloaded
-                  </Text>
-                </Pressable>
-
-                <Pressable
-                  onPress={() => {
-                    triggerHaptic('selection');
-                    setFavoritesOnly((v) => !v);
-                  }}
-                  style={[
-                    styles.filterPill,
-                    { backgroundColor: favoritesOnly ? theme.accent : theme.surfaceAlt },
-                  ]}
-                  accessibilityRole="button"
-                >
-                  <Text
-                    style={[
-                      styles.filterPillText,
-                      { color: favoritesOnly ? theme.onAccent : theme.textMuted },
-                    ]}
-                  >
-                    Favorites
-                  </Text>
-                </Pressable>
-              </View>
-
-              <View style={styles.sortPills}>
-                {([
-                  { key: 'date_desc', label: 'Newest' },
-                  { key: 'date_asc', label: 'Oldest' },
-                  { key: 'season_asc', label: 'Season' },
-                ] as const).map((s) => {
-                  const active = sort === s.key;
-                  return (
-                    <Pressable
-                      key={s.key}
-                      onPress={() => {
-                        triggerHaptic('selection');
-                        setSort(s.key);
-                      }}
-                      style={[
-                        styles.sortPill,
-                        { backgroundColor: active ? theme.surfaceAlt : 'transparent' },
-                      ]}
-                      accessibilityRole="button"
-                    >
-                      <Text
-                        style={[
-                          styles.sortPillText,
-                          { color: active ? theme.accent : theme.textFaint },
-                        ]}
-                      >
-                        {s.label}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
+            <View style={styles.segmentedControls}>
+              <GlassSegmentedControl<FeedFilterKey>
+                segments={FILTER_SEGMENTS}
+                selectedKey={filter}
+                onSelect={setFilter}
+                accessibilityLabel="Filter episodes"
+              />
+              <GlassSegmentedControl<EpisodeSortKey>
+                segments={SORT_SEGMENTS}
+                selectedKey={sort}
+                onSelect={setSort}
+                accessibilityLabel="Sort episodes"
+              />
             </View>
           </View>
         }
@@ -411,37 +342,8 @@ const styles = StyleSheet.create({
     ...typography.caption,
     fontWeight: '600',
   },
-  filterBar: {
+  segmentedControls: {
     gap: space.sm,
     paddingTop: space.xs,
-  },
-  filterPills: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.xs,
-  },
-  filterPill: {
-    paddingHorizontal: space.md,
-    paddingVertical: 6,
-    borderRadius: radius.pill,
-  },
-  filterPillText: {
-    ...typography.caption,
-    fontWeight: '600',
-  },
-  sortPills: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.xs,
-  },
-  sortPill: {
-    paddingHorizontal: space.sm,
-    paddingVertical: 4,
-    borderRadius: radius.sm,
-  },
-  sortPillText: {
-    ...typography.caption,
-    fontWeight: '600',
-    fontSize: 11,
   },
 });

@@ -12,6 +12,7 @@ import { deleteDownload, formatBytes } from '@/player/downloads';
 import { EmptyState } from '@/ui/EmptyState';
 import { EpisodeRow } from '@/ui/EpisodeRow';
 import { triggerHaptic } from '@/ui/haptics';
+import { GlassSegmentedControl } from '@/ui/glass';
 import { MINI_PLAYER_HEIGHT, radius, space, type as typography } from '@/ui/theme';
 import { useTheme } from '@/ui/useTheme';
 
@@ -85,41 +86,17 @@ export default function ListScreen() {
                 {episodes.length} {episodes.length === 1 ? 'episode' : 'episodes'} ·{' '}
                 {formatBytes(totalBytes)}
               </Text>
-              <View style={styles.sortPills}>
-                {(
-                  [
-                    { key: 'date', label: 'Date' },
-                    { key: 'size', label: 'Size' },
-                    { key: 'duration', label: 'Duration' },
-                  ] as const
-                ).map((item) => {
-                  const active = downloadSort === item.key;
-                  return (
-                    <Pressable
-                      key={item.key}
-                      onPress={() => {
-                        triggerHaptic('selection');
-                        setDownloadSort(item.key);
-                      }}
-                      style={[
-                        styles.sortPill,
-                        { backgroundColor: active ? theme.accent : theme.surfaceAlt },
-                      ]}
-                      accessibilityRole="button"
-                      accessibilityLabel={`Sort by ${item.label}`}
-                    >
-                      <Text
-                        style={[
-                          styles.sortPillText,
-                          { color: active ? theme.onAccent : theme.textMuted },
-                        ]}
-                      >
-                        {item.label}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
+              <GlassSegmentedControl
+                segments={[
+                  { key: 'date', label: 'Date' },
+                  { key: 'size', label: 'Size' },
+                  { key: 'duration', label: 'Duration' },
+                ]}
+                selectedKey={downloadSort}
+                onSelect={(key) => setDownloadSort(key)}
+                style={styles.downloadSegmented}
+                accessibilityLabel="Sort downloads"
+              />
             </View>
           ) : null
         }
@@ -174,19 +151,7 @@ const styles = StyleSheet.create({
     ...typography.caption,
     fontWeight: '600',
   },
-  sortPills: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.xs,
-  },
-  sortPill: {
-    paddingHorizontal: space.sm,
-    paddingVertical: 4,
-    borderRadius: radius.sm,
-  },
-  sortPillText: {
-    ...typography.caption,
-    fontWeight: '600',
-    fontSize: 11,
+  downloadSegmented: {
+    width: 200,
   },
 });

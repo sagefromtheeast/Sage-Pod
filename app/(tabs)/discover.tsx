@@ -22,6 +22,7 @@ import {
 } from '@/discover/itunes';
 import { subscribe } from '@/feed/sync';
 import { Artwork } from '@/ui/Artwork';
+import { GlassSurface } from '@/ui/glass';
 import { MINI_PLAYER_HEIGHT, radius, space, type as typography } from '@/ui/theme';
 import { useTheme } from '@/ui/useTheme';
 
@@ -86,7 +87,20 @@ export default function DiscoverScreen() {
 
   return (
     <View style={styles.root}>
-      <View style={[styles.searchBar, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+      <GlassSurface
+        glassEffectStyle="regular"
+        isInteractive={true}
+        borderRadius={radius.pill}
+        style={[
+          styles.searchBar,
+          {
+            borderColor:
+              theme.scheme === 'dark'
+                ? 'rgba(255, 255, 255, 0.12)'
+                : 'rgba(0, 0, 0, 0.08)',
+          },
+        ]}
+      >
         <Ionicons name="search" size={18} color={theme.textFaint} />
         <TextInput
           value={term}
@@ -102,7 +116,7 @@ export default function DiscoverScreen() {
           accessibilityLabel="Search podcasts"
         />
         {searching ? <ActivityIndicator size="small" color={theme.textFaint} /> : null}
-      </View>
+      </GlassSurface>
 
       <FlatList
         data={data}
@@ -234,6 +248,7 @@ const styles = StyleSheet.create({
     height: 42,
     borderRadius: radius.pill,
     borderWidth: StyleSheet.hairlineWidth,
+    overflow: 'hidden',
   },
   searchInput: {
     flex: 1,
