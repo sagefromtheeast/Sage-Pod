@@ -1,0 +1,87 @@
+name: Automated Semantic Release
+
+on:
+  push:
+    branches:
+      - main
+
+# The release commit carries [skip ci] so the pipeline does not retrigger
+# itself; this guard additionally stops two pushes racing to tag.
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write        # create tags, the release commit, GitHub Releases
+      issues: write          # comment on released issues
+      pull-requests: write   # comment on released PRs
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0            # full history so commit analysis works
+          persist-credentials: true
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Gate the release on the project's own checks. A tag and a GitHub
+      # Release are public and awkward to retract, so it is worth a couple of
+      # minutes to avoid cutting one from a broken main.
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Verify the version stamper still runs
+        # Catches a broken script before it silently no-ops during `prepare`
+        # and freezes the app version. The stamp is thrown away straight after.
+        run: |
+          bash tool/set_app_version.sh 9.9.9
+          # Assert the app version file specifically — checking the whole tree
+          # would be satisfied by an unrelated dirty file (a lockfile touched by
+          # npm ci, say) and mask a stamper that silently does nothing.
+          git diff --quiet app.json && { echo "set_app_version.sh did not write app.json"; exit 1; }
+          git checkout -- .
+
+      # Sage Pod is deliberately pre-1.0: with no tag to measure from,
+      # semantic-release treats the run as a first release and publishes 1.0.0.
+      # Fail loudly instead, because a published tag and Release are awkward to
+      # retract. Delete this step when you actually want to cut 1.0.0.
+      - name: Require a version baseline
+        run: |
+          if [ -z "$(git tag --list 'v*')" ]; then
+            echo "::error::No v* git tag found — semantic-release would publish 1.0.0."
+            echo "Create the pre-1.0 baseline once, then re-run:"
+            echo "  git tag -a v0.1.0 <first-commit> -m 'Baseline v0.1.0'"
+            echo "  git push origin v0.1.0"
+            exit 1
+          fi
+          echo "Baseline: $(git describe --tags --abbrev=0)"
+
+      - name: Semantic Release
+        id: semantic
+        uses: cycjimmy/semantic-release-action@v4
+        with:
+          extra_plugins: |
+            @semantic-release/changelog
+            @semantic-release/git
+            @semantic-release/exec
+            conventional-changelog-conventionalcommits
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Report
+        if: steps.semantic.outputs.new_release_published == 'true'
+        run: |
+          echo "Released v${{ steps.semantic.outputs.new_release_version }}" >> "$GITHUB_STEP_SUMMARY"

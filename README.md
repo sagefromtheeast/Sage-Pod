@@ -102,6 +102,67 @@ Podcast search uses Apple's public iTunes Search API, which needs no API key or
 account, so the app works the moment it is installed. Any RSS URL can also be
 pasted directly.
 
+## Releases
+
+Releases are automated. You never bump a version by hand — **the commit
+messages decide it**.
+
+Pushing to `main` runs `.github/workflows/semantic-release.yml`, which
+typechecks, runs the tests, then lets
+[semantic-release](https://semantic-release.gitbook.io/) read every commit since
+the last tag and:
+
+1. pick the next version from the [Conventional Commit](https://www.conventionalcommits.org/)
+   types in that range,
+2. prepend the notes to `CHANGELOG.md`,
+3. stamp that version into `app.json` (`expo.version`, plus
+   `android.versionCode` and `ios.buildNumber`) and `package.json`,
+4. tag the commit and publish a GitHub Release,
+5. commit the changed files back as `chore(release): X.Y.Z [skip ci]`.
+
+So the tag, the GitHub Release, the CHANGELOG and the shipped app version
+always carry the same number.
+
+| Commit prefix | Release |
+|---|---|
+| `fix: …` | patch — `1.2.3` → `1.2.4` |
+| `feat: …` | minor — `1.2.3` → `1.3.0` |
+| `perf: …` | patch |
+| `feat!: …`, or `BREAKING CHANGE:` in the body | major — `1.2.3` → `2.0.0` |
+| `docs/chore/ci/refactor/test/style/build: …` | **none** — appears in the notes only |
+
+A branch of only `chore`/`docs`/`ci` commits merges without releasing. That is
+deliberate, not a failure.
+
+Preview what the next push would release, without publishing:
+
+```bash
+npx semantic-release --dry-run --no-ci
+```
+
+### One-time setup still outstanding
+
+The pipeline is deliberately held at pre-1.0, which needs a baseline tag that
+does not exist on the remote yet. **Until you create it, the release workflow
+fails on purpose** rather than publishing 1.0.0:
+
+```bash
+git tag -a v0.1.0 $(git rev-list --max-parents=0 HEAD) -m "Baseline v0.1.0"
+git push origin v0.1.0
+```
+
+With that tag in place the first release is `0.2.0`, and `feat:` keeps bumping
+the minor within `0.x`. When you are ready to declare 1.0, delete the
+"Require a version baseline" step from the workflow and land a commit with a
+`BREAKING CHANGE:` body.
+
+### Store build numbers
+
+`tool/set_app_version.sh` derives `versionCode` / `buildNumber` as
+`major*10000 + minor*100 + patch` (so `1.4.0` → `10400`). App Store Connect and
+Google Play both require this integer to strictly increase, which it does for
+any ascending semver. Note the ceiling: minor and patch are capped at 99 each.
+
 ## Licence
 
 Sage Pod is its own implementation and shares no code with AntennaPod; it

@@ -27,6 +27,23 @@ In particular:
 - Colours, spacing and type come from `src/ui/theme.ts` via `useTheme()`. No
   hard-coded hex values in screens.
 
+## Commits and releases
+
+Releases are automated from commit messages, so **commit messages are load
+bearing** — use [Conventional Commits](https://www.conventionalcommits.org/):
+`feat:` (minor), `fix:` / `perf:` (patch), `feat!:` or a `BREAKING CHANGE:`
+body (major). `docs/chore/ci/refactor/test/style/build` do not release.
+
+Never hand-edit a version. `expo.version`, `android.versionCode`,
+`ios.buildNumber` and `package.json` are all written by
+`tool/set_app_version.sh` during the release. If you add a file that carries the
+version, add it to that script **and** to `git.assets` in `.releaserc.json`, or
+it will silently drift out of sync with the tags.
+
+`.releaserc.json` uses the `conventionalcommits` preset, not `angular` — the
+`presetConfig.types` section names only take effect under that preset, and the
+preset package must stay listed in the workflow's `extra_plugins`.
+
 ## Checks
 
 ```bash
