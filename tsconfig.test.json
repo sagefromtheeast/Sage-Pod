@@ -1,0 +1,19 @@
+{
+  // Test files run under Node (`node --test`), not Metro, so they need Node's
+  // module resolution and type definitions rather than the app's React Native
+  // ones. Keeping them out of the app tsconfig avoids forcing Node types onto
+  // code that ships to a phone.
+  "extends": "expo/tsconfig.base",
+  "compilerOptions": {
+    "strict": true,
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "customConditions": [],
+    "allowImportingTsExtensions": true,
+    "types": ["node"],
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["src/**/__tests__/**/*.ts", "src/feed/parser.ts", "src/util/*.ts"]
+}
