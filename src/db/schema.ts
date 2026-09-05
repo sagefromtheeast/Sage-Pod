@@ -4,7 +4,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
  * Bump this when adding a migration below. `migrate()` walks from the
  * database's stored `user_version` up to this number, applying each step once.
  */
-export const LATEST_SCHEMA_VERSION = 1;
+export const LATEST_SCHEMA_VERSION = 2;
 
 const V1 = `
 CREATE TABLE IF NOT EXISTS feeds (
@@ -77,8 +77,26 @@ CREATE TABLE IF NOT EXISTS settings (
 );
 `;
 
+const V2 = `
+ALTER TABLE feeds ADD COLUMN playback_speed REAL;
+ALTER TABLE feeds ADD COLUMN skip_intro_seconds INTEGER;
+
+ALTER TABLE episodes ADD COLUMN chapters_url TEXT;
+
+CREATE TABLE IF NOT EXISTS playback_history (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  episode_id INTEGER NOT NULL REFERENCES episodes(id) ON DELETE CASCADE,
+  feed_id INTEGER NOT NULL REFERENCES feeds(id) ON DELETE CASCADE,
+  listened_seconds INTEGER NOT NULL,
+  date TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_playback_history_date
+  ON playback_history (date);
+`;
+
 /** Ordered migrations. Index 0 migrates version 0 -> 1, and so on. */
-const MIGRATIONS: string[] = [V1];
+const MIGRATIONS: string[] = [V1, V2];
 
 /**
  * Applies any pending migrations.

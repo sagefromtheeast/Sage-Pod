@@ -22,12 +22,13 @@ import { useTheme } from '@/ui/useTheme';
 
 const COLUMNS = 3;
 
-type Shortcut = { label: string; icon: 'heart' | 'arrow-down-circle' | 'time'; href: Href };
+type Shortcut = { label: string; icon: 'heart' | 'arrow-down-circle' | 'time' | 'bar-chart'; href: Href };
 
 const SHORTCUTS: Shortcut[] = [
   { label: 'Favourites', icon: 'heart', href: '/list/favorites' },
   { label: 'Downloads', icon: 'arrow-down-circle', href: '/list/downloads' },
   { label: 'History', icon: 'time', href: '/list/history' },
+  { label: 'Stats', icon: 'bar-chart', href: '/stats' as any },
 ];
 
 export default function LibraryScreen() {

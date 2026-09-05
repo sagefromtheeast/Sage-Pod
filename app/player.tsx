@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { getSettings } from '@/db/settings';
 import { PLAYBACK_RATES, player, usePlayerState } from '@/player';
+import { useChapters } from '@/player/useChapters';
 import { Artwork } from '@/ui/Artwork';
 import { radius, space, type as typography } from '@/ui/theme';
 import { useTheme } from '@/ui/useTheme';
@@ -230,7 +231,40 @@ export default function PlayerScreen() {
           );
         })}
       </View>
+
+      <ChaptersList chaptersUrl={episode.chapters_url} position={displayPosition} />
     </ScrollView>
+  );
+}
+
+function ChaptersList({ chaptersUrl, position }: { chaptersUrl?: string | null; position: number }) {
+  const theme = useTheme();
+  const { chapters } = useChapters(chaptersUrl);
+
+  if (!chapters || chapters.length === 0) return null;
+
+  return (
+    <View style={styles.chapters}>
+      <Text style={[styles.chaptersTitle, { color: theme.textMuted }]}>CHAPTERS</Text>
+      {chapters.map((ch, i) => {
+        const nextTime = i < chapters.length - 1 ? chapters[i + 1].startTime : Infinity;
+        const active = position >= ch.startTime && position < nextTime;
+        return (
+          <Pressable
+            key={i}
+            onPress={() => void player.seekTo(ch.startTime)}
+            style={[styles.chapterRow, active ? { backgroundColor: theme.surfaceAlt } : null]}
+          >
+            <Text style={[styles.chapterTime, { color: active ? theme.accent : theme.textMuted }]}>
+              {formatDuration(ch.startTime)}
+            </Text>
+            <Text style={[styles.chapterLabel, { color: active ? theme.text : theme.textMuted }]} numberOfLines={1}>
+              {ch.title}
+            </Text>
+          </Pressable>
+        );
+      })}
+    </View>
   );
 }
 
@@ -400,5 +434,33 @@ const styles = StyleSheet.create({
   rateLabel: {
     ...typography.caption,
     fontWeight: '600',
+  },
+  chapters: {
+    marginTop: space.lg,
+    gap: space.xs,
+  },
+  chaptersTitle: {
+    ...typography.caption,
+    fontWeight: '700',
+    letterSpacing: 0.6,
+    paddingHorizontal: space.xs,
+    marginBottom: space.xs,
+  },
+  chapterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+    paddingHorizontal: space.sm,
+    paddingVertical: space.sm,
+    borderRadius: radius.sm,
+  },
+  chapterTime: {
+    ...typography.caption,
+    fontVariant: ['tabular-nums'],
+    minWidth: 45,
+  },
+  chapterLabel: {
+    ...typography.body,
+    flex: 1,
   },
 });

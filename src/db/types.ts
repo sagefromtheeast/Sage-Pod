@@ -18,6 +18,8 @@ export type FeedRow = {
   auto_download: number;
   keep_updated: number;
   created_at: number;
+  playback_speed: number | null;
+  skip_intro_seconds: number | null;
 };
 
 export type EpisodeRow = {
@@ -44,6 +46,7 @@ export type EpisodeRow = {
   download_state: DownloadState;
   downloaded_bytes: number | null;
   created_at: number;
+  chapters_url: string | null;
 };
 
 /** An episode joined with the feed it belongs to — what every list screen needs. */
@@ -51,6 +54,8 @@ export type EpisodeWithFeed = EpisodeRow & {
   feed_title: string;
   feed_image_url: string | null;
   feed_author: string | null;
+  feed_playback_speed: number | null;
+  feed_skip_intro_seconds: number | null;
 };
 
 /** A subscription plus its unplayed count, for the library grid. */

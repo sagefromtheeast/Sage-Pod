@@ -15,6 +15,7 @@ export type ParsedEpisode = {
   imageUrl: string | null;
   season: number | null;
   episodeNumber: number | null;
+  chaptersUrl: string | null;
 };
 
 export type ParsedFeed = {
@@ -191,6 +192,9 @@ function parseItem(item: Node, base: string, feedImage: string | null): ParsedEp
 
   const link = absolute(text(item.link), base);
 
+  const chapters = item['podcast:chapters'] as Node | undefined;
+  const chaptersUrl = chapters ? absolute(attr(chapters, 'url'), base) : null;
+
   return {
     guid,
     title,
@@ -204,6 +208,7 @@ function parseItem(item: Node, base: string, feedImage: string | null): ParsedEp
     imageUrl: imageFrom(item, base) ?? feedImage,
     season: toInt(item['itunes:season']),
     episodeNumber: toInt(item['itunes:episode']),
+    chaptersUrl,
   };
 }
 

@@ -1,9 +1,10 @@
 import { Directory, File, Paths } from 'expo-file-system';
 import * as Network from 'expo-network';
 
-import { getEpisode, setDownloadState } from '@/db/episodes';
+import { getEpisode, setDownloadState, listDownloaded } from '@/db/episodes';
 import { getSettings } from '@/db/settings';
 import type { EpisodeWithFeed } from '@/db/types';
+import { listQueue } from '@/db/queue';
 
 /**
  * Episode download manager.
@@ -208,4 +209,32 @@ export function formatBytes(bytes: number | null | undefined): string {
     unit += 1;
   }
   return `${value < 10 && unit > 1 ? value.toFixed(1) : Math.round(value)} ${units[unit]}`;
+}
+
+/** Run auto-cleanup and auto-downloads for the queue (called from app startup) */
+export async function manageAutoDownloads(): Promise<void> {
+  const settings = getSettings();
+  
+  // 1. Cleanup
+  if (settings.deleteAfterFinished) {
+    const downloaded = await listDownloaded();
+    for (const ep of downloaded) {
+      if (ep.is_played === 1) {
+        await deleteDownload(ep.id);
+      }
+    }
+  }
+
+  // 2. Queue auto-download (top 3 next items)
+  if (await networkAllowsDownload()) {
+    const queue = await listQueue();
+    let queuedToDownload = 0;
+    for (const ep of queue) {
+      if (queuedToDownload >= 3) break;
+      if (ep.download_state === 'none') {
+        void queueDownload(ep.id);
+        queuedToDownload++;
+      }
+    }
+  }
 }

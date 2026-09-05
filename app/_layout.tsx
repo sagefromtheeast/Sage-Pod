@@ -10,6 +10,7 @@ import { initDb } from '@/db';
 import { loadSettings } from '@/db/settings';
 import { refreshAllFeeds } from '@/feed/sync';
 import { player } from '@/player';
+import { manageAutoDownloads } from '@/player/downloads';
 import { space, type as typography } from '@/ui/theme';
 import { useTheme } from '@/ui/useTheme';
 
@@ -39,6 +40,9 @@ export default function RootLayout() {
           // A failed background refresh is not worth interrupting startup for;
           // per-feed failures surface on the feed's own screen.
         });
+        
+        // Also manage auto downloads and cleanup
+        void manageAutoDownloads().catch(() => {});
       } catch (error) {
         if (!cancelled) {
           setStartupError(error instanceof Error ? error.message : String(error));
@@ -97,8 +101,10 @@ export default function RootLayout() {
             }}
           />
           <Stack.Screen name="feed/[id]" options={{ title: '' }} />
+          <Stack.Screen name="feed/settings/[id]" options={{ title: 'Podcast Settings', presentation: 'modal' }} />
           <Stack.Screen name="episode/[id]" options={{ title: '' }} />
           <Stack.Screen name="settings" options={{ title: 'Settings', presentation: 'modal' }} />
+          <Stack.Screen name="stats" options={{ title: 'Statistics', presentation: 'modal' }} />
         </Stack>
       </SafeAreaProvider>
     </GestureHandlerRootView>

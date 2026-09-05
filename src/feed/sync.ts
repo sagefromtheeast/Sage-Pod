@@ -45,7 +45,8 @@ async function upsertEpisodes(
           `UPDATE episodes
               SET title = ?, description = ?, link = ?, published_at = ?,
                   duration = COALESCE(?, duration), media_url = ?, media_type = ?,
-                  media_size = ?, image_url = ?, season = ?, episode_number = ?
+                  media_size = ?, image_url = ?, season = ?, episode_number = ?,
+                  chapters_url = ?
             WHERE id = ?`,
           episode.title,
           episode.description,
@@ -58,6 +59,7 @@ async function upsertEpisodes(
           episode.imageUrl,
           episode.season,
           episode.episodeNumber,
+          episode.chaptersUrl,
           existing.id
         );
         continue;
@@ -67,8 +69,8 @@ async function upsertEpisodes(
         `INSERT INTO episodes
            (feed_id, guid, title, description, link, published_at, duration,
             media_url, media_type, media_size, image_url, season, episode_number,
-            is_new, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            chapters_url, is_new, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         feedId,
         episode.guid,
         episode.title,
@@ -82,6 +84,7 @@ async function upsertEpisodes(
         episode.imageUrl,
         episode.season,
         episode.episodeNumber,
+        episode.chaptersUrl,
         markAsNew ? 1 : 0,
         Date.now()
       );

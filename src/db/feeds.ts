@@ -5,7 +5,8 @@ import type { FeedRow, FeedWithCounts } from './types';
 const FEED_COLUMNS = `
   f.id, f.feed_url, f.title, f.author, f.description, f.image_url, f.link,
   f.language, f.explicit, f.etag, f.last_modified, f.last_refreshed_at,
-  f.auto_download, f.keep_updated, f.created_at
+  f.auto_download, f.keep_updated, f.created_at,
+  f.playback_speed, f.skip_intro_seconds
 `;
 
 export async function listFeeds(): Promise<FeedWithCounts[]> {
@@ -67,7 +68,12 @@ export async function deleteFeed(id: number): Promise<void> {
 
 export async function setFeedFlags(
   id: number,
-  flags: { autoDownload?: boolean; keepUpdated?: boolean }
+  flags: {
+    autoDownload?: boolean;
+    keepUpdated?: boolean;
+    playbackSpeed?: number | null;
+    skipIntroSeconds?: number | null;
+  }
 ): Promise<void> {
   const db = getDb();
   if (flags.autoDownload !== undefined) {
@@ -81,6 +87,20 @@ export async function setFeedFlags(
     await db.runAsync(
       'UPDATE feeds SET keep_updated = ? WHERE id = ?',
       flags.keepUpdated ? 1 : 0,
+      id
+    );
+  }
+  if (flags.playbackSpeed !== undefined) {
+    await db.runAsync(
+      'UPDATE feeds SET playback_speed = ? WHERE id = ?',
+      flags.playbackSpeed,
+      id
+    );
+  }
+  if (flags.skipIntroSeconds !== undefined) {
+    await db.runAsync(
+      'UPDATE feeds SET skip_intro_seconds = ? WHERE id = ?',
+      flags.skipIntroSeconds,
       id
     );
   }

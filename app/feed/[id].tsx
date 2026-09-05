@@ -87,14 +87,24 @@ export default function FeedScreen() {
         options={{
           title: feed.title,
           headerRight: () => (
-            <Pressable
-              onPress={confirmUnsubscribe}
-              hitSlop={10}
-              accessibilityRole="button"
-              accessibilityLabel="Unsubscribe"
-            >
-              <Ionicons name="ellipsis-horizontal" size={22} color={theme.text} />
-            </Pressable>
+            <View style={{ flexDirection: 'row', gap: space.md, alignItems: 'center' }}>
+              <Pressable
+                onPress={() => router.push(`/feed/settings/${feed.id}`)}
+                hitSlop={10}
+                accessibilityRole="button"
+                accessibilityLabel="Settings"
+              >
+                <Ionicons name="settings-outline" size={22} color={theme.text} />
+              </Pressable>
+              <Pressable
+                onPress={confirmUnsubscribe}
+                hitSlop={10}
+                accessibilityRole="button"
+                accessibilityLabel="Unsubscribe"
+              >
+                <Ionicons name="ellipsis-horizontal" size={22} color={theme.text} />
+              </Pressable>
+            </View>
           ),
         }}
       />

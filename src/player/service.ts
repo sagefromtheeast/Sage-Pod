@@ -5,6 +5,8 @@ import {
   type AudioPlayer,
   type AudioStatus,
 } from 'expo-audio';
+import * as Haptics from 'expo-haptics';
+import { Accelerometer } from 'expo-sensors';
 
 import {
   COMPLETION_TAIL_SECONDS,
@@ -155,13 +157,18 @@ class PlayerService {
         ? episode.local_path
         : episode.media_url;
 
-    const startAt =
+    const skipIntro = episode.feed_skip_intro_seconds ?? 0;
+    let startAt =
       options.startAt ??
-      // Rewinding a few seconds on resume re-establishes context; picking up
-      // mid-word is disorienting. Skipped when starting from the beginning.
       (episode.position > settings.resumeRewind
         ? episode.position - settings.resumeRewind
         : 0);
+
+    if (startAt < skipIntro) {
+      startAt = skipIntro;
+    }
+
+    const rate = episode.feed_playback_speed ?? settings.playbackRate;
 
     this.setState({
       episode,
@@ -169,14 +176,12 @@ class PlayerService {
       duration: episode.duration ?? 0,
       playing: false,
       buffering: true,
-      rate: settings.playbackRate,
+      rate,
       error: null,
     });
 
     const player = createAudioPlayer(source, {
       updateInterval: STATUS_INTERVAL_MS,
-      // Keeping the session active across track changes stops the lock-screen
-      // controls flickering away between queue items.
       keepAudioSessionActive: true,
     });
     this.player = player;
@@ -186,7 +191,7 @@ class PlayerService {
     );
 
     player.shouldCorrectPitch = true;
-    player.setPlaybackRate(settings.playbackRate, 'high');
+    player.setPlaybackRate(rate, 'high');
 
     this.publishLockScreenMetadata(episode);
     await setMeta('lastEpisodeId', String(episode.id));
@@ -396,9 +401,20 @@ class PlayerService {
 
   // -------------------------------------------------------- position persistence
 
+  private lastFlushPosition: number = 0;
+
   private startPositionSaver(): void {
     if (this.saveHandle) return;
-    this.saveHandle = setInterval(() => void this.flushPosition(), POSITION_SAVE_INTERVAL_MS);
+    this.lastFlushPosition = this.state.position;
+    this.saveHandle = setInterval(() => {
+      if (this.state.playing) {
+        // Calculate time played at current playback rate
+        const secondsPlayed = (POSITION_SAVE_INTERVAL_MS / 1000) * this.state.rate;
+        void this.flushPosition(secondsPlayed);
+      } else {
+        void this.flushPosition();
+      }
+    }, POSITION_SAVE_INTERVAL_MS);
   }
 
   private stopPositionSaver(): void {
@@ -413,9 +429,15 @@ class PlayerService {
    * Runs on a timer while playing and on every pause, seek and track change, so
    * that a force-quit or a battery death loses at most a few seconds.
    */
-  async flushPosition(): Promise<void> {
+  async flushPosition(listenedSeconds: number = 0): Promise<void> {
     const { episode, position, duration } = this.state;
     if (!episode || position <= 0) return;
+
+    if (listenedSeconds > 0) {
+      // Lazy-import to avoid cyclic dependencies if any
+      const { addListenedSeconds } = require('@/db/stats');
+      await addListenedSeconds(episode.feed_id, episode.id, listenedSeconds);
+    }
 
     // Treat "almost the end" as finished so the episode does not linger in
     // Continue Listening with 8 seconds of outro left.
@@ -429,23 +451,43 @@ class PlayerService {
 
   // ------------------------------------------------------------- sleep timer
 
+  private shakeSubscription: any = null;
+  private sleepMinutes: number = 0;
+
   /** Starts (or restarts) the sleep timer. */
   startSleepTimer(minutes: number): void {
     this.cancelSleepTimer();
+    this.sleepMinutes = minutes;
     const endsAt = Date.now() + minutes * 60_000;
 
     this.sleepHandle = setTimeout(() => {
       this.pause();
-      this.setState({ sleepTimerEndsAt: null });
-      this.sleepHandle = null;
+      this.cancelSleepTimer();
     }, minutes * 60_000);
 
     this.setState({ sleepTimerEndsAt: endsAt });
+
+    Accelerometer.setUpdateInterval(100);
+    this.shakeSubscription = Accelerometer.addListener(({ x, y, z }) => {
+      // AntennaPod uses ~2.25g as the threshold for a "shake"
+      const gForce = Math.sqrt(x * x + y * y + z * z);
+      if (gForce > 2.25) {
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+        this.startSleepTimer(this.sleepMinutes);
+      }
+    });
   }
 
   cancelSleepTimer(): void {
     if (this.sleepHandle) clearTimeout(this.sleepHandle);
     this.sleepHandle = null;
+    this.sleepMinutes = 0;
+
+    if (this.shakeSubscription) {
+      this.shakeSubscription.remove();
+      this.shakeSubscription = null;
+    }
+
     this.setState({ sleepTimerEndsAt: null });
   }
 
