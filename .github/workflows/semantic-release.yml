@@ -28,7 +28,10 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # 22, not 20: the test runner uses `node --experimental-strip-types`,
+          # which only exists on Node 22.6+. Node 20 rejects the flag and the
+          # release gate dies before semantic-release runs.
+          node-version: 22
           cache: npm
 
       - name: Install dependencies
