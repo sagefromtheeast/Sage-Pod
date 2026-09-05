@@ -44,6 +44,7 @@ export default function EpisodeScreen() {
   );
 
   const { isCurrent, playing, position: livePosition } = useEpisodePlayback(episodeId);
+  const downloadProgress = useDownloadProgress(episodeId);
 
   const play = useCallback(() => {
     if (!episode) return;
@@ -87,7 +88,6 @@ export default function EpisodeScreen() {
   const links = extractLinks(episode.description);
   const downloading = episode.download_state === 'downloading' || episode.download_state === 'queued';
   const downloaded = episode.download_state === 'done';
-  const downloadProgress = useDownloadProgress(episode.id);
 
   return (
     <>

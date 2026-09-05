@@ -83,10 +83,11 @@ export function subscribeToDownloads(listener: ProgressListener): () => void {
 }
 
 /** React hook to subscribe to live download progress for an episode. */
-export function useDownloadProgress(episodeId: number): DownloadProgress | null {
+export function useDownloadProgress(episodeId: number | null | undefined): DownloadProgress | null {
   const [progress, setProgress] = useState<DownloadProgress | null>(null);
 
   useEffect(() => {
+    if (!episodeId || Number.isNaN(episodeId)) return;
     return subscribeToDownloads((data) => {
       if (data.episodeId === episodeId) {
         setProgress(data);
