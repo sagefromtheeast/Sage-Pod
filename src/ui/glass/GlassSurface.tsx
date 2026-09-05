@@ -1,10 +1,11 @@
-import { BlurView } from 'expo-blur';
+import { BlurView, type BlurMethod, type BlurViewProps } from 'expo-blur';
 import { GlassView, type GlassStyle } from 'expo-glass-effect';
 import React from 'react';
 import { StyleSheet, View, type StyleProp, type ViewProps, type ViewStyle } from 'react-native';
 
 import { radius } from '@/ui/theme';
 import { useTheme } from '@/ui/useTheme';
+import { resolveBlurMethod } from './resolveBlurMethod';
 import { useGlassCapability } from './useGlassCapability';
 
 export interface GlassSurfaceProps extends ViewProps {
@@ -29,7 +30,26 @@ export interface GlassSurfaceProps extends ViewProps {
    * @default radius.lg
    */
   borderRadius?: number;
+  /**
+   * A ref to a View or BlurTargetView that this BlurView will blur as its background on Android.
+   * Required when using native Dimezis blur on Android.
+   * @platform android
+   */
+  blurTarget?: BlurViewProps['blurTarget'];
+  /**
+   * Blur method to use on Android.
+   * Defaults to 'dimezisBlurView' when `blurTarget` is configured, otherwise 'none' to avoid warnings.
+   * @platform android
+   */
+  blurMethod?: BlurMethod;
+  /**
+   * Intensity of blur effect when falling back to BlurView.
+   * @default 85
+   */
+  blurIntensity?: number;
 }
+
+export { resolveBlurMethod };
 
 /**
  * Universal 3-tier Glass Surface component:
@@ -44,6 +64,9 @@ export function GlassSurface({
   isInteractive = false,
   tintColor,
   borderRadius = radius.lg,
+  blurTarget,
+  blurMethod,
+  blurIntensity = 85,
   ...rest
 }: GlassSurfaceProps) {
   const theme = useTheme();
@@ -71,6 +94,8 @@ export function GlassSurface({
   }
 
   if (capability === 'blur_fallback') {
+    const resolvedBlurMethod = resolveBlurMethod(blurTarget, blurMethod);
+
     return (
       <View
         style={[
@@ -86,8 +111,9 @@ export function GlassSurface({
         <BlurView
           style={StyleSheet.absoluteFill}
           tint={theme.scheme === 'dark' || theme.scheme === 'oled' ? 'dark' : 'light'}
-          intensity={85}
-          blurMethod="dimezisBlurView"
+          intensity={blurIntensity}
+          blurMethod={resolvedBlurMethod}
+          blurTarget={blurTarget}
         />
         {children}
       </View>

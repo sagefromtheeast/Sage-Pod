@@ -1,5 +1,5 @@
 export { GlassContainer, type GlassContainerProps } from './GlassContainer';
-export { GlassSurface, type GlassSurfaceProps } from './GlassSurface';
+export { GlassSurface, resolveBlurMethod, type GlassSurfaceProps } from './GlassSurface';
 export {
   GlassSegmentedControl,
   type GlassSegmentedControlProps,

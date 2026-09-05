@@ -80,7 +80,7 @@ Because the appearing/disappearing views reuse the **same `glassEffectID` string
 | `@callstack/liquid-glass` | current | `npm i @callstack/liquid-glass` | **No** | Xcode ≥ 26, RN ≥ 0.80 | `isLiquidGlassSupported` → style fallback |
 | `davidmokos/expo-glass-tabs` | 0.1.1 | `npx expo install expo-glass-tabs …` | Yes | iOS 26 for glass; else solid fallback | `solidFallback` color prop |
 | `@ventur8/react-native-liquid-glass-tab-bar` | 1.0.1 | `npm i @ventur8/react-native-liquid-glass-tab-bar` | Yes (uses expo-blur) | none (blur‑based) | expo-blur semi‑transparent fallback |
-| `expo-blur` | 57.x | `npx expo install expo-blur` | Yes | none | Android: `experimentalBlurMethod="dimezisBlurView"` for real blur |
+| `expo-blur` | 57.x | `npx expo install expo-blur` | Yes | none | Android: `blurTarget` required for `dimezisBlurView` (defaults safely to `'none'`) |
 
 `expo-glass-effect` API, verbatim usage:
 
@@ -206,7 +206,7 @@ import { AccessibilityInfo, Platform } from 'react-native';
 const canGlass = Platform.OS === 'ios' && isGlassEffectAPIAvailable() && isLiquidGlassAvailable();
 ```
 
-If `canGlass`, render `GlassView`; else render `expo-blur`'s `BlurView` (`intensity={80}` + a hairline border + shadow to fake the rim) — on Android set `experimentalBlurMethod="dimezisBlurView"` for real blur, and always add `overflow:'hidden'` to rounded parents; else (blur too costly / very old) a solid `rgba` card. Also gate on `AccessibilityInfo.isReduceTransparencyEnabled()` [LobeHub](https://lobehub.com/skills/neversight-skills_feed-expo-glass-effect) and subscribe to `reduceTransparencyChanged` — when Reduce Transparency is on, skip glass entirely. `@callstack/liquid-glass` exposes the equivalent `isLiquidGlassSupported` boolean; [ReactScript](https://reactscript.com/ios-liquid-glass-ui/) libraries like `react-native-blur` (v5, New‑Arch‑only, RN 0.80+) bundle a `LiquidGlassView` that auto‑falls back to enhanced blur on older iOS/Android/Web. [GitHub](https://github.com/sbaiahmed1/react-native-blur)
+If `canGlass`, render `GlassView`; else render `expo-blur`'s `BlurView` (`intensity={80}` + a hairline border + shadow to fake the rim) — on Android pass `blurTarget` when real blur via `dimezisBlurView` is desired (otherwise default safely to `'none'` to prevent missing-target console warnings), and always add `overflow:'hidden'` to rounded parents; else (blur too costly / very old) a solid `rgba` card. Also gate on `AccessibilityInfo.isReduceTransparencyEnabled()` [LobeHub](https://lobehub.com/skills/neversight-skills_feed-expo-glass-effect) and subscribe to `reduceTransparencyChanged` — when Reduce Transparency is on, skip glass entirely. `@callstack/liquid-glass` exposes the equivalent `isLiquidGlassSupported` boolean; [ReactScript](https://reactscript.com/ios-liquid-glass-ui/) libraries like `react-native-blur` (v5, New‑Arch‑only, RN 0.80+) bundle a `LiquidGlassView` that auto‑falls back to enhanced blur on older iOS/Android/Web. [GitHub](https://github.com/sbaiahmed1/react-native-blur)
 
 **B.8 — Known bugs to plan around.**
 - **#41024:** animating a `GlassView`'s (or ancestor's) opacity makes glass render as a normal view [GitHub](https://github.com/expo/expo/issues/41024) — use `glassEffectStyle` animate props or a `key` remount instead.

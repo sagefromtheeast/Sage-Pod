@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
+import { resolveBlurMethod } from '../resolveBlurMethod';
 
 describe('Liquid Glass Segmented Physics & Boundary Math', () => {
   const calculateBucket = (
@@ -49,3 +50,24 @@ describe('Liquid Glass Segmented Physics & Boundary Math', () => {
     assert.equal(justAfter.index, 1);
   });
 });
+
+describe('resolveBlurMethod — Android Blur Method Fallback Logic', () => {
+  it('falls back to "none" when blurTarget is not provided', () => {
+    assert.equal(resolveBlurMethod(), 'none');
+    assert.equal(resolveBlurMethod(undefined), 'none');
+    assert.equal(resolveBlurMethod(undefined, 'dimezisBlurView'), 'none');
+    assert.equal(resolveBlurMethod(undefined, 'dimezisBlurViewSdk31Plus'), 'none');
+  });
+
+  it('uses dimezisBlurView by default when blurTarget is provided', () => {
+    const fakeRef = { current: null };
+    assert.equal(resolveBlurMethod(fakeRef), 'dimezisBlurView');
+  });
+
+  it('preserves custom blurMethod when blurTarget is provided', () => {
+    const fakeRef = { current: null };
+    assert.equal(resolveBlurMethod(fakeRef, 'dimezisBlurViewSdk31Plus'), 'dimezisBlurViewSdk31Plus');
+    assert.equal(resolveBlurMethod(fakeRef, 'none'), 'none');
+  });
+});
+

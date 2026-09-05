@@ -3,7 +3,7 @@ import { AccessibilityInfo, Platform } from 'react-native';
 
 export type GlassCapabilityLevel =
   | 'native_liquid_glass' // iOS 26+ native UIGlassEffect and GlassContainer
-  | 'blur_fallback'       // Android (dimezisBlurView) & iOS < 26 with BlurView
+  | 'blur_fallback'       // Android & iOS < 26 with BlurView
   | 'solid_surface';      // Reduce transparency enabled or low-spec fallback
 
 function checkNativeGlass(): boolean {
