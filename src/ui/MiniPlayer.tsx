@@ -103,6 +103,16 @@ export function MiniPlayer() {
               color={theme.accent}
             />
           </Pressable>
+
+          <Pressable
+            onPress={() => void player.skipForward()}
+            hitSlop={10}
+            style={styles.iconButton}
+            accessibilityRole="button"
+            accessibilityLabel="Skip forward"
+          >
+            <Ionicons name="play-forward" size={20} color={theme.textMuted} />
+          </Pressable>
         </Pressable>
       </GlassSurface>
     </View>
