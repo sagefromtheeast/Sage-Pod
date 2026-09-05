@@ -198,18 +198,8 @@ export function downloadedBytes(): number {
   }
 }
 
-/** Human-readable byte count, e.g. "1.4 GB". */
-export function formatBytes(bytes: number | null | undefined): string {
-  if (!bytes || bytes <= 0) return '0 MB';
-  const units = ['B', 'KB', 'MB', 'GB'];
-  let value = bytes;
-  let unit = 0;
-  while (value >= 1024 && unit < units.length - 1) {
-    value /= 1024;
-    unit += 1;
-  }
-  return `${value < 10 && unit > 1 ? value.toFixed(1) : Math.round(value)} ${units[unit]}`;
-}
+export { formatBytes, shouldAutoDownloadEpisode } from './downloadRules';
+import { shouldAutoDownloadEpisode } from './downloadRules';
 
 /** Run auto-cleanup and auto-downloads for the queue (called from app startup) */
 export async function manageAutoDownloads(): Promise<void> {
@@ -231,7 +221,7 @@ export async function manageAutoDownloads(): Promise<void> {
     let queuedToDownload = 0;
     for (const ep of queue) {
       if (queuedToDownload >= 3) break;
-      if (ep.download_state === 'none') {
+      if (ep.download_state === 'none' && shouldAutoDownloadEpisode(ep)) {
         void queueDownload(ep.id);
         queuedToDownload++;
       }

@@ -4,7 +4,7 @@ import { useCallback, useRef } from 'react';
 import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { useQuery } from '@/db/useQuery';
-import { clearQueue, dequeue, listQueue, reorderQueue } from '@/db/queue';
+import { clearQueue, dequeue, listQueue, reorderQueue, sortQueueEpisodes } from '@/db/queue';
 import type { EpisodeWithFeed } from '@/db/types';
 import { player, usePlayerState } from '@/player';
 import { EmptyState } from '@/ui/EmptyState';
@@ -66,6 +66,52 @@ export default function QueueScreen() {
     ]);
   }, []);
 
+  const handleSortQueue = useCallback(() => {
+    Alert.alert('Sort & Reorder Queue', 'Choose how to organize the queue:', [
+      { text: 'Cancel', style: 'cancel' },
+      {
+        text: 'Shortest Remaining First',
+        onPress: () => {
+          triggerHaptic('medium');
+          const sorted = sortQueueEpisodes(queue, 'duration_remaining_asc');
+          void reorderQueue(sorted);
+        },
+      },
+      {
+        text: 'Newest First',
+        onPress: () => {
+          triggerHaptic('medium');
+          const sorted = sortQueueEpisodes(queue, 'date_desc');
+          void reorderQueue(sorted);
+        },
+      },
+      {
+        text: 'Oldest First',
+        onPress: () => {
+          triggerHaptic('medium');
+          const sorted = sortQueueEpisodes(queue, 'date_asc');
+          void reorderQueue(sorted);
+        },
+      },
+      {
+        text: 'By Podcast Name',
+        onPress: () => {
+          triggerHaptic('medium');
+          const sorted = sortQueueEpisodes(queue, 'podcast_title_asc');
+          void reorderQueue(sorted);
+        },
+      },
+      {
+        text: 'Shuffle Randomly',
+        onPress: () => {
+          triggerHaptic('medium');
+          const sorted = sortQueueEpisodes(queue, 'shuffle');
+          void reorderQueue(sorted);
+        },
+      },
+    ]);
+  }, [queue]);
+
   const totalSeconds = queue.reduce((sum, episode) => {
     const remaining = (episode.duration ?? 0) - episode.position;
     return sum + Math.max(0, remaining);
@@ -123,6 +169,14 @@ export default function QueueScreen() {
                   </Text>
                 </Pressable>
               ) : null}
+              <Pressable
+                onPress={handleSortQueue}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Sort and reorder queue"
+              >
+                <Ionicons name="swap-vertical" size={18} color={theme.textMuted} />
+              </Pressable>
               <Pressable onPress={confirmClear} hitSlop={8} accessibilityRole="button">
                 <Text style={[styles.clear, { color: theme.danger }]}>Clear</Text>
               </Pressable>

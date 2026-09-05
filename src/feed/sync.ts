@@ -3,7 +3,7 @@ import { listAutoDownloadCandidates } from '@/db/episodes';
 import { getFeedByUrl, listFeedsToRefresh } from '@/db/feeds';
 import { getSettings } from '@/db/settings';
 import type { FeedRow } from '@/db/types';
-import { queueDownload } from '@/player/downloads';
+import { queueDownload, shouldAutoDownloadEpisode } from '@/player/downloads';
 
 import { fetchFeed, normalizeFeedUrl } from './fetch';
 import type { ParsedEpisode, ParsedFeed } from './parser';
@@ -246,6 +246,13 @@ export async function refreshAllFeeds(
 export async function autoDownloadCandidates(feedId: number): Promise<number[]> {
   const limit = getSettings().autoDownloadLimit;
   if (limit <= 0) return [];
-  const rows = await listAutoDownloadCandidates(feedId, limit);
-  return rows.map((row) => row.id);
+  const rows = await listAutoDownloadCandidates(feedId, limit * 3);
+  const candidates: number[] = [];
+  for (const row of rows) {
+    if (shouldAutoDownloadEpisode(row)) {
+      candidates.push(row.id);
+      if (candidates.length >= limit) break;
+    }
+  }
+  return candidates;
 }

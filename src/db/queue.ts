@@ -131,3 +131,5 @@ export async function reorderQueue(episodeIds: number[]): Promise<void> {
     }
   });
 }
+
+export { sortQueueEpisodes, type QueueSortCriterion } from '@/player/queueSorting';

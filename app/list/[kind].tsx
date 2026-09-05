@@ -1,17 +1,18 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams } from 'expo-router';
-import { useCallback } from 'react';
-import { FlatList, Pressable, StyleSheet } from 'react-native';
+import { useCallback, useState } from 'react';
+import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { listDownloaded, listFavorites, listHistory } from '@/db/episodes';
+import { DownloadSortKey, listDownloaded, listFavorites, listHistory } from '@/db/episodes';
 import { enqueue } from '@/db/queue';
 import type { EpisodeWithFeed } from '@/db/types';
 import { useQuery } from '@/db/useQuery';
 import { player } from '@/player';
-import { deleteDownload } from '@/player/downloads';
+import { deleteDownload, formatBytes } from '@/player/downloads';
 import { EmptyState } from '@/ui/EmptyState';
 import { EpisodeRow } from '@/ui/EpisodeRow';
-import { MINI_PLAYER_HEIGHT, space } from '@/ui/theme';
+import { triggerHaptic } from '@/ui/haptics';
+import { MINI_PLAYER_HEIGHT, radius, space, type as typography } from '@/ui/theme';
 import { useTheme } from '@/ui/useTheme';
 
 type Kind = 'favorites' | 'downloads' | 'history';
@@ -44,13 +45,14 @@ const VIEWS: Record<
 export default function ListScreen() {
   const theme = useTheme();
   const { kind } = useLocalSearchParams<{ kind: string }>();
+  const [downloadSort, setDownloadSort] = useState<DownloadSortKey>('date');
 
   const view = VIEWS[(kind as Kind) in VIEWS ? (kind as Kind) : 'favorites'];
 
   const { data: episodes = [], loading } = useQuery<EpisodeWithFeed[]>(
-    () => view.load(),
+    () => (kind === 'downloads' ? listDownloaded(downloadSort) : view.load()),
     ['episodes', 'feeds'],
-    [kind]
+    [kind, downloadSort]
   );
 
   const play = useCallback((episode: EpisodeWithFeed) => {
@@ -59,6 +61,11 @@ export default function ListScreen() {
     else void player.playEpisode(episode);
   }, []);
 
+  const totalBytes =
+    kind === 'downloads'
+      ? episodes.reduce((acc, ep) => acc + (ep.downloaded_bytes ?? ep.media_size ?? 0), 0)
+      : 0;
+
   return (
     <>
       <Stack.Screen options={{ title: view.title }} />
@@ -66,6 +73,56 @@ export default function ListScreen() {
         data={episodes}
         keyExtractor={(episode) => String(episode.id)}
         contentContainerStyle={styles.content}
+        ListHeaderComponent={
+          kind === 'downloads' && episodes.length > 0 ? (
+            <View
+              style={[
+                styles.downloadHeader,
+                { borderBottomColor: theme.border },
+              ]}
+            >
+              <Text style={[styles.downloadMetaText, { color: theme.textMuted }]}>
+                {episodes.length} {episodes.length === 1 ? 'episode' : 'episodes'} ·{' '}
+                {formatBytes(totalBytes)}
+              </Text>
+              <View style={styles.sortPills}>
+                {(
+                  [
+                    { key: 'date', label: 'Date' },
+                    { key: 'size', label: 'Size' },
+                    { key: 'duration', label: 'Duration' },
+                  ] as const
+                ).map((item) => {
+                  const active = downloadSort === item.key;
+                  return (
+                    <Pressable
+                      key={item.key}
+                      onPress={() => {
+                        triggerHaptic('selection');
+                        setDownloadSort(item.key);
+                      }}
+                      style={[
+                        styles.sortPill,
+                        { backgroundColor: active ? theme.accent : theme.surfaceAlt },
+                      ]}
+                      accessibilityRole="button"
+                      accessibilityLabel={`Sort by ${item.label}`}
+                    >
+                      <Text
+                        style={[
+                          styles.sortPillText,
+                          { color: active ? theme.onAccent : theme.textMuted },
+                        ]}
+                      >
+                        {item.label}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          ) : null
+        }
         ListEmptyComponent={
           loading ? null : <EmptyState icon={view.icon} title={view.title} message={view.empty} />
         }
@@ -104,5 +161,32 @@ export default function ListScreen() {
 const styles = StyleSheet.create({
   content: {
     paddingBottom: MINI_PLAYER_HEIGHT + space.xl,
+  },
+  downloadHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: space.lg,
+    paddingVertical: space.md,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  downloadMetaText: {
+    ...typography.caption,
+    fontWeight: '600',
+  },
+  sortPills: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.xs,
+  },
+  sortPill: {
+    paddingHorizontal: space.sm,
+    paddingVertical: 4,
+    borderRadius: radius.sm,
+  },
+  sortPillText: {
+    ...typography.caption,
+    fontWeight: '600',
+    fontSize: 11,
   },
 });

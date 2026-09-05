@@ -9,6 +9,7 @@ import { formatDuration, formatPublishDate, formatRemaining } from '@/util/time'
 
 import { Artwork } from './Artwork';
 import { ProgressBar } from './ProgressBar';
+import { formatBytes } from '@/player/downloads';
 import { radius, space, type as typography } from './theme';
 import { useTheme } from './useTheme';
 
@@ -117,7 +118,14 @@ export const EpisodeRow = memo(function EpisodeRow({
           </Text>
 
           {episode.download_state === 'done' ? (
-            <Ionicons name="arrow-down-circle" size={13} color={theme.accent} />
+            <View style={styles.downloadMeta}>
+              <Ionicons name="arrow-down-circle" size={13} color={theme.accent} />
+              {(episode.downloaded_bytes ?? episode.media_size) ? (
+                <Text style={[styles.metaText, { color: theme.textFaint }]}>
+                  {formatBytes(episode.downloaded_bytes ?? episode.media_size)}
+                </Text>
+              ) : null}
+            </View>
           ) : null}
           {episode.is_favorite ? (
             <Ionicons name="heart" size={13} color={theme.danger} />
@@ -184,6 +192,11 @@ const styles = StyleSheet.create({
   },
   metaText: {
     ...typography.caption,
+  },
+  downloadMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
   },
   episodeBadge: {
     paddingHorizontal: 4,

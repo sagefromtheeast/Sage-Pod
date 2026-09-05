@@ -18,19 +18,71 @@ export async function getEpisode(id: number): Promise<EpisodeWithFeed | null> {
   return getDb().getFirstAsync<EpisodeWithFeed>(`${EPISODE_WITH_FEED} WHERE e.id = ?`, id);
 }
 
+export type EpisodeSortKey =
+  | 'date_desc'
+  | 'date_asc'
+  | 'duration_asc'
+  | 'duration_desc'
+  | 'title_asc'
+  | 'season_asc';
+
+export type EpisodeFilterOptions = {
+  includePlayed?: boolean;
+  unplayedOnly?: boolean;
+  downloadedOnly?: boolean;
+  favoritesOnly?: boolean;
+  inProgressOnly?: boolean;
+};
+
+export type ListEpisodesOptions = {
+  filters?: EpisodeFilterOptions;
+  sort?: EpisodeSortKey;
+  includePlayed?: boolean;
+  limit?: number;
+};
+
 export async function listEpisodesForFeed(
   feedId: number,
-  options: { includePlayed?: boolean; limit?: number } = {}
+  options: ListEpisodesOptions = {}
 ): Promise<EpisodeWithFeed[]> {
-  const { includePlayed = true, limit = 500 } = options;
+  const { filters = {}, sort = 'date_desc', limit = 500, includePlayed } = options;
+  const whereClauses = ['e.feed_id = ?'];
+  const args: (number | string)[] = [feedId];
+
+  const hidePlayed = includePlayed === false || filters.unplayedOnly;
+  if (hidePlayed) {
+    whereClauses.push('e.is_played = 0');
+  }
+  if (filters.downloadedOnly) {
+    whereClauses.push("e.download_state = 'done'");
+  }
+  if (filters.favoritesOnly) {
+    whereClauses.push('e.is_favorite = 1');
+  }
+  if (filters.inProgressOnly) {
+    whereClauses.push('e.position > 30 AND e.is_played = 0');
+  }
+
+  const sortClauses: Record<EpisodeSortKey, string> = {
+    date_desc: 'e.published_at DESC, e.id DESC',
+    date_asc: 'e.published_at ASC, e.id ASC',
+    duration_asc: 'e.duration ASC',
+    duration_desc: 'e.duration DESC',
+    title_asc: 'e.title COLLATE NOCASE ASC',
+    season_asc: 'COALESCE(e.season, 1) ASC, COALESCE(e.episode_number, 0) ASC, e.published_at ASC',
+  };
+
+  const whereSql = whereClauses.join(' AND ');
+  const orderSql = sortClauses[sort] ?? sortClauses.date_desc;
+
+  args.push(limit);
+
   return getDb().getAllAsync<EpisodeWithFeed>(
     `${EPISODE_WITH_FEED}
-      WHERE e.feed_id = ?
-        ${includePlayed ? '' : 'AND e.is_played = 0'}
-      ORDER BY e.published_at DESC, e.id DESC
+      WHERE ${whereSql}
+      ORDER BY ${orderSql}
       LIMIT ?`,
-    feedId,
-    limit
+    ...args
   );
 }
 
@@ -65,11 +117,18 @@ export async function listFavorites(limit = 200): Promise<EpisodeWithFeed[]> {
   );
 }
 
-export async function listDownloaded(): Promise<EpisodeWithFeed[]> {
+export type DownloadSortKey = 'date' | 'size' | 'duration';
+
+export async function listDownloaded(sort: DownloadSortKey = 'date'): Promise<EpisodeWithFeed[]> {
+  const orderMap: Record<DownloadSortKey, string> = {
+    date: 'e.published_at DESC',
+    size: 'COALESCE(e.downloaded_bytes, e.media_size, 0) DESC',
+    duration: 'COALESCE(e.duration, 0) DESC',
+  };
   return getDb().getAllAsync<EpisodeWithFeed>(
     `${EPISODE_WITH_FEED}
       WHERE e.download_state = 'done' AND e.local_path IS NOT NULL
-      ORDER BY e.published_at DESC`
+      ORDER BY ${orderMap[sort] ?? orderMap.date}`
   );
 }
 
@@ -194,13 +253,47 @@ export async function listAutoDownloadCandidates(
   );
 }
 
-export async function listInboxEpisodes(limit = 100): Promise<EpisodeWithFeed[]> {
+export type InboxFeedInfo = {
+  id: number;
+  title: string;
+  image_url: string | null;
+  unplayed_count: number;
+};
+
+export async function listInboxEpisodes(
+  options: { feedId?: number | null; limit?: number } | number = 100
+): Promise<EpisodeWithFeed[]> {
+  const limit = typeof options === 'number' ? options : options.limit ?? 100;
+  const feedId = typeof options === 'number' ? undefined : options.feedId;
+
+  if (feedId != null) {
+    return getDb().getAllAsync<EpisodeWithFeed>(
+      `${EPISODE_WITH_FEED}
+        WHERE e.is_new = 1 AND e.is_played = 0 AND e.feed_id = ?
+        ORDER BY e.published_at DESC, e.id DESC
+        LIMIT ?`,
+      feedId,
+      limit
+    );
+  }
+
   return getDb().getAllAsync<EpisodeWithFeed>(
     `${EPISODE_WITH_FEED}
       WHERE e.is_new = 1 AND e.is_played = 0
       ORDER BY e.published_at DESC, e.id DESC
       LIMIT ?`,
     limit
+  );
+}
+
+export async function listInboxFeeds(): Promise<InboxFeedInfo[]> {
+  return getDb().getAllAsync<InboxFeedInfo>(
+    `SELECT f.id, f.title, f.image_url, COUNT(e.id) AS unplayed_count
+       FROM feeds f
+       JOIN episodes e ON e.feed_id = f.id
+      WHERE e.is_new = 1 AND e.is_played = 0
+      GROUP BY f.id, f.title, f.image_url
+      ORDER BY f.title COLLATE NOCASE ASC`
   );
 }
 
