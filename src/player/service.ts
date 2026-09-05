@@ -71,6 +71,8 @@ class PlayerService {
   private statusSubscription: { remove: () => void } | null = null;
   private saveHandle: ReturnType<typeof setInterval> | null = null;
   private sleepHandle: ReturnType<typeof setTimeout> | null = null;
+  /** Epoch ms when playback was last paused, for smart resume rewind. */
+  private lastPausedAt: number | null = null;
 
   /** Guards against the double-advance a repeated `didJustFinish` would cause. */
   private finishing = false;
@@ -158,11 +160,15 @@ class PlayerService {
         : episode.media_url;
 
     const skipIntro = episode.feed_skip_intro_seconds ?? 0;
+    // Only rewind on resume when the listener has been away long enough to
+    // have lost context — a quick pause-unpause should not jump backwards.
+    const pauseGapMs = this.lastPausedAt ? Date.now() - this.lastPausedAt : Infinity;
+    const shouldRewind = pauseGapMs > 5 * 60_000; // 5 minutes
     let startAt =
       options.startAt ??
-      (episode.position > settings.resumeRewind
+      (shouldRewind && episode.position > settings.resumeRewind
         ? episode.position - settings.resumeRewind
-        : 0);
+        : episode.position);
 
     if (startAt < skipIntro) {
       startAt = skipIntro;
@@ -302,6 +308,7 @@ class PlayerService {
   pause(): void {
     if (!this.player) return;
     this.player.pause();
+    this.lastPausedAt = Date.now();
     this.setState({ playing: false });
     void this.flushPosition();
   }

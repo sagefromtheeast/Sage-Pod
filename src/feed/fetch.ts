@@ -62,10 +62,29 @@ export async function fetchFeed(
 ): Promise<FetchedFeed> {
   const url = normalizeFeedUrl(feedUrl);
 
+  // Extract HTTP Basic Auth credentials embedded in the URL (user:pass@host)
+  // and pass them as an Authorization header instead, so they never leak into
+  // logs or show up in the address bar.
+  const parsedUrl = new URL(url);
+  const fetchUrl =
+    parsedUrl.username || parsedUrl.password
+      ? (() => {
+          const clean = new URL(url);
+          clean.username = '';
+          clean.password = '';
+          return clean.toString();
+        })()
+      : url;
+
   const headers: Record<string, string> = {
     Accept: 'application/rss+xml, application/atom+xml, application/xml, text/xml;q=0.9, */*;q=0.8',
     'User-Agent': USER_AGENT,
   };
+
+  if (parsedUrl.username || parsedUrl.password) {
+    const credentials = `${decodeURIComponent(parsedUrl.username)}:${decodeURIComponent(parsedUrl.password)}`;
+    headers['Authorization'] = `Basic ${btoa(credentials)}`;
+  }
   if (validators.etag) headers['If-None-Match'] = validators.etag;
   if (validators.lastModified) headers['If-Modified-Since'] = validators.lastModified;
 
@@ -74,7 +93,7 @@ export async function fetchFeed(
 
   let response: Response;
   try {
-    response = await fetch(url, { headers, signal: controller.signal, redirect: 'follow' });
+    response = await fetch(fetchUrl, { headers, signal: controller.signal, redirect: 'follow' });
   } catch (error) {
     if (controller.signal.aborted) {
       throw new FeedError('The feed took too long to respond.', error);
@@ -111,7 +130,7 @@ export async function fetchFeed(
   try {
     // Redirects are followed above, so resolve relative URLs against wherever
     // we actually landed rather than where we started.
-    feed = parseFeed(body, response.url || url);
+    feed = parseFeed(body, response.url || fetchUrl);
   } catch (error) {
     throw new FeedError(
       error instanceof Error ? error.message : 'Could not read that feed.',

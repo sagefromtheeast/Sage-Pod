@@ -8,7 +8,7 @@ import { clearQueue, dequeue, listQueue, reorderQueue } from '@/db/queue';
 import type { EpisodeWithFeed } from '@/db/types';
 import { player } from '@/player';
 import { EmptyState } from '@/ui/EmptyState';
-import { EpisodeRow } from '@/ui/EpisodeRow';
+import { SwipeableQueueRow } from '@/ui/SwipeableQueueRow';
 import { MINI_PLAYER_HEIGHT, space, type as typography } from '@/ui/theme';
 import { useTheme } from '@/ui/useTheme';
 import { formatDuration } from '@/util/time';
@@ -37,6 +37,18 @@ export default function QueueScreen() {
       if (from < 0 || to < 0 || to >= ids.length) return;
 
       [ids[from], ids[to]] = [ids[to], ids[from]];
+      void reorderQueue(ids);
+    },
+    [queue]
+  );
+
+  const moveToTop = useCallback(
+    (episode: EpisodeWithFeed) => {
+      const ids = queue.map((e) => e.id);
+      const from = ids.indexOf(episode.id);
+      if (from <= 0) return;
+      ids.splice(from, 1);
+      ids.unshift(episode.id);
       void reorderQueue(ids);
     },
     [queue]
@@ -84,9 +96,11 @@ export default function QueueScreen() {
         ) : null
       }
       renderItem={({ item, index }) => (
-        <EpisodeRow
+        <SwipeableQueueRow
           episode={item}
           onPlay={play}
+          onRemove={(ep) => void dequeue(ep.id)}
+          onMoveToTop={moveToTop}
           trailing={
             <View style={styles.trailing}>
               <Pressable

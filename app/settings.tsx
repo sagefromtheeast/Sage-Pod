@@ -8,7 +8,7 @@ import {
   setSetting,
   type Settings,
 } from '@/db/settings';
-import { exportOpml } from '@/feed/opml';
+import { exportOpml, importOpml } from '@/feed/opml';
 import { refreshAllFeeds } from '@/feed/sync';
 import { PLAYBACK_RATES, player } from '@/player';
 import { downloadedBytes, formatBytes } from '@/player/downloads';
@@ -73,6 +73,49 @@ export default function SettingsScreen() {
     } finally {
       setBusy(null);
     }
+  }, []);
+
+  const importFromClipboard = useCallback(async () => {
+    Alert.alert(
+      'Import from clipboard',
+      'Copy an OPML file to your clipboard first, then tap Import.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Import',
+          onPress: async () => {
+            setBusy('import');
+            try {
+              const xml = await Clipboard.getStringAsync();
+              if (!xml || (!xml.includes('<opml') && !xml.includes('<outline'))) {
+                Alert.alert(
+                  'Not OPML',
+                  'The clipboard does not appear to contain an OPML subscription list.'
+                );
+                return;
+              }
+              const result = await importOpml(xml);
+              Alert.alert(
+                'Import complete',
+                [
+                  result.imported > 0
+                    ? `${result.imported} new subscription${result.imported === 1 ? '' : 's'} added.`
+                    : null,
+                  result.skipped > 0 ? `${result.skipped} already subscribed.` : null,
+                  result.failures.length > 0
+                    ? `${result.failures.length} could not be reached.`
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join('\n') || 'No feeds found in the OPML data.'
+              );
+            } finally {
+              setBusy(null);
+            }
+          },
+        },
+      ]
+    );
   }, []);
 
   const resetDefaults = useCallback(() => {
@@ -184,6 +227,12 @@ export default function SettingsScreen() {
         description="Copy your subscription list to the clipboard."
         onPress={() => void copyOpml()}
         busy={busy === 'opml'}
+      />
+      <SettingsAction
+        label="Import subscriptions (OPML)"
+        description="Paste an OPML file from your clipboard."
+        onPress={() => void importFromClipboard()}
+        busy={busy === 'import'}
       />
 
       <SettingsSection title="About" />
