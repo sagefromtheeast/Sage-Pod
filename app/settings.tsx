@@ -19,7 +19,7 @@ import {
   SettingsSwitch,
 } from '@/ui/SettingsRow';
 import { MINI_PLAYER_HEIGHT, space, type as typography } from '@/ui/theme';
-import { useTheme } from '@/ui/useTheme';
+import { useSetThemePreference, useTheme } from '@/ui/useTheme';
 
 const SKIP_FORWARD_OPTIONS = [10, 15, 30, 45, 60] as const;
 const SKIP_BACKWARD_OPTIONS = [5, 10, 15, 30] as const;
@@ -29,6 +29,7 @@ const THEME_OPTIONS = ['system', 'light', 'dark', 'oled'] as const;
 
 export default function SettingsScreen() {
   const theme = useTheme();
+  const setThemePreference = useSetThemePreference();
 
   // Settings live in a module cache the player reads synchronously; this local
   // copy exists only so the screen re-renders when one changes.
@@ -41,7 +42,9 @@ export default function SettingsScreen() {
     // The playback rate must reach the engine immediately, not just on the
     // next episode, or the setting appears not to work.
     if (key === 'playbackRate') player.setRate(value as number);
-  }, []);
+    // Theme changes must propagate to every screen via context.
+    if (key === 'themePreference') setThemePreference(value as Settings['themePreference']);
+  }, [setThemePreference]);
 
   const refreshNow = useCallback(async () => {
     setBusy('refresh');
@@ -130,10 +133,11 @@ export default function SettingsScreen() {
             await setSetting(key, DEFAULT_SETTINGS[key]);
           }
           setSettings(getSettings());
+          setThemePreference(DEFAULT_SETTINGS.themePreference);
         },
       },
     ]);
-  }, []);
+  }, [setThemePreference]);
 
   return (
     <ScrollView contentContainerStyle={styles.content}>

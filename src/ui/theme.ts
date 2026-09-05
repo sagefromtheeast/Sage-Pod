@@ -85,6 +85,19 @@ const oled: Palette = {
 
 export const palettes: Record<ColorScheme, Palette> = { light, dark, oled };
 
+export type ThemePreference = ColorScheme | 'system';
+
+/** Resolves the active palette from user preference and the system OS colour scheme. */
+export function resolvePalette(
+  pref: ThemePreference,
+  systemScheme?: string | null
+): Palette {
+  if (pref === 'light') return palettes.light;
+  if (pref === 'dark') return palettes.dark;
+  if (pref === 'oled') return palettes.oled;
+  return systemScheme === 'light' ? palettes.light : palettes.dark;
+}
+
 /** Spacing scale, in points. Multiples of 4 keep vertical rhythm predictable. */
 export const space = {
   xs: 4,

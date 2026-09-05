@@ -7,21 +7,22 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { initDb } from '@/db';
-import { loadSettings } from '@/db/settings';
+import { getSettings, loadSettings } from '@/db/settings';
 import { refreshAllFeeds } from '@/feed/sync';
 import { player } from '@/player';
 import { manageAutoDownloads } from '@/player/downloads';
-import { space, type as typography } from '@/ui/theme';
-import { useTheme } from '@/ui/useTheme';
+import { palettes, space, type as typography } from '@/ui/theme';
+import type { ThemePreference } from '@/ui/theme';
+import { ThemeProvider, useTheme } from '@/ui/useTheme';
 
 // Hold the native splash until migrations have run and the player has restored
 // its last episode, so the first frame is the real UI rather than an empty list.
 void SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
-  const theme = useTheme();
   const [ready, setReady] = useState(false);
   const [startupError, setStartupError] = useState<string | null>(null);
+  const [initialPref, setInitialPref] = useState<ThemePreference>('system');
 
   useEffect(() => {
     let cancelled = false;
@@ -30,6 +31,7 @@ export default function RootLayout() {
       try {
         await initDb();
         await loadSettings();
+        if (!cancelled) setInitialPref(getSettings().themePreference);
         await player.init();
 
         // Check for new episodes in the background. Not awaited: the UI should
@@ -62,25 +64,35 @@ export default function RootLayout() {
 
   if (!ready) {
     return (
-      <View style={[styles.centered, { backgroundColor: theme.bg }]}>
-        <ActivityIndicator color={theme.accent} />
+      <View style={[styles.centered, { backgroundColor: palettes.dark.bg }]}>
+        <ActivityIndicator color={palettes.dark.accent} />
       </View>
     );
   }
 
   if (startupError) {
     return (
-      <View style={[styles.centered, { backgroundColor: theme.bg }]}>
-        <Text style={[styles.errorTitle, { color: theme.text }]}>Sage Pod could not start</Text>
-        <Text style={[styles.errorBody, { color: theme.textMuted }]}>{startupError}</Text>
+      <View style={[styles.centered, { backgroundColor: palettes.dark.bg }]}>
+        <Text style={[styles.errorTitle, { color: palettes.dark.text }]}>Sage Pod could not start</Text>
+        <Text style={[styles.errorBody, { color: palettes.dark.textMuted }]}>{startupError}</Text>
       </View>
     );
   }
 
   return (
+    <ThemeProvider initialPreference={initialPref}>
+      <AppShell />
+    </ThemeProvider>
+  );
+}
+
+function AppShell() {
+  const theme = useTheme();
+
+  return (
     <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider>
-        <StatusBar style={theme.scheme === 'dark' ? 'light' : 'dark'} />
+        <StatusBar style={theme.scheme === 'dark' || theme.scheme === 'oled' ? 'light' : 'dark'} />
         <Stack
           screenOptions={{
             headerStyle: { backgroundColor: theme.bg },
