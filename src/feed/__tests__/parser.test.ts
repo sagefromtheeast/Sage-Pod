@@ -110,3 +110,25 @@ describe('parseFeed — Atom and rejects', () => {
     assert.throws(() => parseFeed(NOT_A_FEED, BASE), /Not a podcast feed/);
   });
 });
+
+describe('parseFeed — RFC 5005 feed paging', () => {
+  const PAGED_RSS = `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Paged Podcast</title>
+    <atom:link rel="self" href="https://feeds.example.com/paged.xml"/>
+    <atom:link rel="next" href="/paged.xml?page=2"/>
+    <item>
+      <title>Episode 100</title>
+      <guid>ep-100</guid>
+      <enclosure url="https://cdn.example.com/ep100.mp3" type="audio/mpeg"/>
+    </item>
+  </channel>
+</rss>`;
+
+  it('extracts and resolves atom:link rel="next"', () => {
+    const feed = parseFeed(PAGED_RSS, BASE);
+    assert.equal(feed.nextPageUrl, 'https://feeds.example.com/paged.xml?page=2');
+  });
+});
+

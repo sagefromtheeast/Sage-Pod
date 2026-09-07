@@ -27,6 +27,7 @@ export type ParsedFeed = {
   language: string | null;
   explicit: boolean;
   episodes: ParsedEpisode[];
+  nextPageUrl?: string | null;
 };
 
 /**
@@ -251,6 +252,18 @@ export function parseFeed(xml: string, base: string): ParsedFeed {
 
   const explicitRaw = text(channel['itunes:explicit'])?.toLowerCase();
 
+  const linkNodes = [
+    ...asArray(channel['atom:link'] as unknown),
+    ...asArray(channel.link as unknown),
+  ];
+  let nextPageUrl: string | null = null;
+  for (const linkNode of linkNodes) {
+    if (attr(linkNode, 'rel') === 'next') {
+      nextPageUrl = absolute(attr(linkNode, 'href'), base);
+      if (nextPageUrl) break;
+    }
+  }
+
   return {
     title: text(channel.title) ?? 'Untitled podcast',
     author:
@@ -262,5 +275,6 @@ export function parseFeed(xml: string, base: string): ParsedFeed {
     language: text(pick(channel, 'language', 'dc:language')) ?? null,
     explicit: explicitRaw === 'yes' || explicitRaw === 'true',
     episodes,
+    nextPageUrl,
   };
 }

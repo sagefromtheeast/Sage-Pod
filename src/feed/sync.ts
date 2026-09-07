@@ -30,65 +30,93 @@ async function upsertEpisodes(
   markAsNew: boolean
 ): Promise<number> {
   const db = getDb();
+  if (episodes.length === 0) return 0;
+
+  // Pre-fetch all existing GUIDs in a single query rather than querying per episode.
+  const existingRows = await db.getAllAsync<{ id: number; guid: string }>(
+    'SELECT id, guid FROM episodes WHERE feed_id = ?',
+    feedId
+  );
+  const existingMap = new Map(existingRows.map((r) => [r.guid, r.id]));
+
+  const toInsert: ParsedEpisode[] = [];
+  const toUpdate: { id: number; ep: ParsedEpisode }[] = [];
+
+  for (const ep of episodes) {
+    const existingId = existingMap.get(ep.guid);
+    if (existingId !== undefined) {
+      toUpdate.push({ id: existingId, ep });
+    } else {
+      toInsert.push(ep);
+    }
+  }
+
   let inserted = 0;
+  const now = Date.now();
 
   await db.withTransactionAsync(async () => {
-    for (const episode of episodes) {
-      const existing = await db.getFirstAsync<{ id: number }>(
-        'SELECT id FROM episodes WHERE feed_id = ? AND guid = ?',
-        feedId,
-        episode.guid
-      );
-
-      if (existing) {
-        await db.runAsync(
-          `UPDATE episodes
-              SET title = ?, description = ?, link = ?, published_at = ?,
-                  duration = COALESCE(?, duration), media_url = ?, media_type = ?,
-                  media_size = ?, image_url = ?, season = ?, episode_number = ?,
-                  chapters_url = ?
-            WHERE id = ?`,
-          episode.title,
-          episode.description,
-          episode.link,
-          episode.publishedAt,
-          episode.duration,
-          episode.mediaUrl,
-          episode.mediaType,
-          episode.mediaSize,
-          episode.imageUrl,
-          episode.season,
-          episode.episodeNumber,
-          episode.chaptersUrl,
-          existing.id
+    // Multi-row batch inserts: 40 episodes * 16 parameters = 640 parameters,
+    // safely below SQLite's parameter limits while cutting bridge trips 40x.
+    const BATCH_SIZE = 40;
+    for (let i = 0; i < toInsert.length; i += BATCH_SIZE) {
+      const chunk = toInsert.slice(i, i + BATCH_SIZE);
+      const placeholders = chunk
+        .map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+        .join(', ');
+      const params: (string | number | null)[] = [];
+      for (const ep of chunk) {
+        params.push(
+          feedId,
+          ep.guid,
+          ep.title,
+          ep.description,
+          ep.link,
+          ep.publishedAt,
+          ep.duration,
+          ep.mediaUrl,
+          ep.mediaType,
+          ep.mediaSize,
+          ep.imageUrl,
+          ep.season,
+          ep.episodeNumber,
+          ep.chaptersUrl,
+          markAsNew ? 1 : 0,
+          now
         );
-        continue;
       }
-
       await db.runAsync(
         `INSERT INTO episodes
            (feed_id, guid, title, description, link, published_at, duration,
             media_url, media_type, media_size, image_url, season, episode_number,
             chapters_url, is_new, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        feedId,
-        episode.guid,
-        episode.title,
-        episode.description,
-        episode.link,
-        episode.publishedAt,
-        episode.duration,
-        episode.mediaUrl,
-        episode.mediaType,
-        episode.mediaSize,
-        episode.imageUrl,
-        episode.season,
-        episode.episodeNumber,
-        episode.chaptersUrl,
-        markAsNew ? 1 : 0,
-        Date.now()
+         VALUES ${placeholders}`,
+        ...params
       );
-      inserted += 1;
+      inserted += chunk.length;
+    }
+
+    for (const { id, ep } of toUpdate) {
+      await db.runAsync(
+        `UPDATE episodes
+            SET title = ?, description = ?, link = ?, published_at = ?,
+                duration = COALESCE(?, duration), media_url = ?, media_type = ?,
+                media_size = ?, image_url = ?, season = ?, episode_number = ?,
+                chapters_url = ?
+          WHERE id = ?`,
+        ep.title,
+        ep.description,
+        ep.link,
+        ep.publishedAt,
+        ep.duration,
+        ep.mediaUrl,
+        ep.mediaType,
+        ep.mediaSize,
+        ep.imageUrl,
+        ep.season,
+        ep.episodeNumber,
+        ep.chaptersUrl,
+        id
+      );
     }
   });
 
@@ -104,7 +132,8 @@ async function updateFeedRow(
   await getDb().runAsync(
     `UPDATE feeds
         SET title = ?, author = ?, description = ?, image_url = ?, link = ?,
-            language = ?, explicit = ?, etag = ?, last_modified = ?, last_refreshed_at = ?
+            language = ?, explicit = ?, etag = ?, last_modified = ?, last_refreshed_at = ?,
+            next_page_url = COALESCE(?, next_page_url)
       WHERE id = ?`,
     parsed.title,
     parsed.author,
@@ -116,6 +145,7 @@ async function updateFeedRow(
     etag,
     lastModified,
     Date.now(),
+    parsed.nextPageUrl ?? null,
     feedId
   );
 }
@@ -142,8 +172,8 @@ export async function subscribe(rawUrl: string): Promise<{ feedId: number; alrea
   const result = await db.runAsync(
     `INSERT INTO feeds
        (feed_url, title, author, description, image_url, link, language, explicit,
-        etag, last_modified, last_refreshed_at, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        etag, last_modified, last_refreshed_at, created_at, next_page_url)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     feedUrl,
     feed.title,
     feed.author,
@@ -155,7 +185,8 @@ export async function subscribe(rawUrl: string): Promise<{ feedId: number; alrea
     etag,
     lastModified,
     Date.now(),
-    Date.now()
+    Date.now(),
+    feed.nextPageUrl ?? null
   );
 
   const feedId = result.lastInsertRowId;
@@ -255,4 +286,33 @@ export async function autoDownloadCandidates(feedId: number): Promise<number[]> 
     }
   }
   return candidates;
+}
+
+/**
+ * Loads the next page of episodes for a paged feed (RFC 5005).
+ */
+export async function fetchOlderFeedEpisodes(
+  feedId: number
+): Promise<{ newEpisodes: number; hasMore: boolean }> {
+  const db = getDb();
+  const feed = await db.getFirstAsync<FeedRow>(
+    'SELECT * FROM feeds WHERE id = ?',
+    feedId
+  );
+  if (!feed || !feed.next_page_url) {
+    return { newEpisodes: 0, hasMore: false };
+  }
+
+  const { feed: parsed } = await fetchFeed(feed.next_page_url);
+  const inserted = await upsertEpisodes(feedId, parsed.episodes, false);
+  await db.runAsync(
+    'UPDATE feeds SET next_page_url = ? WHERE id = ?',
+    parsed.nextPageUrl ?? null,
+    feedId
+  );
+
+  return {
+    newEpisodes: inserted,
+    hasMore: Boolean(parsed.nextPageUrl),
+  };
 }
