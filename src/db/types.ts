@@ -20,6 +20,7 @@ export type FeedRow = {
   created_at: number;
   playback_speed: number | null;
   skip_intro_seconds: number | null;
+  next_page_url: string | null;
 };
 
 export type EpisodeRow = {

@@ -7,7 +7,7 @@ const FEED_COLUMNS = `
   f.id, f.feed_url, f.title, f.author, f.description, f.image_url, f.link,
   f.language, f.explicit, f.etag, f.last_modified, f.last_refreshed_at,
   f.auto_download, f.keep_updated, f.created_at,
-  f.playback_speed, f.skip_intro_seconds
+  f.playback_speed, f.skip_intro_seconds, f.next_page_url
 `;
 
 export async function listFeeds(): Promise<FeedWithCounts[]> {

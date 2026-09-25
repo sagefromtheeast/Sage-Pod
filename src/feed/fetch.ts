@@ -10,9 +10,9 @@ export type FetchedFeed = {
 };
 
 export const USER_AGENT = 'SagePod/0.1 (+https://github.com/sagefromtheeast/sage-pod)';
-const REQUEST_TIMEOUT_MS = 20_000;
-/** Feeds with decades of episodes exist; refuse to hold one entirely in memory. */
-const MAX_FEED_BYTES = 12 * 1024 * 1024;
+const REQUEST_TIMEOUT_MS = 60_000;
+/** Feeds with decades of episodes exist; permit up to 35MB before rejecting. */
+const MAX_FEED_BYTES = 35 * 1024 * 1024;
 
 export class FeedError extends Error {
   constructor(
