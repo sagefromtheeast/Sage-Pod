@@ -2,6 +2,7 @@
   "expo": {
     "name": "Sage Pod",
     "slug": "sage-pod",
+    "owner": "sag3-technologies",
     "version": "0.2.0",
     "orientation": "portrait",
     "scheme": "sagepod",
@@ -73,6 +74,11 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "1efc1f16-599f-4f3a-a077-de0c402fe90f"
+      }
     }
   }
 }
