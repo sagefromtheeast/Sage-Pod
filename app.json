@@ -8,7 +8,6 @@
     "scheme": "sagepod",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "app.sagepod.player",
@@ -24,9 +23,7 @@
     },
     "android": {
       "package": "app.sagepod.player",
-      "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "usesCleartextTraffic": true,
       "adaptiveIcon": {
         "backgroundColor": "#0E1512",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -70,7 +67,20 @@
           }
         }
       ],
-      "expo-system-ui"
+      "expo-system-ui",
+      "expo-font",
+      "expo-asset",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ],
+      "expo-image",
+      "expo-sqlite",
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true
