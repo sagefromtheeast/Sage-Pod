@@ -4,7 +4,7 @@
     "slug": "sage-pod",
     "owner": "sag3-technologies",
     "version": "0.2.0",
-    "orientation": "portrait",
+    "orientation": "default",
     "scheme": "sagepod",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",

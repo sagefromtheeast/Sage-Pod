@@ -7,7 +7,6 @@ import {
   RefreshControl,
   StyleSheet,
   Text,
-  useWindowDimensions,
   View,
 } from 'react-native';
 
@@ -20,9 +19,8 @@ import { EmptyState } from '@/ui/EmptyState';
 import { triggerHaptic } from '@/ui/haptics';
 import { PodcastCard } from '@/ui/PodcastCard';
 import { MINI_PLAYER_HEIGHT, radius, space, type as typography } from '@/ui/theme';
+import { useLayout } from '@/ui/useLayout';
 import { useTheme } from '@/ui/useTheme';
-
-const COLUMNS = 3;
 
 type Shortcut = { label: string; icon: 'heart' | 'arrow-down-circle' | 'time' | 'bar-chart'; href: Href };
 
@@ -39,7 +37,7 @@ type ViewMode = 'grid' | 'list';
 export default function LibraryScreen() {
   const theme = useTheme();
   const router = useRouter();
-  const { width } = useWindowDimensions();
+  const layout = useLayout();
   const [refreshing, setRefreshing] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('grid');
   const [sortOption, setSortOption] = useState<SortOption>('title');
@@ -49,9 +47,9 @@ export default function LibraryScreen() {
     ['feeds', 'episodes']
   );
 
-  // Derive the tile size from the viewport so the grid works on phones and
-  // tablets alike without hard-coded breakpoints.
-  const cardSize = (width - space.lg * 2 - space.md * (COLUMNS - 1)) / COLUMNS;
+  // Columns and tile size come from the window width: 3 on phones, more as the
+  // screen widens, so tablets get more podcasts rather than giant tiles.
+  const { columns, tileSize: cardSize } = layout;
 
   const sortedFeeds = useMemo(() => {
     const list = [...feeds];
@@ -75,11 +73,16 @@ export default function LibraryScreen() {
 
   return (
     <FlatList
-      key={viewMode}
+      // numColumns can't change on a mounted FlatList, so a new column count
+      // (rotation, split screen) remounts it.
+      key={`${viewMode}-${columns}`}
       data={sortedFeeds}
-      numColumns={viewMode === 'grid' ? COLUMNS : 1}
+      numColumns={viewMode === 'grid' ? columns : 1}
       keyExtractor={(feed) => String(feed.id)}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[
+        styles.content,
+        { paddingHorizontal: layout.gutter, maxWidth: layout.contentWidth },
+      ]}
       columnWrapperStyle={viewMode === 'grid' ? styles.column : undefined}
       refreshControl={
         <RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={theme.accent} />
@@ -224,7 +227,8 @@ function FeedListRow({ feed, onPress }: { feed: FeedWithCounts; onPress: () => v
 
 const styles = StyleSheet.create({
   content: {
-    paddingHorizontal: space.lg,
+    width: '100%',
+    alignSelf: 'center',
     paddingBottom: MINI_PLAYER_HEIGHT + space.xl,
     gap: space.lg,
   },

@@ -125,5 +125,66 @@ export const type = {
   caption: { fontSize: 12, fontWeight: '400' },
 } as const;
 
+/**
+ * Window width breakpoints in dp, following Material's compact / medium /
+ * expanded window classes (AntennaPod switches layouts at sw600 and sw720).
+ */
+export const breakpoints = {
+  medium: 600,
+  expanded: 840,
+} as const;
+
+export type WindowClass = 'compact' | 'medium' | 'expanded';
+
+export type WindowSizes = {
+  /** Horizontal page padding. */
+  gutter: number;
+  /** Artwork on Surprise Me cards. */
+  shelfArtwork: number;
+  /** Artwork on Continue Listening cards. */
+  continueArtwork: number;
+  /** Width of a card in a horizontal shelf, and the minimum in a card grid. */
+  shelfCardWidth: number;
+  /** Width of a Continue Listening card. */
+  continueCardWidth: number;
+  /** Subscription tile on the Home shelf (compact only; wider windows use a grid). */
+  feedTile: number;
+};
+
+/** Size tokens that grow with the window, so tablets don't get phone-sized tiles. */
+export const windowSizes: Record<WindowClass, WindowSizes> = {
+  compact: {
+    gutter: space.lg,
+    shelfArtwork: 64,
+    continueArtwork: 48,
+    shelfCardWidth: 300,
+    continueCardWidth: 260,
+    feedTile: 72,
+  },
+  medium: {
+    gutter: space.xl,
+    shelfArtwork: 88,
+    continueArtwork: 64,
+    shelfCardWidth: 360,
+    continueCardWidth: 320,
+    feedTile: 104,
+  },
+  expanded: {
+    // AntennaPod adds 56dp of side padding on very wide windows.
+    gutter: 56,
+    shelfArtwork: 96,
+    continueArtwork: 72,
+    shelfCardWidth: 340,
+    continueCardWidth: 340,
+    feedTile: 120,
+  },
+};
+
+/** Content stops widening here and centres, so lines stay readable on big screens. */
+export const MAX_CONTENT_WIDTH = 1040;
+
+/** Smallest podcast tile a grid will shrink to before it drops a column. */
+export const MIN_GRID_TILE = 150;
+
 /** Height of the mini player, so screens can pad their scroll content past it. */
 export const MINI_PLAYER_HEIGHT = 64;

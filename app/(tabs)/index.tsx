@@ -1,21 +1,37 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useSyncExternalStore, type ReactElement } from 'react';
 import { FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { getInboxCount, listInProgressEpisodes, listRandomUnplayedEpisodes } from '@/db/episodes';
+import { getInboxCount, listInProgressEpisodes, listSurpriseEpisodes } from '@/db/episodes';
 import { listFeeds } from '@/db/feeds';
+import { getSurpriseSeed, shuffleSurprise, subscribeSurpriseSeed } from '@/discover/surpriseSeed';
 import type { EpisodeWithFeed, FeedWithCounts } from '@/db/types';
 import { useQuery } from '@/db/useQuery';
 import { refreshAllFeeds } from '@/feed/sync';
 import { player } from '@/player';
 import { Artwork } from '@/ui/Artwork';
+import { triggerHaptic } from '@/ui/haptics';
+import { GRID_GAP, type Layout } from '@/ui/layout';
 import { ProgressBar } from '@/ui/ProgressBar';
 import { MINI_PLAYER_HEIGHT, radius, space, type as typography } from '@/ui/theme';
+import { useLayout } from '@/ui/useLayout';
 import { useTheme } from '@/ui/useTheme';
 import { formatRemaining } from '@/util/time';
 
-function ContinueCard({ episode, onPlay }: { episode: EpisodeWithFeed; onPlay: () => void }) {
+/** Matches AntennaPod's Surprise section size. */
+const SURPRISE_COUNT = 8;
+/** Rows of subscriptions shown on Home before "See all" takes over. */
+const SUBSCRIPTION_ROWS = 2;
+
+type CardProps = {
+  episode: EpisodeWithFeed;
+  onPlay: () => void;
+  width: number;
+  artworkSize: number;
+};
+
+function ContinueCard({ episode, onPlay, width, artworkSize }: CardProps) {
   const theme = useTheme();
   const router = useRouter();
   const duration = episode.duration ?? 0;
@@ -24,9 +40,9 @@ function ContinueCard({ episode, onPlay }: { episode: EpisodeWithFeed; onPlay: (
   return (
     <Pressable
       onPress={() => router.push(`/episode/${episode.id}`)}
-      style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}
+      style={[styles.card, { width, backgroundColor: theme.surface, borderColor: theme.border }]}
     >
-      <Artwork uri={episode.image_url ?? episode.feed_image_url} size={48} borderRadius={radius.sm} />
+      <Artwork uri={episode.image_url ?? episode.feed_image_url} size={artworkSize} borderRadius={radius.sm} />
       <View style={styles.cardBody}>
         <Text style={[styles.cardTitle, { color: theme.text }]} numberOfLines={2}>
           {episode.title}
@@ -43,16 +59,16 @@ function ContinueCard({ episode, onPlay }: { episode: EpisodeWithFeed; onPlay: (
   );
 }
 
-function FeedBadge({ feed }: { feed: FeedWithCounts }) {
+function FeedBadge({ feed, size }: { feed: FeedWithCounts; size: number }) {
   const theme = useTheme();
   const router = useRouter();
 
   return (
     <Pressable
       onPress={() => router.push(`/feed/${feed.id}`)}
-      style={styles.feedBadge}
+      style={[styles.feedBadge, { width: size }]}
     >
-      <Artwork uri={feed.image_url} size={72} borderRadius={radius.md} />
+      <Artwork uri={feed.image_url} size={size} borderRadius={radius.md} />
       <Text style={[styles.feedBadgeText, { color: theme.text }]} numberOfLines={1}>
         {feed.title}
       </Text>
@@ -60,16 +76,16 @@ function FeedBadge({ feed }: { feed: FeedWithCounts }) {
   );
 }
 
-function SurpriseCard({ episode, onPlay }: { episode: EpisodeWithFeed; onPlay: () => void }) {
+function SurpriseCard({ episode, onPlay, width, artworkSize }: CardProps) {
   const theme = useTheme();
   const router = useRouter();
 
   return (
     <Pressable
       onPress={() => router.push(`/episode/${episode.id}`)}
-      style={[styles.surpriseCard, { backgroundColor: theme.surface, borderColor: theme.border }]}
+      style={[styles.surpriseCard, { width, backgroundColor: theme.surface, borderColor: theme.border }]}
     >
-      <Artwork uri={episode.image_url ?? episode.feed_image_url} size={64} borderRadius={radius.md} />
+      <Artwork uri={episode.image_url ?? episode.feed_image_url} size={artworkSize} borderRadius={radius.md} />
       <View style={styles.surpriseCardBody}>
         <Text style={[styles.cardMeta, { color: theme.textMuted }]} numberOfLines={1}>
           {episode.feed_title}
@@ -85,10 +101,59 @@ function SurpriseCard({ episode, onPlay }: { episode: EpisodeWithFeed; onPlay: (
   );
 }
 
+/**
+ * A row of cards: a horizontal scroller on phones and medium tablets, a
+ * wrapping grid on expanded windows where there is room to show them all.
+ */
+function Shelf<T>({
+  data,
+  keyPrefix,
+  getKey,
+  layout,
+  minCardWidth,
+  resetKey,
+  renderCard,
+}: {
+  data: T[];
+  keyPrefix: string;
+  getKey: (item: T) => number;
+  layout: Layout;
+  minCardWidth: number;
+  /** Changing this scrolls the shelf back to its start. */
+  resetKey?: number;
+  renderCard: (item: T, width: number) => ReactElement;
+}) {
+  if (layout.windowClass === 'expanded') {
+    const perRow = Math.max(1, Math.floor((layout.usableWidth + GRID_GAP) / (minCardWidth + GRID_GAP)));
+    const width = Math.floor((layout.usableWidth - GRID_GAP * (perRow - 1)) / perRow);
+    return (
+      <View style={[styles.grid, { paddingHorizontal: layout.gutter }]}>
+        {data.map((item) => (
+          <View key={`${keyPrefix}-${getKey(item)}`}>{renderCard(item, width)}</View>
+        ))}
+      </View>
+    );
+  }
+
+  return (
+    <FlatList
+      key={resetKey}
+      horizontal
+      data={data}
+      keyExtractor={(item) => `${keyPrefix}-${getKey(item)}`}
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={[styles.shelfContent, { paddingHorizontal: layout.gutter }]}
+      renderItem={({ item }) => renderCard(item, minCardWidth)}
+    />
+  );
+}
+
 export default function HomeScreen() {
   const theme = useTheme();
   const router = useRouter();
+  const layout = useLayout();
   const [refreshing, setRefreshing] = useState(false);
+  const surpriseSeed = useSyncExternalStore(subscribeSurpriseSeed, getSurpriseSeed);
 
   const { data: inProgress = [] } = useQuery<EpisodeWithFeed[]>(
     () => listInProgressEpisodes(5),
@@ -105,10 +170,21 @@ export default function HomeScreen() {
     ['feeds']
   );
 
+  // Seeded, so the shelf holds still while the player saves positions (which
+  // touches the episodes table every few seconds); only shuffling changes it.
   const { data: surprise = [] } = useQuery<EpisodeWithFeed[]>(
-    () => listRandomUnplayedEpisodes(3),
-    ['episodes']
+    () => listSurpriseEpisodes(SURPRISE_COUNT, surpriseSeed),
+    ['episodes', 'feeds'],
+    [surpriseSeed]
   );
+
+  const shuffle = useCallback(() => {
+    triggerHaptic('selection');
+    shuffleSurprise();
+  }, []);
+
+  const compactFeeds = layout.windowClass === 'compact';
+  const homeFeeds = compactFeeds ? feeds : feeds.slice(0, layout.columns * SUBSCRIPTION_ROWS);
 
   const play = useCallback((episode: EpisodeWithFeed) => {
     const current = player.getState();
@@ -127,12 +203,12 @@ export default function HomeScreen() {
 
   return (
     <ScrollView
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, { maxWidth: layout.contentWidth }]}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={theme.accent} />}
     >
       {/* Inbox Quick Access */}
       <Pressable 
-        style={[styles.inboxBanner, { backgroundColor: theme.surfaceAlt }]} 
+        style={[styles.inboxBanner, { marginHorizontal: layout.gutter, backgroundColor: theme.surfaceAlt }]}
         onPress={() => router.push('/inbox')}
       >
         <View style={styles.inboxBannerLeft}>
@@ -156,14 +232,23 @@ export default function HomeScreen() {
       {/* Continue Listening */}
       {inProgress.length > 0 && (
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>Continue Listening</Text>
-          <FlatList
-            horizontal
+          <Text style={[styles.sectionTitle, { paddingHorizontal: layout.gutter, color: theme.text }]}>
+            Continue Listening
+          </Text>
+          <Shelf
             data={inProgress}
-            keyExtractor={(e) => `continue-${e.id}`}
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.shelfContent}
-            renderItem={({ item }) => <ContinueCard episode={item} onPlay={() => play(item)} />}
+            keyPrefix="continue"
+            getKey={(e) => e.id}
+            layout={layout}
+            minCardWidth={layout.continueCardWidth}
+            renderCard={(item, width) => (
+              <ContinueCard
+                episode={item}
+                onPlay={() => play(item)}
+                width={width}
+                artworkSize={layout.continueArtwork}
+              />
+            )}
           />
         </View>
       )}
@@ -171,14 +256,32 @@ export default function HomeScreen() {
       {/* Surprise Me */}
       {surprise.length > 0 && (
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>Surprise Me</Text>
-          <FlatList
-            horizontal
+          <View style={[styles.sectionHeader, { paddingHorizontal: layout.gutter }]}>
+            <Text style={[styles.sectionHeaderTitle, { color: theme.text }]}>Surprise Me</Text>
+            <Pressable
+              onPress={shuffle}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Shuffle suggestions"
+            >
+              <Ionicons name="shuffle" size={22} color={theme.accent} />
+            </Pressable>
+          </View>
+          <Shelf
             data={surprise}
-            keyExtractor={(e) => `surprise-${e.id}`}
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.shelfContent}
-            renderItem={({ item }) => <SurpriseCard episode={item} onPlay={() => play(item)} />}
+            keyPrefix="surprise"
+            getKey={(e) => e.id}
+            layout={layout}
+            minCardWidth={layout.shelfCardWidth}
+            resetKey={surpriseSeed}
+            renderCard={(item, width) => (
+              <SurpriseCard
+                episode={item}
+                onPlay={() => play(item)}
+                width={width}
+                artworkSize={layout.shelfArtwork}
+              />
+            )}
           />
         </View>
       )}
@@ -186,15 +289,32 @@ export default function HomeScreen() {
       {/* Subscriptions */}
       {feeds.length > 0 && (
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: theme.text }]}>Subscriptions</Text>
-          <FlatList
-            horizontal
-            data={feeds}
-            keyExtractor={(f) => String(f.id)}
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.shelfContent}
-            renderItem={({ item }) => <FeedBadge feed={item} />}
-          />
+          <View style={[styles.sectionHeader, { paddingHorizontal: layout.gutter }]}>
+            <Text style={[styles.sectionHeaderTitle, { color: theme.text }]}>Subscriptions</Text>
+            {homeFeeds.length < feeds.length && (
+              <Pressable onPress={() => router.push('/library')} hitSlop={8} accessibilityRole="link">
+                <Text style={[styles.seeAll, { color: theme.accent }]}>See all</Text>
+              </Pressable>
+            )}
+          </View>
+          {compactFeeds ? (
+            <FlatList
+              horizontal
+              data={feeds}
+              keyExtractor={(f) => String(f.id)}
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={[styles.shelfContent, { paddingHorizontal: layout.gutter }]}
+              renderItem={({ item }) => <FeedBadge feed={item} size={layout.feedTile} />}
+            />
+          ) : (
+            // Tablets: a grid sized like the Library's, instead of a thin strip
+            // of phone-sized tiles across an otherwise empty screen.
+            <View style={[styles.grid, { paddingHorizontal: layout.gutter }]}>
+              {homeFeeds.map((feed) => (
+                <FeedBadge key={feed.id} feed={feed} size={layout.tileSize} />
+              ))}
+            </View>
+          )}
         </View>
       )}
 
@@ -212,6 +332,8 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   content: {
+    width: '100%',
+    alignSelf: 'center',
     paddingBottom: MINI_PLAYER_HEIGHT + space.xl,
     paddingTop: space.md,
     gap: space.lg,
@@ -221,7 +343,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     padding: space.lg,
-    marginHorizontal: space.lg,
     borderRadius: radius.lg,
   },
   inboxBannerLeft: {
@@ -255,14 +376,27 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     ...typography.subheading,
-    paddingHorizontal: space.lg,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  sectionHeaderTitle: {
+    ...typography.subheading,
+  },
+  seeAll: {
+    ...typography.label,
   },
   shelfContent: {
-    paddingHorizontal: space.lg,
     gap: space.md,
   },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: GRID_GAP,
+  },
   card: {
-    width: 260,
     flexDirection: 'row',
     alignItems: 'center',
     gap: space.md,
@@ -283,7 +417,6 @@ const styles = StyleSheet.create({
     ...typography.caption,
   },
   surpriseCard: {
-    width: 300,
     flexDirection: 'row',
     alignItems: 'center',
     gap: space.md,
@@ -296,7 +429,6 @@ const styles = StyleSheet.create({
     gap: space.xs,
   },
   feedBadge: {
-    width: 72,
     alignItems: 'center',
     gap: space.xs,
   },
