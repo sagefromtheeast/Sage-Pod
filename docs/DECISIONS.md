@@ -19,6 +19,7 @@ Format: context → decision → consequences → when to revisit.
 | D-011 | Device builds: one EAS build at the end of the parity work | Accepted |
 | D-012 | Now Playing: sheets instead of inline lists; Show notes button | Accepted |
 | D-013 | Queue: in-house drag list; Keep sorted and Lock turn dragging off | Accepted |
+| D-014 | Home: configurable sections; In progress shows only unqueued episodes | Accepted |
 
 ---
 
@@ -193,4 +194,16 @@ also offers Move up / down / to top / to bottom to screen readers. As in
 AntennaPod, "Keep sorted" re-sorts after every insertion, so dragging and Move
 to top are hidden while it is on. Lock queue hides handles and swipes.
 "Enqueue location" defaults to Back, matching the old behaviour. *(Shipped in v0.6.0.)*
+
+## D-014 — Home: AntennaPod's sections, configurable; In progress de-duplicated
+
+**Decision.** Home is a list of sections in a saved order, with each one
+showable or hidden: Continue listening (the queue), See what's new, Surprise me,
+Check your classics, Manage downloads, then Sage Pod's In progress and
+Subscriptions. The Inbox banner is replaced by See what's new. In progress now
+shows only started episodes that are *not* queued, since Continue listening
+already shows queued ones. Sections added later appear at the end, visible, for
+existing users. The header Search opens a local library search. It is
+deliberately small for now; the search phase adds chips and online search.
+*(Shipped in v0.8.0.)*
 

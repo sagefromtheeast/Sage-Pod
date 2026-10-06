@@ -67,12 +67,14 @@ destructive.
 - [x] Multi-select; ≥25 selected asks first on every screen (`needsBulkConfirm`, tested); paging by 100
 - [x] Drop the now-redundant dismiss after enqueue in `inbox.tsx` (done in Phase 1 review)
 - [x] Shots: inbox menu, sort, select, and a real touch swipe (`inbox-swipe`)
-- [ ] Sort also feeding Home's "See what's new" (Phase 7)
+- [x] Sort also feeding Home's "See what's new" (done in Phase 7)
 
-## Phase 7 — Home
-- [ ] Fix nested-Pressable button-in-button on Home cards (web a11y warning)
-- [ ] Section chrome + empty texts; queue section; See what's new; Classics; Manage downloads; keep in-progress shelf (D-003.6)
-- [ ] Header Search + ⋯ Refresh / Configure home
+## Phase 7 — Home ✅
+- [x] Fix nested-Pressable button-in-button on Home cards (web a11y warning)
+- [x] Section chrome + empty texts; queue section; See what's new (inbox sort, swipeable); Classics (3 y); Manage downloads; keep in-progress shelf (D-003.6, now only unqueued episodes)
+- [x] Header Search (new local `search` route, every word must match) + ⋯ Refresh / Configure home (show, hide, reorder; `HomeSectionId[]` saved)
+- [x] AGENTS.md: PRs merge with a merge commit, so PR titles need no Conventional prefix
+- [ ] Search: Queue/feed chips and "Search online" (search phase)
 
 ## Phase 8 — Episode details
 - [ ] ⋯ menu (skip, inbox, reset, website, open podcast, share options)

@@ -1,5 +1,6 @@
 import { deleteFeedDownloads } from '@/player/downloads';
 import { getDb } from './index';
+import { searchWords } from './search';
 import type { FeedRow, FeedWithCounts } from './types';
 
 /** Columns shared by every feed select, so joins and plain reads stay in sync. */
@@ -34,6 +35,42 @@ export async function getFeed(id: number): Promise<FeedWithCounts | null> {
       WHERE f.id = ?
       GROUP BY f.id`,
     id
+  );
+}
+
+/**
+ * "Check your classics": the podcasts listened to most since `since`
+ * ('YYYY-MM-DD'), by total listening time in playback_history.
+ */
+export async function listClassicFeeds(since: string, limit = 8): Promise<FeedWithCounts[]> {
+  return getDb().getAllAsync<FeedWithCounts>(
+    `SELECT ${FEED_COLUMNS},
+            0 AS episode_count, 0 AS unplayed_count, NULL AS latest_published_at
+       FROM feeds f
+       JOIN (SELECT feed_id, SUM(listened_seconds) AS total
+               FROM playback_history
+              WHERE date >= ?
+              GROUP BY feed_id) h ON h.feed_id = f.id
+      ORDER BY h.total DESC, f.title COLLATE NOCASE ASC
+      LIMIT ?`,
+    since,
+    limit
+  );
+}
+
+/** Subscribed podcasts whose title or author contains every word of `term`. */
+export async function searchFeeds(term: string, limit = 20): Promise<FeedWithCounts[]> {
+  const words = searchWords(term);
+  if (words.length === 0) return [];
+  return getDb().getAllAsync<FeedWithCounts>(
+    `SELECT ${FEED_COLUMNS},
+            0 AS episode_count, 0 AS unplayed_count, NULL AS latest_published_at
+       FROM feeds f
+      WHERE ${words.map(() => "(f.title LIKE ? ESCAPE '\\' OR f.author LIKE ? ESCAPE '\\')").join(' AND ')}
+      ORDER BY f.title COLLATE NOCASE ASC
+      LIMIT ?`,
+    ...words.flatMap((word) => [word, word]),
+    limit
   );
 }
 

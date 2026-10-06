@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Tabs, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
+import { Tabs } from 'expo-router/js-tabs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Alert,

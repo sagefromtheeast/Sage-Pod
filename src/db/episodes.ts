@@ -1,6 +1,7 @@
 import { SURPRISE_MODULUS } from '@/discover/surpriseSeed';
 import { EPISODE_WITH_FEED_COLUMNS } from './columns';
 import { getDb } from './index';
+import { searchWords } from './search';
 import type { DownloadState, EpisodeRow, EpisodeWithFeed } from './types';
 
 /**
@@ -98,10 +99,16 @@ export async function listRecentEpisodes(limit = 100): Promise<EpisodeWithFeed[]
 }
 
 /** Started but unfinished — "Continue listening". */
-export async function listInProgressEpisodes(limit = 20): Promise<EpisodeWithFeed[]> {
+export async function listInProgressEpisodes(
+  limit = 20,
+  options: { excludeQueued?: boolean } = {}
+): Promise<EpisodeWithFeed[]> {
+  // Excluding in SQL (not after the LIMIT) so a long queue can't crowd out
+  // older unqueued episodes.
+  const notQueued = options.excludeQueued ? 'AND e.id NOT IN (SELECT episode_id FROM queue)' : '';
   return getDb().getAllAsync<EpisodeWithFeed>(
     `${EPISODE_WITH_FEED}
-      WHERE e.position > 30 AND e.is_played = 0
+      WHERE e.position > 30 AND e.is_played = 0 ${notQueued}
       ORDER BY e.played_at DESC
       LIMIT ?`,
     limit
@@ -143,16 +150,19 @@ export async function listHistory(limit = 100): Promise<EpisodeWithFeed[]> {
   );
 }
 
-/** Full-text-ish search over titles and show notes of subscribed episodes. */
+/**
+ * Searches subscribed episodes: each word of `term` must appear in the title
+ * or the show notes (AntennaPod's search), newest first.
+ */
 export async function searchEpisodes(term: string, limit = 60): Promise<EpisodeWithFeed[]> {
-  const like = `%${term.replace(/[%_]/g, (c) => `\\${c}`)}%`;
+  const words = searchWords(term);
+  if (words.length === 0) return [];
   return getDb().getAllAsync<EpisodeWithFeed>(
     `${EPISODE_WITH_FEED}
-      WHERE e.title LIKE ? ESCAPE '\\' OR e.description LIKE ? ESCAPE '\\'
+      WHERE ${words.map(() => "(e.title LIKE ? ESCAPE '\\' OR e.description LIKE ? ESCAPE '\\')").join(' AND ')}
       ORDER BY e.published_at DESC
       LIMIT ?`,
-    like,
-    like,
+    ...words.flatMap((word) => [word, word]),
     limit
   );
 }

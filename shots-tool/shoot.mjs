@@ -99,6 +99,19 @@ const ROUTES = [
     await page.getByText('Select multiple').first().click();
     await page.getByText('1 selected').waitFor({ timeout: 10000 });
   }],
+  ['home-menu', '/', async (page) => {
+    await page.getByRole('button', { name: 'More options' }).first().click();
+    await page.getByText('Configure home screen').first().waitFor({ timeout: 10000 });
+  }],
+  ['home-configure', '/', async (page) => {
+    await page.getByRole('button', { name: 'More options' }).first().click();
+    await page.getByText('Configure home screen').first().click();
+    await page.getByText('Reset to default').waitFor({ timeout: 10000 });
+  }],
+  ['search', '/search', async (page) => {
+    await page.getByPlaceholder('Search podcasts and episodes').fill('quiet');
+    await page.getByText('PODCASTS').waitFor({ timeout: 10000 });
+  }],
   ['feed-menu', '/feed/1', async (page) => {
     await page.getByRole('button', { name: 'More options' }).first().click();
     await page.getByText('Unsubscribe').first().waitFor({ timeout: 10000 });

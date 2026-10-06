@@ -38,6 +38,12 @@ bearing** — use [Conventional Commits](https://www.conventionalcommits.org/):
 `feat:` (minor), `fix:` / `perf:` (patch), `feat!:` or a `BREAKING CHANGE:`
 body (major). `docs/chore/ci/refactor/test/style/build` do not release.
 
+Pull requests are merged with a **merge commit, never squashed**, so each
+commit's own subject reaches `main` and semantic-release reads those. A PR's
+title never becomes a commit, so it needs no Conventional Commit prefix (the
+"Phase N: …" titles are fine). Reviewers: judge the commit subjects, not the
+PR title.
+
 Never hand-edit a version. `expo.version`, `android.versionCode`,
 `ios.buildNumber` and `package.json` are all written by
 `tool/set_app_version.sh` during the release. If you add a file that carries the

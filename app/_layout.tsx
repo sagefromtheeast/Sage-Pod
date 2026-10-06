@@ -117,6 +117,7 @@ function AppShell() {
           <Stack.Screen name="feed/[id]" options={{ title: '' }} />
           <Stack.Screen name="feed/settings/[id]" options={{ title: 'Podcast Settings', presentation: 'modal' }} />
           <Stack.Screen name="episode/[id]" options={{ title: '' }} />
+          <Stack.Screen name="search" options={{ title: 'Search' }} />
           <Stack.Screen name="settings" options={{ title: 'Settings', presentation: 'modal' }} />
           <Stack.Screen name="stats" options={{ title: 'Statistics', presentation: 'modal' }} />
         </Stack>
