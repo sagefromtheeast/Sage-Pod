@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { getSettings } from '@/db/settings';
 import { PLAYBACK_RATES, player, usePlayerState } from '@/player';
+import { remainingMs, type SleepTimer } from '@/player/sleepTimer';
 import { useChapters } from '@/player/useChapters';
 import { Artwork } from '@/ui/Artwork';
 import { triggerHaptic } from '@/ui/haptics';
@@ -22,7 +23,7 @@ export default function PlayerScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
 
-  const { episode, position, duration, playing, buffering, rate, sleepTimerEndsAt, error } =
+  const { episode, position, duration, playing, buffering, rate, sleepTimer, error } =
     usePlayerState();
 
   // While the user drags the scrubber, show their finger position rather than
@@ -192,7 +193,7 @@ export default function PlayerScreen() {
         </Pressable>
 
         <SleepTimerButton
-          endsAt={sleepTimerEndsAt}
+          timer={sleepTimer}
           expanded={showSleepOptions}
           onToggle={() => setShowSleepOptions((value) => !value)}
         />
@@ -232,7 +233,7 @@ export default function PlayerScreen() {
               <Text style={[styles.pillLabel, { color: theme.text }]}>{minutes}m</Text>
             </Pressable>
           ))}
-          {sleepTimerEndsAt ? (
+          {sleepTimer ? (
             <Pressable
               onPress={() => {
                 player.cancelSleepTimer();
@@ -307,29 +308,37 @@ function ChaptersList({ chaptersUrl, position }: { chaptersUrl?: string | null; 
   );
 }
 
-/** Shows the sleep timer's remaining minutes, ticking once a minute. */
+/** Shows the sleep timer's remaining minutes (or "End"), ticking while it counts down. */
 function SleepTimerButton({
-  endsAt,
+  timer,
   expanded,
   onToggle,
 }: {
-  endsAt: number | null;
+  timer: SleepTimer | null;
   expanded: boolean;
   onToggle: () => void;
 }) {
   const theme = useTheme();
   const [, forceTick] = useState(0);
+  const counting = timer?.kind === 'minutes' && timer.endsAt !== null;
 
   useEffect(() => {
-    if (!endsAt) return;
+    if (!counting) return;
     // A minute-resolution label needs a minute-resolution timer; anything
     // faster just burns wakeups while the screen is on.
     const handle = setInterval(() => forceTick((value) => value + 1), 30_000);
     return () => clearInterval(handle);
-  }, [endsAt]);
+  }, [counting]);
 
-  const remaining = endsAt ? Math.max(0, Math.ceil((endsAt - Date.now()) / 60_000)) : null;
-  const active = remaining !== null && remaining > 0;
+  const active = timer !== null;
+  const ms = timer ? remainingMs(timer, Date.now()) : null;
+  const label = timer?.kind === 'endOfEpisode' ? 'End' : ms !== null ? `${Math.ceil(ms / 60_000)}m` : null;
+  const a11y =
+    timer?.kind === 'endOfEpisode'
+      ? 'Sleep timer, pauses at the end of this episode'
+      : label
+        ? `Sleep timer, ${label.replace('m', '')} minutes left`
+        : 'Sleep timer';
 
   return (
     <Pressable
@@ -340,12 +349,10 @@ function SleepTimerButton({
         expanded && !active ? { borderColor: theme.accent, borderWidth: 1 } : null,
       ]}
       accessibilityRole="button"
-      accessibilityLabel={active ? `Sleep timer, ${remaining} minutes left` : 'Sleep timer'}
+      accessibilityLabel={a11y}
     >
       <Ionicons name="moon" size={15} color={active ? theme.onAccent : theme.text} />
-      {active ? (
-        <Text style={[styles.pillLabel, { color: theme.onAccent }]}>{remaining}m</Text>
-      ) : null}
+      {label ? <Text style={[styles.pillLabel, { color: theme.onAccent }]}>{label}</Text> : null}
     </Pressable>
   );
 }

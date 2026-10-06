@@ -18,6 +18,12 @@ import { dequeue, enqueueFront, nextInQueue } from '@/db/queue';
 import { deleteDownload, getLocalEpisodePath } from '@/player/downloads';
 import { getMeta, getSettings, setMeta } from '@/db/settings';
 import type { EpisodeWithFeed } from '@/db/types';
+import {
+  pauseTimer,
+  resumeTimer,
+  startMinutesTimer,
+  type SleepTimer,
+} from '@/player/sleepTimer';
 
 /** Playback rates offered in the UI, and cycled through by the rate button. */
 export const PLAYBACK_RATES = [0.8, 1, 1.2, 1.5, 1.75, 2, 2.5, 3] as const;
@@ -32,8 +38,8 @@ export type PlayerState = {
   buffering: boolean;
   /** Playback rate currently applied to the audio engine. */
   rate: number;
-  /** Epoch ms at which the sleep timer fires, or null when it is off. */
-  sleepTimerEndsAt: number | null;
+  /** The active sleep timer, or null when it is off. */
+  sleepTimer: SleepTimer | null;
   error: string | null;
 };
 
@@ -44,7 +50,7 @@ const INITIAL_STATE: PlayerState = {
   playing: false,
   buffering: false,
   rate: 1,
-  sleepTimerEndsAt: null,
+  sleepTimer: null,
   error: null,
 };
 
@@ -279,6 +285,10 @@ class PlayerService {
     const duration =
       status.duration > 0 ? status.duration : this.state.duration || this.state.episode?.duration || 0;
 
+    // Pauses can come from outside the app (lock screen, headphones, a phone
+    // call), so the sleep timer follows the engine's state, not just our buttons.
+    if (status.playing !== this.state.playing) this.syncSleepTimer(status.playing);
+
     if (!this.seeking) {
       this.setState({
         position: status.currentTime,
@@ -300,6 +310,7 @@ class PlayerService {
     if (!this.player) return;
     this.player.play();
     this.setState({ playing: true, error: null });
+    this.syncSleepTimer(true);
     this.startPositionSaver();
   }
 
@@ -308,6 +319,7 @@ class PlayerService {
     this.player.pause();
     this.lastPausedAt = Date.now();
     this.setState({ playing: false });
+    this.syncSleepTimer(false);
     void this.flushPosition();
   }
 
@@ -378,6 +390,13 @@ class PlayerService {
       // listener asked us to.
       if (settings.deleteAfterFinished && finished.download_state === 'done') {
         await deleteDownload(finished.id);
+      }
+
+      // "End of episode" means exactly that: stop here instead of advancing.
+      if (this.state.sleepTimer?.kind === 'endOfEpisode') {
+        this.cancelSleepTimer();
+        this.setState({ playing: false, position: 0 });
+        return;
       }
 
       if (!settings.continuousPlayback) {
@@ -456,28 +475,22 @@ class PlayerService {
 
   // ------------------------------------------------------------- sleep timer
 
-  private shakeSubscription: any = null;
-  private sleepMinutes: number = 0;
+  private shakeSubscription: { remove: () => void } | null = null;
 
-  /** Starts the sleep timer to fire when the current episode finishes. */
+  /**
+   * Pauses when the current episode ends. No clock: the episode's real end is
+   * what counts, whatever the speed and however long it sits paused.
+   */
   startSleepTimerUntilEndOfEpisode(): void {
-    const { position, duration } = this.state;
-    const remainingSeconds = Math.max(10, (duration || 0) - position);
-    this.startSleepTimer(remainingSeconds / 60);
+    this.cancelSleepTimer();
+    this.setState({ sleepTimer: { kind: 'endOfEpisode' } });
   }
 
-  /** Starts (or restarts) the sleep timer. */
+  /** Starts (or restarts) a countdown that only runs while audio plays. */
   startSleepTimer(minutes: number): void {
     this.cancelSleepTimer();
-    this.sleepMinutes = minutes;
-    const endsAt = Date.now() + minutes * 60_000;
-
-    this.sleepHandle = setTimeout(() => {
-      this.pause();
-      this.cancelSleepTimer();
-    }, minutes * 60_000);
-
-    this.setState({ sleepTimerEndsAt: endsAt });
+    this.setState({ sleepTimer: startMinutesTimer(minutes, Date.now(), this.state.playing) });
+    this.scheduleSleepTimeout();
 
     Accelerometer.setUpdateInterval(100);
     this.shakeSubscription = Accelerometer.addListener(({ x, y, z }) => {
@@ -485,7 +498,7 @@ class PlayerService {
       const gForce = Math.sqrt(x * x + y * y + z * z);
       if (gForce > 2.25) {
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-        this.startSleepTimer(this.sleepMinutes);
+        this.startSleepTimer(minutes);
       }
     });
   }
@@ -493,14 +506,37 @@ class PlayerService {
   cancelSleepTimer(): void {
     if (this.sleepHandle) clearTimeout(this.sleepHandle);
     this.sleepHandle = null;
-    this.sleepMinutes = 0;
 
     if (this.shakeSubscription) {
       this.shakeSubscription.remove();
       this.shakeSubscription = null;
     }
 
-    this.setState({ sleepTimerEndsAt: null });
+    if (this.state.sleepTimer) this.setState({ sleepTimer: null });
+  }
+
+  /** Freezes or restarts a minutes countdown to match whether audio is playing. */
+  private syncSleepTimer(playing: boolean): void {
+    const timer = this.state.sleepTimer;
+    if (timer?.kind !== 'minutes') return;
+    const next = playing ? resumeTimer(timer, Date.now()) : pauseTimer(timer, Date.now());
+    if (next === timer) return;
+    this.setState({ sleepTimer: next });
+    this.scheduleSleepTimeout();
+  }
+
+  /** Arms the timeout for a running countdown; disarms it for a frozen one. */
+  private scheduleSleepTimeout(): void {
+    if (this.sleepHandle) clearTimeout(this.sleepHandle);
+    this.sleepHandle = null;
+
+    const timer = this.state.sleepTimer;
+    if (timer?.kind !== 'minutes' || timer.endsAt === null) return;
+
+    this.sleepHandle = setTimeout(() => {
+      this.cancelSleepTimer();
+      this.pause();
+    }, Math.max(0, timer.endsAt - Date.now()));
   }
 
   /** Stops playback and unloads the current episode. */
