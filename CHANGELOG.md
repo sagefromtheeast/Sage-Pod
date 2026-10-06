@@ -1,3 +1,19 @@
+## [0.5.0](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.4.0...v0.5.0) (2026-10-06)
+
+### 🚀 New Features
+
+* **player:** rebuild Now Playing with a speed sheet, chapter controls and a chapter-aware seek bar ([f4b61e6](https://github.com/sagefromtheeast/Sage-Pod/commit/f4b61e6409127babcd2803348e1b24d4fad38201))
+* **player:** sleep timer for a number of episodes, with extend, fade-out and shake to reset ([d612e0d](https://github.com/sagefromtheeast/Sage-Pod/commit/d612e0db422d1e1eadba569bea3d180bc23582bc))
+* **ui:** show the mini player on podcast, episode and list screens ([b44a971](https://github.com/sagefromtheeast/Sage-Pod/commit/b44a97156791e6962c00dbb82f76eb5df3ee0154))
+
+### 📚 Documentation
+
+* mark Phase 4 done and record the Now Playing decisions (D-012) ([a119ee2](https://github.com/sagefromtheeast/Sage-Pod/commit/a119ee209bd531db3d85443431851af734d943be))
+
+### ✅ Tests
+
+* **shots:** seed chapters and capture the player's speed, sleep and chapters sheets ([0deec7b](https://github.com/sagefromtheeast/Sage-Pod/commit/0deec7b97581f0b2cfe6bc7a1b2ec56f4ca5e5bc))
+
 ## [0.4.0](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.3.1...v0.4.0) (2026-10-06)
 
 ### 🚀 New Features
