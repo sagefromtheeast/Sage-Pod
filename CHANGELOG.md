@@ -1,3 +1,22 @@
+## [0.6.0](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.5.0...v0.6.0) (2026-10-06)
+
+### 🚀 New Features
+
+* **queue:** drag to reorder, sort and keep sorted, lock, search and an enqueue location setting ([314abd2](https://github.com/sagefromtheeast/Sage-Pod/commit/314abd2d8496aafc97fe43f5dce6028b813ce619))
+
+### 🐛 Bug Fixes
+
+* **player:** continue with the episode after the finished one, not the head of the queue ([31bcbb8](https://github.com/sagefromtheeast/Sage-Pod/commit/31bcbb8294c4a98b72fe0c6c55d2322653397cd6))
+* **queue:** keep a multi-selection's order when adding it to the front or after the current episode ([6e1ffcb](https://github.com/sagefromtheeast/Sage-Pod/commit/6e1ffcb43cf8ce27aa0f146d1f3915d40130d3f7))
+
+### 📚 Documentation
+
+* mark Phase 5 done and record the queue decisions (D-013) ([b03dc36](https://github.com/sagefromtheeast/Sage-Pod/commit/b03dc36e1278309724120b9e79bd5e1c5a0e0a98))
+
+### ✅ Tests
+
+* **shots:** capture the queue menu, sort sheet, selection and search, and drive a real drag ([844bce6](https://github.com/sagefromtheeast/Sage-Pod/commit/844bce6583664b925362b902cc29d0959cfead95))
+
 ## [0.5.0](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.4.0...v0.5.0) (2026-10-06)
 
 ### 🚀 New Features
