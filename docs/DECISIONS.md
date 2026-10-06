@@ -21,6 +21,7 @@ Format: context → decision → consequences → when to revisit.
 | D-013 | Queue: in-house drag list; Keep sorted and Lock turn dragging off | Accepted |
 | D-014 | Home: configurable sections; In progress shows only unqueued episodes | Accepted |
 | D-015 | Episode pager swipes through the podcast's episodes | Accepted |
+| D-016 | Previews: stored, kept out of the library, cleared after a day | Accepted |
 
 ---
 
@@ -219,4 +220,17 @@ the podcast page's default order (newest first). That needs no wiring through
 every list. The page list is frozen once loaded, so a refresh doesn't move the
 page under the reader. Following the originating list is a later refinement.
 *(Shipped in v0.9.0.)*
+
+## D-016 — Previews: stored like podcasts, hidden, cleared after a day
+
+**Context.** AntennaPod opens a podcast before you subscribe. How long it keeps
+an unsubscribed preview wasn't traced.
+
+**Decision.** A preview is a normal `feeds` row with `state = 'preview'`, so the
+podcast page, playback and the queue work unchanged. Library, refresh, OPML
+export, search and the Home sections only read subscribed podcasts. Preview
+episodes are stored as not new, so the Inbox never sees them. At startup, previews
+older than 24 hours are deleted unless one of their episodes is queued,
+downloaded, a favourite or being restored by the player. Subscribing flips the
+state and refreshes. *(Shipped in v0.10.0.)*
 

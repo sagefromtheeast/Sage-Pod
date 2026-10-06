@@ -219,11 +219,12 @@ releasing, so a red check on `main` blocks the release.
   seek bar, mini player on pushed screens; v0.5.0), the Queue (drag,
   sort / keep sorted, lock, search, enqueue location; v0.6.0), and the
   Inbox (AntennaPod swipes with undo, search, sort, remove all, paging;
-  v0.7.0), Home (configurable sections, library search; v0.8.0), and
-  Episode details (menu, inline links, timestamps, pager; v0.9.0).
+  v0.7.0), Home (configurable sections, library search; v0.8.0), Episode
+  details (menu, inline links, timestamps, pager; v0.9.0), and the podcast
+  page (preview, saved filter and sort, banners, info page; v0.10.0).
   Earlier: EAS device builds, stable Surprise Me, tablet layouts.
-- **Next**: Phase 9, the podcast page, info and preview, then the remaining
-  screen-by-screen phases.
+- **Next**: Phase 10, per-podcast settings, then the remaining screen-by-screen
+  phases. Schema is at version 4.
   Building blocks to reuse: `openEpisodeActions`, `runEpisodeAction`,
   `showToast`, `OverflowMenu`, `BottomSheet` / `ActionSheet`,
   `useEpisodeSelection` + `SelectionBar`, `MiniPlayerDock`, `DraggableList` (see
