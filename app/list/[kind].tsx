@@ -1,16 +1,19 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { DownloadSortKey, listDownloaded, listFavorites, listHistory } from '@/db/episodes';
 import { enqueue } from '@/db/queue';
 import type { EpisodeWithFeed } from '@/db/types';
 import { useQuery } from '@/db/useQuery';
+import { runEpisodeAction } from '@/actions/runEpisodeAction';
 import { player } from '@/player';
-import { deleteDownload, formatBytes } from '@/player/downloads';
+import { formatBytes } from '@/player/downloads';
 import { EmptyState } from '@/ui/EmptyState';
 import { EpisodeRow } from '@/ui/EpisodeRow';
+import { SELECTION_BAR_HEIGHT, SelectionBar } from '@/ui/SelectionBar';
+import { useEpisodeSelection } from '@/ui/useEpisodeSelection';
 import { triggerHaptic } from '@/ui/haptics';
 import { GlassSegmentedControl } from '@/ui/glass';
 import { MINI_PLAYER_HEIGHT, radius, space, type as typography } from '@/ui/theme';
@@ -62,6 +65,9 @@ export default function ListScreen() {
     else void player.playEpisode(episode);
   }, []);
 
+  const selection = useEpisodeSelection(episodes);
+  const actionHooks = useMemo(() => ({ onMultiSelect: selection.start }), [selection.start]);
+
   const totalBytes =
     kind === 'downloads'
       ? episodes.reduce((acc, ep) => acc + (ep.downloaded_bytes ?? ep.media_size ?? 0), 0)
@@ -73,7 +79,11 @@ export default function ListScreen() {
       <FlatList
         data={episodes}
         keyExtractor={(episode) => String(episode.id)}
-        contentContainerStyle={styles.content}
+        extraData={selection.selected}
+        contentContainerStyle={[
+          styles.content,
+          selection.active ? { paddingBottom: SELECTION_BAR_HEIGHT + space.xl } : null,
+        ]}
         ListHeaderComponent={
           kind === 'downloads' && episodes.length > 0 ? (
             <View
@@ -107,10 +117,18 @@ export default function ListScreen() {
           <EpisodeRow
             episode={item}
             onPlay={play}
+            actionHooks={actionHooks}
+            selection={{
+              active: selection.active,
+              selected: selection.selected.has(item.id),
+              onToggle: selection.toggle,
+              onRangeMenu: selection.openRangeMenu,
+            }}
             trailing={
               kind === 'downloads' ? (
                 <Pressable
-                  onPress={() => void deleteDownload(item.id)}
+                  // Same confirmed delete as the long-press menu.
+                  onPress={() => void runEpisodeAction('delete', [item])}
                   hitSlop={8}
                   accessibilityRole="button"
                   accessibilityLabel="Delete download"
@@ -131,6 +149,7 @@ export default function ListScreen() {
           />
         )}
       />
+      <SelectionBar selection={selection} />
     </>
   );
 }
