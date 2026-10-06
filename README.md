@@ -54,6 +54,8 @@ npx expo run:ios              # or: npx expo run:android
 | `npm run typecheck` | Type-check the app **and** the test sources |
 | `npm test` | Run the feed-parser / util test suite |
 | `npx expo prebuild --clean` | Regenerate the native `ios/` and `android/` projects |
+| `npm run shots -- <name>` | Screenshot every screen at phone/tablet sizes into `screenshots/<name>/` |
+| `npm run shots:diff` | Compare `screenshots/before` vs `after` (pixel diff + `compare.html`) |
 
 > **Node 22+** is required — the test runner uses `node --experimental-strip-types`.
 
@@ -131,6 +133,13 @@ feed costs one small 304 rather than a full re-download.
 Podcast search uses Apple's public iTunes Search API, which needs no API key or
 account, so the app works the moment it is installed. Any RSS URL can also be
 pasted directly.
+
+## 🗺 Roadmap & handover
+
+- [`TASKS.md`](TASKS.md): phase-by-phase progress toward AntennaPod parity
+- [`docs/PARITY-PLAN.md`](docs/PARITY-PLAN.md): the feature audit and full plan
+- [`docs/DECISIONS.md`](docs/DECISIONS.md): settled decisions
+- [`docs/HANDOVER.md`](docs/HANDOVER.md): guide for whoever (or whatever AI) leads development next
 
 ## 📄 License
 
