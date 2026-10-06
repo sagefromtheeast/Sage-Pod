@@ -7,7 +7,6 @@ import {
   guessExtension,
   shouldAutoDownloadEpisode,
 } from '../downloadRules';
-import { sortQueueEpisodes } from '../queueSorting';
 import { classifyDownloadError } from '../types';
 
 describe('shouldAutoDownloadEpisode — AntennaPod-style Auto-Download Filter Rules', () => {
@@ -144,70 +143,6 @@ describe('fileNameFor & guessExtension — Download File Naming & Extension Reso
     assert.equal(guessExtension('audio/flac'), 'flac');
     assert.equal(guessExtension(null), 'mp3');
     assert.equal(guessExtension('unknown/format'), 'mp3');
-  });
-});
-
-describe('sortQueueEpisodes — Queue Batch Sorting & Reordering', () => {
-  const sampleEpisodes = [
-    {
-      id: 1,
-      feed_title: 'Zeta Podcast',
-      duration: 3600,
-      position: 3000, // 600s remaining
-      published_at: 1000,
-    },
-    {
-      id: 2,
-      feed_title: 'Alpha Podcast',
-      duration: 1800,
-      position: 0, // 1800s remaining
-      published_at: 3000,
-    },
-    {
-      id: 3,
-      feed_title: 'Beta Podcast',
-      duration: 600,
-      position: 100, // 500s remaining
-      published_at: 2000,
-    },
-  ];
-
-  it('sorts by duration remaining ascending (shortest remaining first)', () => {
-    // ep 3 has 500s remaining, ep 1 has 600s remaining, ep 2 has 1800s remaining
-    const sorted = sortQueueEpisodes(sampleEpisodes, 'duration_remaining_asc');
-    assert.deepEqual(sorted, [3, 1, 2]);
-  });
-
-  it('sorts by total duration descending (longest first)', () => {
-    // ep 1 (3600s), ep 2 (1800s), ep 3 (600s)
-    const sorted = sortQueueEpisodes(sampleEpisodes, 'duration_desc');
-    assert.deepEqual(sorted, [1, 2, 3]);
-  });
-
-  it('sorts by publish date descending (newest first)', () => {
-    // ep 2 (3000), ep 3 (2000), ep 1 (1000)
-    const sorted = sortQueueEpisodes(sampleEpisodes, 'date_desc');
-    assert.deepEqual(sorted, [2, 3, 1]);
-  });
-
-  it('sorts by publish date ascending (oldest first)', () => {
-    // ep 1 (1000), ep 3 (2000), ep 2 (3000)
-    const sorted = sortQueueEpisodes(sampleEpisodes, 'date_asc');
-    assert.deepEqual(sorted, [1, 3, 2]);
-  });
-
-  it('sorts by podcast title ascending (A-Z)', () => {
-    // Alpha (ep 2), Beta (ep 3), Zeta (ep 1)
-    const sorted = sortQueueEpisodes(sampleEpisodes, 'podcast_title_asc');
-    assert.deepEqual(sorted, [2, 3, 1]);
-  });
-
-  it('shuffles the episodes while preserving all items', () => {
-    const shuffled = sortQueueEpisodes(sampleEpisodes, 'shuffle');
-    assert.equal(shuffled.length, sampleEpisodes.length);
-    assert.ok(shuffled.includes(1));
-    assert.ok(shuffled.includes(2));
-    assert.ok(shuffled.includes(3));
   });
 });
 

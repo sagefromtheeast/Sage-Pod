@@ -442,6 +442,11 @@ class PlayerService {
 
       const settings = getSettings();
       await markPlayed(finished.id, true);
+      // Find what follows before removing the finished episode: once it is
+      // gone, "the episode after it" can't be looked up and the head would
+      // play instead, jumping back if it was played from mid-queue (or
+      // sorted there by Keep sorted).
+      const next = await nextInQueue(finished.id);
       if (settings.removeFromQueueWhenFinished) await dequeue(finished.id);
 
       // Reclaim the space a finished episode's audio was using, if the
@@ -467,7 +472,6 @@ class PlayerService {
         return;
       }
 
-      const next = await nextInQueue(finished.id);
       if (next) await this.load(next, { autoPlay: true });
       else this.setState({ playing: false, position: 0 });
     } finally {

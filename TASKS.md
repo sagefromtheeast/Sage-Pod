@@ -53,10 +53,13 @@ destructive.
 - [x] Show notes button (D-012); shots: player, speed / sleep / chapters sheets, mini player on stack screens
 - [ ] On device: shake-to-reset threshold, fade volume, seek-bar drag inside the scroll view, chapter art from real feeds
 
-## Phase 5 — Queue
-- [ ] Pinned speed-aware info line; ⋯ Sort/Lock/Clear; Search icon
-- [ ] Sort sheet + Keep sorted; drag handles; undo on swipe; pull-to-refresh; inbox-aware empty state
-- [ ] Enqueue location setting (back / front / after current / random)
+## Phase 5 — Queue ✅
+- [x] Pinned, speed-aware info line; header Search + ⋯ (Sort, Lock, Refresh, Clear)
+- [x] Sort sheet (date, duration, time left, titles, smart shuffle, random; both directions) + Keep sorted (re-sorts on enqueue, disables drag)
+- [x] Drag handles (in-house `DraggableList`, D-013); undo on swipe, move to top/bottom and Clear; multi-select; pull-to-refresh; inbox-aware empty state
+- [x] Enqueue location setting (back / front / after current / random), pure `enqueueIndex` + tests
+- [x] Shots: queue, menu, sort, select, search, and a real drag (`queue-drag`)
+- [ ] On device: drag inside the list on iOS and Android (handle vs scroll vs swipe), edge auto-scroll speed
 
 ## Phase 6 — Inbox
 - [ ] Search; ⋯ Sort + Remove all (confirm); swipes swapped to AntennaPod's + undo (D-003.2); multi-select; paging

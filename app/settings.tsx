@@ -27,6 +27,13 @@ const REFRESH_OPTIONS = [15, 30, 60, 180, 720] as const;
 const AUTO_DOWNLOAD_OPTIONS = [0, 1, 3, 5, 10] as const;
 const EPISODE_STORAGE_OPTIONS = [10, 20, 50, 100, 0] as const;
 const THEME_OPTIONS = ['system', 'light', 'dark', 'oled'] as const;
+const ENQUEUE_LOCATIONS = ['back', 'front', 'afterCurrent', 'random'] as const;
+const ENQUEUE_LOCATION_LABELS: Record<(typeof ENQUEUE_LOCATIONS)[number], string> = {
+  back: 'Back',
+  front: 'Front',
+  afterCurrent: 'After current',
+  random: 'Random',
+};
 
 export default function SettingsScreen() {
   const theme = useTheme();
@@ -180,6 +187,14 @@ export default function SettingsScreen() {
         description="Backs up a little when you press play again: under a second after a quick pause, up to 20 seconds after a day away."
         value={settings.rewindOnResume}
         onValueChange={(value) => void update('rewindOnResume', value)}
+      />
+      <SettingsOptions
+        label="Enqueue location"
+        description="Where Add to queue puts an episode."
+        value={settings.enqueueLocation}
+        options={ENQUEUE_LOCATIONS}
+        format={(location) => ENQUEUE_LOCATION_LABELS[location]}
+        onChange={(value) => void update('enqueueLocation', value)}
       />
       <SettingsSwitch
         label="Play the next episode"

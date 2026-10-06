@@ -17,6 +17,15 @@ export function usePlayerState(): PlayerState {
   );
 }
 
+/** Just the loaded episode's id: re-renders when the episode changes, not on every tick. */
+export function useCurrentEpisodeId(): number | null {
+  return useSyncExternalStore(
+    (onChange) => player.subscribe(onChange),
+    () => player.getState().episode?.id ?? null,
+    () => player.getState().episode?.id ?? null
+  );
+}
+
 export type EpisodePlayback = {
   /** True when this episode is the one loaded in the player. */
   isCurrent: boolean;

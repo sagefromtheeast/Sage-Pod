@@ -178,3 +178,17 @@ it has its own speed, otherwise as the global speed.
 The episodes sleep timer counts episodes that actually finish, so it
 survives a pause or a skip. *(Shipped in v0.5.0.)*
 
+## D-013 — Queue: in-house drag list; Keep sorted and Lock turn dragging off
+
+**Context.** AntennaPod reorders the queue by dragging a handle. The usual
+React Native libraries (`react-native-draggable-flatlist`) are not installed,
+and adding one risks SDK 57 / New Architecture compatibility.
+
+**Decision.** `src/ui/DraggableList.tsx` builds drag-to-reorder from
+gesture-handler and Animated, which are already installed, so no new native
+dependency is needed. The maths (`dropIndex`, `moveItem`) is pure and tested. A handle
+also offers Move up / down / to top / to bottom to screen readers. As in
+AntennaPod, "Keep sorted" re-sorts after every insertion, so dragging and Move
+to top are hidden while it is on. Lock queue hides handles and swipes.
+"Enqueue location" defaults to Back, matching the old behaviour. *(Shipped in v0.6.0.)*
+

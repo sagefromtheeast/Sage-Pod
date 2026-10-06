@@ -1,31 +1,73 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import { useCallback, useRef } from 'react';
-import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useNavigation, useRouter } from 'expo-router';
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import {
+  Alert,
+  Pressable,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  type FlatList,
+} from 'react-native';
 
-import { useQuery } from '@/db/useQuery';
-import { clearQueue, dequeue, listQueue, reorderQueue, sortQueueEpisodes } from '@/db/queue';
+import { runEpisodeAction } from '@/actions/runEpisodeAction';
+import { getInboxCount } from '@/db/episodes';
+import { clearQueue, getQueueSlots, listQueue, reorderQueue, restoreQueueSlots } from '@/db/queue';
+import { setSetting, useSetting } from '@/db/settings';
 import type { EpisodeWithFeed } from '@/db/types';
-import { player, usePlayerState } from '@/player';
+import { useQuery } from '@/db/useQuery';
+import { refreshAllFeeds } from '@/feed/sync';
+import { player, useCurrentEpisodeId } from '@/player';
+import { queueTimeLeft } from '@/player/queueSorting';
+import { DraggableList } from '@/ui/DraggableList';
 import { EmptyState } from '@/ui/EmptyState';
 import { triggerHaptic } from '@/ui/haptics';
+import { OverflowMenu } from '@/ui/OverflowMenu';
+import { QueueSortSheet } from '@/ui/queue/QueueSortSheet';
+import { SELECTION_BAR_HEIGHT, SelectionBar } from '@/ui/SelectionBar';
 import { SwipeableQueueRow } from '@/ui/SwipeableQueueRow';
 import { MINI_PLAYER_HEIGHT, radius, space, type as typography } from '@/ui/theme';
+import { showToast } from '@/ui/UndoToast';
+import { useEpisodeSelection } from '@/ui/useEpisodeSelection';
 import { useTheme } from '@/ui/useTheme';
 import { formatDuration } from '@/util/time';
+
+const matches = (episode: EpisodeWithFeed, term: string) =>
+  episode.title.toLowerCase().includes(term) || episode.feed_title.toLowerCase().includes(term);
 
 export default function QueueScreen() {
   const theme = useTheme();
   const router = useRouter();
+  const navigation = useNavigation();
 
   const { data: queue = [], loading } = useQuery<EpisodeWithFeed[]>(
     () => listQueue(),
     ['queue', 'episodes', 'feeds']
   );
+  const { data: inboxCount = 0 } = useQuery(() => getInboxCount(), ['episodes']);
 
-  const { episode: currentEpisode } = usePlayerState();
-  const listRef = useRef<FlatList>(null);
-  const activeIndex = queue.findIndex((e) => e.id === currentEpisode?.id);
+  const locked = useSetting('queueLocked');
+  const lockExplained = useSetting('queueLockExplained');
+  const keptSorted = useSetting('queueKeepSorted') !== '';
+  const globalSpeed = useSetting('playbackRate');
+
+  const [sorting, setSorting] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [search, setSearch] = useState<string | null>(null);
+
+  const term = search?.trim().toLowerCase() ?? '';
+  const shown = useMemo(() => (term ? queue.filter((episode) => matches(episode, term)) : queue), [queue, term]);
+  const selection = useEpisodeSelection(shown);
+  const actionHooks = useMemo(() => ({ onMultiSelect: selection.start }), [selection.start]);
+
+  const currentEpisodeId = useCurrentEpisodeId();
+  const listRef = useRef<FlatList<EpisodeWithFeed>>(null);
+  const activeIndex = shown.findIndex((episode) => episode.id === currentEpisodeId);
+
+  // Reordering by hand only makes sense on the whole, unsorted, unlocked queue.
+  const canDrag = !locked && !keptSorted && !term && !selection.active;
 
   const play = useCallback((episode: EpisodeWithFeed) => {
     const current = player.getState();
@@ -33,231 +75,215 @@ export default function QueueScreen() {
     else void player.load(episode, { autoPlay: true });
   }, []);
 
-  /** Moves an episode one slot up or down by rewriting the whole order. */
-  const move = useCallback(
-    (episodeId: number, direction: -1 | 1) => {
-      const ids = queue.map((episode) => episode.id);
-      const from = ids.indexOf(episodeId);
-      const to = from + direction;
-      if (from < 0 || to < 0 || to >= ids.length) return;
+  const remove = useCallback((episode: EpisodeWithFeed) => void runEpisodeAction('removeFromQueue', [episode]), []);
+  const moveToTop = useCallback((episode: EpisodeWithFeed) => void runEpisodeAction('moveToTop', [episode]), []);
 
-      [ids[from], ids[to]] = [ids[to], ids[from]];
-      void reorderQueue(ids);
-    },
-    [queue]
-  );
+  const refresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await refreshAllFeeds({ force: true });
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
 
-  const moveToTop = useCallback(
-    (episode: EpisodeWithFeed) => {
-      const ids = queue.map((e) => e.id);
-      const from = ids.indexOf(episode.id);
-      if (from <= 0) return;
-      ids.splice(from, 1);
-      ids.unshift(episode.id);
-      void reorderQueue(ids);
-    },
-    [queue]
-  );
+  const toggleLock = useCallback(() => {
+    void setSetting('queueLocked', !locked);
+    if (!locked && !lockExplained) {
+      void setSetting('queueLockExplained', true);
+      Alert.alert(
+        'Queue locked',
+        "Episodes can't be dragged or swiped while the queue is locked. Unlock it from this menu."
+      );
+    }
+  }, [locked, lockExplained]);
 
   const confirmClear = useCallback(() => {
     Alert.alert('Clear queue?', 'This removes every episode from the queue. Downloads are kept.', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Clear', style: 'destructive', onPress: () => void clearQueue() },
-    ]);
-  }, []);
-
-  const handleSortQueue = useCallback(() => {
-    Alert.alert('Sort & Reorder Queue', 'Choose how to organize the queue:', [
-      { text: 'Cancel', style: 'cancel' },
       {
-        text: 'Shortest Remaining First',
-        onPress: () => {
-          triggerHaptic('medium');
-          const sorted = sortQueueEpisodes(queue, 'duration_remaining_asc');
-          void reorderQueue(sorted);
-        },
-      },
-      {
-        text: 'Newest First',
-        onPress: () => {
-          triggerHaptic('medium');
-          const sorted = sortQueueEpisodes(queue, 'date_desc');
-          void reorderQueue(sorted);
-        },
-      },
-      {
-        text: 'Oldest First',
-        onPress: () => {
-          triggerHaptic('medium');
-          const sorted = sortQueueEpisodes(queue, 'date_asc');
-          void reorderQueue(sorted);
-        },
-      },
-      {
-        text: 'By Podcast Name',
-        onPress: () => {
-          triggerHaptic('medium');
-          const sorted = sortQueueEpisodes(queue, 'podcast_title_asc');
-          void reorderQueue(sorted);
-        },
-      },
-      {
-        text: 'Shuffle Randomly',
-        onPress: () => {
-          triggerHaptic('medium');
-          const sorted = sortQueueEpisodes(queue, 'shuffle');
-          void reorderQueue(sorted);
+        text: 'Clear',
+        style: 'destructive',
+        onPress: async () => {
+          const slots = await getQueueSlots(queue.map((episode) => episode.id));
+          await clearQueue();
+          showToast('Queue cleared', () => restoreQueueSlots(slots));
         },
       },
     ]);
   }, [queue]);
 
-  const totalSeconds = queue.reduce((sum, episode) => {
-    const remaining = (episode.duration ?? 0) - episode.position;
-    return sum + Math.max(0, remaining);
-  }, 0);
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      headerRight: () => (
+        <View style={styles.headerButtons}>
+          <Pressable
+            onPress={() => setSearch((value) => (value === null ? '' : null))}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel={search === null ? 'Search the queue' : 'Close search'}
+          >
+            <Ionicons name={search === null ? 'search' : 'close'} size={22} color={theme.text} />
+          </Pressable>
+          <OverflowMenu
+            title="Queue"
+            items={[
+              { key: 'sort', label: 'Sort…', icon: 'swap-vertical', onPress: () => setSorting(true) },
+              {
+                key: 'lock',
+                label: locked ? 'Unlock queue' : 'Lock queue',
+                icon: locked ? 'lock-open-outline' : 'lock-closed-outline',
+                onPress: toggleLock,
+              },
+              { key: 'refresh', label: 'Refresh podcasts', icon: 'refresh', onPress: () => void refresh() },
+              ...(queue.length > 0
+                ? [
+                    {
+                      key: 'clear',
+                      label: 'Clear queue',
+                      icon: 'trash-outline' as const,
+                      destructive: true,
+                      onPress: confirmClear,
+                    },
+                  ]
+                : []),
+            ]}
+          />
+        </View>
+      ),
+    });
+  }, [navigation, theme, search, locked, toggleLock, refresh, confirmClear, queue.length]);
 
   if (!loading && queue.length === 0) {
     return (
-      <EmptyState
-        icon="list-outline"
-        title="Your queue is empty"
-        message="Add episodes from a podcast or your inbox and they will line up here, ready to play back to back."
-        action={{ label: 'Find podcasts', onPress: () => router.push('/discover') }}
-      />
+      <View style={[styles.screen, { backgroundColor: theme.bg }]}>
+        {inboxCount > 0 ? (
+          <EmptyState
+            icon="list-outline"
+            title="Your queue is empty"
+            message={`You have ${inboxCount} new episode${inboxCount === 1 ? '' : 's'} in your inbox. Add some to line them up here.`}
+            action={{ label: 'Open inbox', onPress: () => router.push('/inbox') }}
+          />
+        ) : (
+          <EmptyState
+            icon="list-outline"
+            title="Your queue is empty"
+            message="Add episodes from a podcast or your inbox and they will line up here, ready to play back to back."
+            action={{ label: 'Find podcasts', onPress: () => router.push('/discover') }}
+          />
+        )}
+        <QueueSortSheet visible={sorting} onClose={() => setSorting(false)} />
+      </View>
     );
   }
 
+  const timeLeft = queueTimeLeft(queue, globalSpeed);
+
   return (
-    <FlatList
-      ref={listRef}
-      data={queue}
-      keyExtractor={(episode) => String(episode.id)}
-      contentContainerStyle={styles.content}
-      onScrollToIndexFailed={(info) => {
-        listRef.current?.scrollToOffset({
-          offset: info.averageItemLength * info.index,
-          animated: true,
-        });
-      }}
-      ListHeaderComponent={
-        queue.length > 0 ? (
-          <View style={styles.header}>
-            <Text style={[styles.headerText, { color: theme.textMuted }]}>
-              {queue.length} episode{queue.length === 1 ? '' : 's'} ·{' '}
-              {formatDuration(totalSeconds)} left
-            </Text>
-            <View style={styles.headerRight}>
-              {activeIndex >= 0 ? (
-                <Pressable
-                  onPress={() => {
-                    triggerHaptic('selection');
-                    listRef.current?.scrollToIndex({
-                      index: activeIndex,
-                      animated: true,
-                      viewPosition: 0.2,
-                    });
-                  }}
-                  hitSlop={8}
-                  style={[styles.jumpBadge, { backgroundColor: theme.surfaceAlt }]}
-                  accessibilityRole="button"
-                  accessibilityLabel="Scroll to playing episode"
-                >
-                  <Ionicons name="play" size={10} color={theme.accent} />
-                  <Text style={[styles.jumpBadgeText, { color: theme.accent }]}>
-                    #{activeIndex + 1}
-                  </Text>
-                </Pressable>
-              ) : null}
-              <Pressable
-                onPress={handleSortQueue}
-                hitSlop={8}
-                accessibilityRole="button"
-                accessibilityLabel="Sort and reorder queue"
-              >
-                <Ionicons name="swap-vertical" size={18} color={theme.textMuted} />
-              </Pressable>
-              <Pressable onPress={confirmClear} hitSlop={8} accessibilityRole="button">
-                <Text style={[styles.clear, { color: theme.danger }]}>Clear</Text>
-              </Pressable>
-            </View>
-          </View>
-        ) : null
-      }
-      renderItem={({ item, index }) => (
-        <SwipeableQueueRow
-          episode={item}
-          onPlay={play}
-          onRemove={(ep) => void dequeue(ep.id)}
-          onMoveToTop={moveToTop}
-          trailing={
-            <View style={styles.trailing}>
-              <Pressable
-                onPress={() => move(item.id, -1)}
-                disabled={index === 0}
-                hitSlop={6}
-                accessibilityRole="button"
-                accessibilityLabel="Move up"
-              >
-                <Ionicons
-                  name="chevron-up"
-                  size={18}
-                  color={index === 0 ? theme.textFaint : theme.textMuted}
-                />
-              </Pressable>
-              <Pressable
-                onPress={() => move(item.id, 1)}
-                disabled={index === queue.length - 1}
-                hitSlop={6}
-                accessibilityRole="button"
-                accessibilityLabel="Move down"
-              >
-                <Ionicons
-                  name="chevron-down"
-                  size={18}
-                  color={index === queue.length - 1 ? theme.textFaint : theme.textMuted}
-                />
-              </Pressable>
-              <Pressable
-                onPress={() => void dequeue(item.id)}
-                hitSlop={6}
-                accessibilityRole="button"
-                accessibilityLabel="Remove from queue"
-              >
-                <Ionicons name="close" size={18} color={theme.textFaint} />
-              </Pressable>
-            </View>
-          }
-        />
-      )}
-    />
+    <View style={[styles.screen, { backgroundColor: theme.bg }]}>
+      <View style={[styles.info, { borderBottomColor: theme.border }]}>
+        <Text style={[styles.infoText, { color: theme.textMuted }]} numberOfLines={1}>
+          {queue.length} episode{queue.length === 1 ? '' : 's'} · {formatDuration(timeLeft)} left
+          {locked ? ' · Locked' : keptSorted ? ' · Kept sorted' : ''}
+        </Text>
+        {activeIndex >= 0 ? (
+          <Pressable
+            onPress={() => {
+              triggerHaptic('selection');
+              listRef.current?.scrollToIndex({ index: activeIndex, animated: true, viewPosition: 0.2 });
+            }}
+            hitSlop={8}
+            style={[styles.jumpBadge, { backgroundColor: theme.surfaceAlt }]}
+            accessibilityRole="button"
+            accessibilityLabel="Scroll to playing episode"
+          >
+            <Ionicons name="play" size={10} color={theme.accent} />
+            <Text style={[styles.jumpBadgeText, { color: theme.accent }]}>#{activeIndex + 1}</Text>
+          </Pressable>
+        ) : null}
+      </View>
+
+      {search !== null ? (
+        <View style={[styles.search, { backgroundColor: theme.surfaceAlt }]}>
+          <Ionicons name="search" size={16} color={theme.textMuted} />
+          <TextInput
+            value={search}
+            onChangeText={setSearch}
+            autoFocus
+            placeholder="Search the queue"
+            placeholderTextColor={theme.textFaint}
+            style={[styles.searchInput, { color: theme.text }]}
+            returnKeyType="search"
+            accessibilityLabel="Search the queue"
+          />
+        </View>
+      ) : null}
+
+      <DraggableList
+        listRef={listRef}
+        data={shown}
+        keyOf={(episode) => episode.id}
+        dragEnabled={canDrag}
+        onReorder={(ids) => void reorderQueue(ids)}
+        extraData={selection.selected}
+        contentContainerStyle={{
+          paddingBottom: selection.active ? SELECTION_BAR_HEIGHT + space.xl : MINI_PLAYER_HEIGHT + space.xl,
+        }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void refresh()} tintColor={theme.accent} />}
+        onScrollToIndexFailed={(info) => {
+          listRef.current?.scrollToOffset({ offset: info.averageItemLength * info.index, animated: true });
+        }}
+        ListEmptyComponent={
+          term ? (
+            <Text style={[styles.noMatches, { color: theme.textMuted }]}>No queued episodes match “{search}”.</Text>
+          ) : null
+        }
+        renderItem={(item, _index, handle) => (
+          <SwipeableQueueRow
+            episode={item}
+            onPlay={play}
+            onRemove={remove}
+            onMoveToTop={moveToTop}
+            swipeEnabled={!locked && !selection.active}
+            canMoveToTop={!keptSorted}
+            actionHooks={actionHooks}
+            selecting={selection.active}
+            selected={selection.selected.has(item.id)}
+            onToggleSelect={selection.toggle}
+            onSelectRange={selection.openRangeMenu}
+            trailing={handle}
+          />
+        )}
+      />
+
+      <SelectionBar selection={selection} inQueue={!keptSorted} />
+      <QueueSortSheet visible={sorting} onClose={() => setSorting(false)} />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  content: {
-    // Clears the mini player so the last row is never hidden behind it.
-    paddingBottom: MINI_PLAYER_HEIGHT + space.xl,
+  screen: {
+    flex: 1,
   },
-  header: {
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.lg,
+    marginRight: space.lg,
+  },
+  info: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: space.lg,
-    paddingTop: space.md,
-    paddingBottom: space.sm,
-  },
-  headerText: {
-    ...typography.caption,
-  },
-  clear: {
-    ...typography.caption,
-    fontWeight: '600',
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
     gap: space.md,
+    paddingHorizontal: space.lg,
+    paddingVertical: space.sm,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  infoText: {
+    ...typography.caption,
+    flexShrink: 1,
   },
   jumpBadge: {
     flexDirection: 'row',
@@ -272,8 +298,23 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 11,
   },
-  trailing: {
+  search: {
+    flexDirection: 'row',
     alignItems: 'center',
     gap: space.sm,
+    marginHorizontal: space.lg,
+    marginTop: space.sm,
+    paddingHorizontal: space.md,
+    borderRadius: radius.pill,
+  },
+  searchInput: {
+    ...typography.body,
+    flex: 1,
+    paddingVertical: space.sm,
+  },
+  noMatches: {
+    ...typography.body,
+    textAlign: 'center',
+    padding: space.xl,
   },
 });

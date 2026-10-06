@@ -14,7 +14,14 @@ type Props = {
   onRemove: (episode: EpisodeWithFeed) => void;
   onMoveToTop: (episode: EpisodeWithFeed) => void;
   trailing?: React.ReactNode;
-};
+  /** Off while the queue is locked or episodes are being selected. */
+  swipeEnabled?: boolean;
+  /** Off while the queue is kept sorted, where moving to the top would be undone at once. */
+  canMoveToTop?: boolean;
+} & Pick<
+  React.ComponentProps<typeof EpisodeRow>,
+  'actionHooks' | 'selecting' | 'selected' | 'onToggleSelect' | 'onSelectRange'
+>;
 
 export const SwipeableQueueRow = memo(function SwipeableQueueRow({
   episode,
@@ -22,6 +29,9 @@ export const SwipeableQueueRow = memo(function SwipeableQueueRow({
   onRemove,
   onMoveToTop,
   trailing,
+  swipeEnabled = true,
+  canMoveToTop = true,
+  ...rowProps
 }: Props) {
   const theme = useTheme();
 
@@ -63,7 +73,8 @@ export const SwipeableQueueRow = memo(function SwipeableQueueRow({
 
   return (
     <Swipeable
-      renderLeftActions={renderLeftActions}
+      enabled={swipeEnabled}
+      renderLeftActions={canMoveToTop ? renderLeftActions : undefined}
       renderRightActions={renderRightActions}
       onSwipeableLeftOpen={() => {
         triggerHaptic('medium');
@@ -77,7 +88,7 @@ export const SwipeableQueueRow = memo(function SwipeableQueueRow({
       rightThreshold={50}
     >
       <View style={{ backgroundColor: theme.bg }}>
-        <EpisodeRow episode={episode} onPlay={onPlay} trailing={trailing} />
+        <EpisodeRow episode={episode} onPlay={onPlay} trailing={trailing} {...rowProps} />
       </View>
     </Swipeable>
   );
