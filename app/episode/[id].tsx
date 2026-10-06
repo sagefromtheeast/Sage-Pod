@@ -45,7 +45,9 @@ export default function EpisodeScreen() {
   const frozen = useRef<number[] | null>(null);
   if (!frozen.current && feedIds && feedIds.includes(openedId)) frozen.current = feedIds;
   const ids = frozen.current;
-  const initialIndex = ids ? ids.indexOf(openedId) : 0;
+  // The page on screen when the list (re)mounts: rotating remounts it at the
+  // new width, so it reopens on the same episode instead of between pages.
+  const initialIndex = ids ? Math.max(0, ids.indexOf(currentId)) : 0;
 
   // Follows the page on screen from the scroll offset (momentum events don't
   // fire on every platform), so the header menu acts on the visible episode.
@@ -61,6 +63,7 @@ export default function EpisodeScreen() {
       <Stack.Screen options={{ title: '', headerRight: () => <EpisodeMenu episodeId={currentId} /> }} />
       {ids && ids.length > 1 ? (
         <FlatList
+          key={`pager-${width}`}
           data={ids}
           horizontal
           pagingEnabled
@@ -112,7 +115,8 @@ function EpisodeMenu({ episodeId }: { episodeId: number }) {
             },
           ]
         : []),
-      ...(episode.position > 0 && !episode.is_played
+      // Any saved position, played or not: a replayed episode keeps is_played.
+      ...(episode.position > 0
         ? [
             {
               key: 'reset',

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { parseShowNotes } from '../notes';
+import { parseShowNotes, trimUrl } from '../notes';
 import { parseTimestamps, shortTimecodesAreHours } from '../timestamps';
 
 const HOUR = 3600;
@@ -59,6 +59,17 @@ describe('show notes', () => {
       { type: 'text', value: 'Visit ' },
       { type: 'link', url: 'https://sagepod.test/notes', label: 'https://sagepod.test/notes' },
       { type: 'text', value: '. Or email us' },
+    ]);
+  });
+
+  it('keeps balanced brackets in bare URLs and drops unmatched closing ones', () => {
+    assert.equal(trimUrl('https://en.wikipedia.org/wiki/Podcast_(radio)'), 'https://en.wikipedia.org/wiki/Podcast_(radio)');
+    assert.equal(trimUrl('https://x.test/a).'), 'https://x.test/a');
+    assert.equal(trimUrl('https://x.test/[1]'), 'https://x.test/[1]');
+    assert.deepEqual(parseShowNotes('(see https://x.test/a)', null), [
+      { type: 'text', value: '(see ' },
+      { type: 'link', url: 'https://x.test/a', label: 'https://x.test/a' },
+      { type: 'text', value: ')' },
     ]);
   });
 

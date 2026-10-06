@@ -10,15 +10,32 @@ export type NoteSegment =
 const OPEN = '';
 const CLOSE = '';
 const MARKER = new RegExp(`${OPEN}(\\d+)${CLOSE}`, 'g');
-const BARE_URL = /https?:\/\/[^\s<>"'”’)\]]+/g;
-const TRAILING_PUNCTUATION = /[.,;:!?]+$/;
+const BARE_URL = /https?:\/\/[^\s<>"'”’]+/g;
+
+const count = (text: string, char: string) => text.split(char).length - 1;
+
+/**
+ * Drops what ends a sentence rather than the address: trailing punctuation,
+ * and a closing bracket with no opening partner inside the URL. So
+ * ".../Podcast_(radio)" keeps its ")" but "(see https://x.test/a)" doesn't.
+ */
+export function trimUrl(url: string): string {
+  let result = url;
+  for (;;) {
+    const last = result[result.length - 1];
+    if ('.,;:!?'.includes(last)) result = result.slice(0, -1);
+    else if (last === ')' && count(result, '(') < count(result, ')')) result = result.slice(0, -1);
+    else if (last === ']' && count(result, '[') < count(result, ']')) result = result.slice(0, -1);
+    else return result;
+  }
+}
 
 /** Bare URLs in plain text become links (minus trailing punctuation). */
 function linkify(text: string, out: NoteSegment[], shortAsHours: boolean, duration: number | null): void {
   let lastIndex = 0;
   for (const match of text.matchAll(BARE_URL)) {
     const index = match.index ?? 0;
-    const url = match[0].replace(TRAILING_PUNCTUATION, '');
+    const url = trimUrl(match[0]);
     out.push(...parseTimestamps(text.slice(lastIndex, index), duration, shortAsHours));
     out.push({ type: 'link', url, label: url });
     lastIndex = index + url.length;
