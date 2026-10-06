@@ -31,6 +31,21 @@ export type FeedRow = {
   episode_sort: string | null;
   /** JSON array of { url, label } funding links. */
   funding: string | null;
+  /** The listener's own name for the podcast; `title` (from the feed) is kept. */
+  custom_title: string | null;
+  /** Comma-separated tags (see parseTags). */
+  tags: string | null;
+  skip_ending_seconds: number | null;
+  /** 1 (off), 0.5 (light) or 0.2 (heavy); null = off. */
+  volume_reduction: number | null;
+  /** Overrides (null = global): delete played downloads; what new episodes do; auto-download. */
+  auto_delete: number | null;
+  new_episodes_action: string | null;
+  auto_download_override: number | null;
+  /** Auto-download filter: comma-separated title words, and a minimum length. */
+  download_include: string | null;
+  download_exclude: string | null;
+  download_min_minutes: number | null;
 };
 
 export type EpisodeRow = {
@@ -67,6 +82,9 @@ export type EpisodeWithFeed = EpisodeRow & {
   feed_author: string | null;
   feed_playback_speed: number | null;
   feed_skip_intro_seconds: number | null;
+  feed_skip_ending_seconds: number | null;
+  feed_volume_reduction: number | null;
+  feed_auto_delete: number | null;
 };
 
 /** A subscription plus its unplayed count, for the library grid. */

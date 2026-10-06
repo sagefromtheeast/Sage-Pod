@@ -8,6 +8,7 @@ import {
   setSetting,
   type Settings,
 } from '@/db/settings';
+import { NEW_EPISODE_ACTIONS, type NewEpisodesAction } from '@/feed/feedPrefs';
 import { exportOpml, importOpml } from '@/feed/opml';
 import { refreshAllFeeds } from '@/feed/sync';
 import { PLAYBACK_RATES, player } from '@/player';
@@ -28,6 +29,11 @@ const AUTO_DOWNLOAD_OPTIONS = [0, 1, 3, 5, 10] as const;
 const EPISODE_STORAGE_OPTIONS = [10, 20, 50, 100, 0] as const;
 const THEME_OPTIONS = ['system', 'light', 'dark', 'oled'] as const;
 const ENQUEUE_LOCATIONS = ['back', 'front', 'afterCurrent', 'random'] as const;
+const NEW_EPISODE_LABELS: Record<NewEpisodesAction, string> = {
+  inbox: 'Inbox',
+  queue: 'Add to queue',
+  nothing: 'Nothing',
+};
 const ENQUEUE_LOCATION_LABELS: Record<(typeof ENQUEUE_LOCATIONS)[number], string> = {
   back: 'Back',
   front: 'Front',
@@ -228,6 +234,12 @@ export default function SettingsScreen() {
         value={settings.autoDownloadQueue}
         onValueChange={(value) => void update('autoDownloadQueue', value)}
       />
+      <SettingsSwitch
+        label="Auto-download new episodes"
+        description="For podcasts that don't set their own choice (Podcast settings, Auto-download)."
+        value={settings.autoDownloadNew}
+        onValueChange={(value) => void update('autoDownloadNew', value)}
+      />
       <SettingsOptions
         label="Auto-download per podcast"
         description="Newest episodes fetched for podcasts with auto-download on."
@@ -246,7 +258,7 @@ export default function SettingsScreen() {
       />
       <SettingsSwitch
         label="Delete when finished"
-        description="Free up space by removing a download once its episode ends."
+        description="Free up space by removing a download once its episode ends. Podcasts can override this."
         value={settings.deleteAfterFinished}
         onValueChange={(value) => void update('deleteAfterFinished', value)}
       />
@@ -257,6 +269,14 @@ export default function SettingsScreen() {
       </View>
 
       <SettingsSection title="Subscriptions" />
+      <SettingsOptions
+        label="New episodes"
+        description="Where new episodes go, unless a podcast sets its own choice."
+        value={settings.newEpisodesAction}
+        options={NEW_EPISODE_ACTIONS}
+        format={(action) => NEW_EPISODE_LABELS[action]}
+        onChange={(value) => void update('newEpisodesAction', value)}
+      />
       <SettingsOptions
         label="Refresh interval"
         description="How stale a feed must be before it is checked again."

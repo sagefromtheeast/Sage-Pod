@@ -21,6 +21,7 @@ import { getMeta, getSettings, setMeta, setSetting } from '@/db/settings';
 import type { EpisodeWithFeed } from '@/db/types';
 import { positionAfterPause } from '@/player/resumeRewind';
 import { clampSpeed } from '@/player/speed';
+import { boolOverride, resolveOverride, shouldSkipEnding, volumeFor } from '@/feed/feedPrefs';
 import {
   afterEpisodeFinished,
   extendTimer,
@@ -97,6 +98,10 @@ class PlayerService {
 
   /** Guards against the double-advance a repeated `didJustFinish` would cause. */
   private finishing = false;
+  /** Set once the current episode's "skip ending" has fired, so it fires once. */
+  private skippedEnding = false;
+  /** The podcast's volume reduction (1 = none); the sleep fade scales from it. */
+  private baseVolume = 1;
   /** Suppresses position writes while a seek is in flight. */
   private seeking = false;
   private audioModeReady = false;
@@ -186,6 +191,7 @@ class PlayerService {
     // paused episode, even if nothing is ever played.
     this.lastPausedAt = options.startAt === undefined ? (episode.played_at ?? null) : null;
     this.enginePlaying = false;
+    this.skippedEnding = false;
 
     if (startAt < skipIntro) {
       startAt = skipIntro;
@@ -215,6 +221,9 @@ class PlayerService {
 
     player.shouldCorrectPitch = true;
     player.setPlaybackRate(rate, 'high');
+    // Per-podcast volume reduction (AntennaPod: off / light / heavy).
+    this.baseVolume = volumeFor(episode.feed_volume_reduction);
+    player.volume = this.baseVolume;
 
     this.publishLockScreenMetadata(episode);
     await setMeta('lastEpisodeId', String(episode.id));
@@ -319,6 +328,17 @@ class PlayerService {
     }
 
     if (status.didJustFinish) void this.onFinished();
+    else if (
+      !this.skippedEnding &&
+      !this.finishing &&
+      status.playing &&
+      shouldSkipEnding(status.currentTime, duration, this.state.episode?.feed_skip_ending_seconds ?? null)
+    ) {
+      // The podcast's "skip ending": treat the outro as the end of the episode.
+      this.skippedEnding = true;
+      this.player.pause();
+      void this.onFinished();
+    }
   }
 
   // -------------------------------------------------------------- transport
@@ -451,7 +471,8 @@ class PlayerService {
 
       // Reclaim the space a finished episode's audio was using, if the
       // listener asked us to.
-      if (settings.deleteAfterFinished && finished.download_state === 'done') {
+      const autoDelete = resolveOverride(boolOverride(finished.feed_auto_delete), settings.deleteAfterFinished).value;
+      if (autoDelete && finished.download_state === 'done') {
         await deleteDownload(finished.id);
       }
 
@@ -628,7 +649,7 @@ class PlayerService {
   }
 
   private enterWarning(remaining: number, timer: SleepTimer): void {
-    if (this.player) this.player.volume = fadeVolume(remaining);
+    if (this.player) this.player.volume = this.baseVolume * fadeVolume(remaining);
     if (this.inWarning) return;
     this.inWarning = true;
 
@@ -659,7 +680,7 @@ class PlayerService {
   private leaveWarning(): void {
     if (!this.inWarning) return;
     this.inWarning = false;
-    if (this.player) this.player.volume = 1;
+    if (this.player) this.player.volume = this.baseVolume;
     this.shakeSubscription?.remove();
     this.shakeSubscription = null;
   }

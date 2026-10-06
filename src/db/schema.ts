@@ -4,7 +4,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
  * Bump this when adding a migration below. `migrate()` walks from the
  * database's stored `user_version` up to this number, applying each step once.
  */
-export const LATEST_SCHEMA_VERSION = 4;
+export const LATEST_SCHEMA_VERSION = 5;
 
 const V1 = `
 CREATE TABLE IF NOT EXISTS feeds (
@@ -111,7 +111,23 @@ ALTER TABLE feeds ADD COLUMN funding TEXT;
 CREATE INDEX IF NOT EXISTS idx_feeds_state ON feeds (state);
 `;
 
-const MIGRATIONS: string[] = [V1, V2, V3, V4];
+// Phase 10: per-podcast settings. NULL in an override column means "use the
+// global setting". auto_download stays for old builds; the override replaces it.
+const V5 = `
+ALTER TABLE feeds ADD COLUMN custom_title TEXT;
+ALTER TABLE feeds ADD COLUMN tags TEXT;
+ALTER TABLE feeds ADD COLUMN skip_ending_seconds INTEGER;
+ALTER TABLE feeds ADD COLUMN volume_reduction REAL;
+ALTER TABLE feeds ADD COLUMN auto_delete INTEGER;
+ALTER TABLE feeds ADD COLUMN new_episodes_action TEXT;
+ALTER TABLE feeds ADD COLUMN auto_download_override INTEGER;
+ALTER TABLE feeds ADD COLUMN download_include TEXT;
+ALTER TABLE feeds ADD COLUMN download_exclude TEXT;
+ALTER TABLE feeds ADD COLUMN download_min_minutes INTEGER;
+UPDATE feeds SET auto_download_override = 1 WHERE auto_download = 1;
+`;
+
+const MIGRATIONS: string[] = [V1, V2, V3, V4, V5];
 
 /**
  * Applies any pending migrations.

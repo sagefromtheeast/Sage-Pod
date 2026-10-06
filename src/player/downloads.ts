@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { getEpisode, listDownloaded, listPendingDownloads, setDownloadState } from '@/db/episodes';
 import { listQueue, onEpisodeQueued } from '@/db/queue';
 import { getSettings } from '@/db/settings';
+import { boolOverride, resolveOverride } from '@/feed/feedPrefs';
 import type { EpisodeWithFeed } from '@/db/types';
 import { USER_AGENT } from '@/feed/fetch';
 import {
@@ -453,14 +454,11 @@ export async function manageAutoDownloads(): Promise<void> {
     void queueDownload(ep.id, { isAuto: true });
   }
 
-  // 3. Cleanup finished episodes if configured
-  if (settings.deleteAfterFinished) {
-    const downloaded = await listDownloaded();
-    for (const ep of downloaded) {
-      if (ep.is_played === 1) {
-        await deleteDownload(ep.id);
-      }
-    }
+  // 3. Delete played downloads where configured: the podcast's own Auto-delete
+  // choice, else the global "Delete after finishing".
+  for (const ep of await listDownloaded()) {
+    const autoDelete = resolveOverride(boolOverride(ep.feed_auto_delete), settings.deleteAfterFinished).value;
+    if (ep.is_played === 1 && autoDelete) await deleteDownload(ep.id);
   }
 
   // 4. Enforce storage cap if configured (AntennaPod #5236)

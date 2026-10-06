@@ -4,12 +4,16 @@ import { searchWords } from './search';
 import type { FeedRow, FeedWithCounts } from './types';
 
 /** Columns shared by every feed select, so joins and plain reads stay in sync. */
+// title is the listener's name for the podcast when they set one (Rename).
 const FEED_COLUMNS = `
-  f.id, f.feed_url, f.title, f.author, f.description, f.image_url, f.link,
+  f.id, f.feed_url, COALESCE(f.custom_title, f.title) AS title, f.author, f.description, f.image_url, f.link,
   f.language, f.explicit, f.etag, f.last_modified, f.last_refreshed_at,
   f.auto_download, f.keep_updated, f.created_at,
   f.playback_speed, f.skip_intro_seconds, f.next_page_url,
-  f.state, f.last_refresh_error, f.episode_filter, f.episode_sort, f.funding
+  f.state, f.last_refresh_error, f.episode_filter, f.episode_sort, f.funding,
+  f.custom_title, f.tags, f.skip_ending_seconds, f.volume_reduction, f.auto_delete,
+  f.new_episodes_action, f.auto_download_override, f.download_include, f.download_exclude,
+  f.download_min_minutes
 `;
 
 export async function listFeeds(): Promise<FeedWithCounts[]> {
@@ -22,7 +26,7 @@ export async function listFeeds(): Promise<FeedWithCounts[]> {
        LEFT JOIN episodes e ON e.feed_id = f.id
       WHERE f.state = 'subscribed'
       GROUP BY f.id
-      ORDER BY f.title COLLATE NOCASE ASC`
+      ORDER BY COALESCE(f.custom_title, f.title) COLLATE NOCASE ASC`
   );
 }
 
@@ -54,7 +58,7 @@ export async function listClassicFeeds(since: string, limit = 8): Promise<FeedWi
               WHERE date >= ?
               GROUP BY feed_id) h ON h.feed_id = f.id
       WHERE f.state = 'subscribed'
-      ORDER BY h.total DESC, f.title COLLATE NOCASE ASC
+      ORDER BY h.total DESC, COALESCE(f.custom_title, f.title) COLLATE NOCASE ASC
       LIMIT ?`,
     since,
     limit
@@ -70,8 +74,8 @@ export async function searchFeeds(term: string, limit = 20): Promise<FeedWithCou
             0 AS episode_count, 0 AS unplayed_count, NULL AS latest_published_at
        FROM feeds f
       WHERE f.state = 'subscribed'
-        AND ${words.map(() => "(f.title LIKE ? ESCAPE '\\' OR f.author LIKE ? ESCAPE '\\')").join(' AND ')}
-      ORDER BY f.title COLLATE NOCASE ASC
+        AND ${words.map(() => "(COALESCE(f.custom_title, f.title) LIKE ? ESCAPE '\\' OR f.author LIKE ? ESCAPE '\\')").join(' AND ')}
+      ORDER BY COALESCE(f.custom_title, f.title) COLLATE NOCASE ASC
       LIMIT ?`,
     ...words.flatMap((word) => [word, word]),
     limit
@@ -122,7 +126,7 @@ export async function setFeedFlags(
   const db = getDb();
   if (flags.autoDownload !== undefined) {
     await db.runAsync(
-      'UPDATE feeds SET auto_download = ? WHERE id = ?',
+      'UPDATE feeds SET auto_download_override = ? WHERE id = ?',
       flags.autoDownload ? 1 : 0,
       id
     );
@@ -244,4 +248,74 @@ export async function getFeedStats(feedId: number): Promise<FeedStats> {
     latestPublished: row?.latestPublished ?? null,
     listenedSeconds: listened?.seconds ?? 0,
   };
+}
+
+/** Per-podcast settings, by name → column. Booleans store 1/0; null means "use the global setting". */
+const PREF_COLUMNS = {
+  customTitle: 'custom_title',
+  tags: 'tags',
+  playbackSpeed: 'playback_speed',
+  skipIntroSeconds: 'skip_intro_seconds',
+  skipEndingSeconds: 'skip_ending_seconds',
+  volumeReduction: 'volume_reduction',
+  keepUpdated: 'keep_updated',
+  newEpisodesAction: 'new_episodes_action',
+  autoDownload: 'auto_download_override',
+  downloadInclude: 'download_include',
+  downloadExclude: 'download_exclude',
+  downloadMinMinutes: 'download_min_minutes',
+  autoDelete: 'auto_delete',
+} as const;
+
+export type FeedPrefs = {
+  customTitle: string | null;
+  tags: string | null;
+  playbackSpeed: number | null;
+  skipIntroSeconds: number | null;
+  skipEndingSeconds: number | null;
+  volumeReduction: number | null;
+  keepUpdated: boolean;
+  newEpisodesAction: string | null;
+  autoDownload: boolean | null;
+  downloadInclude: string | null;
+  downloadExclude: string | null;
+  downloadMinMinutes: number | null;
+  autoDelete: boolean | null;
+};
+
+/** Saves any of a podcast's settings in one statement (only the keys given). */
+export async function setFeedPrefs(id: number, prefs: Partial<FeedPrefs>): Promise<void> {
+  const entries = (Object.keys(prefs) as (keyof FeedPrefs)[]).filter((key) => key in PREF_COLUMNS);
+  if (entries.length === 0) return;
+  const values = entries.map((key) => {
+    const value = prefs[key];
+    if (typeof value === 'boolean') return value ? 1 : 0;
+    // An empty text field clears the setting rather than storing "".
+    if (typeof value === 'string' && value.trim() === '') return null;
+    return value ?? null;
+  });
+  await getDb().runAsync(
+    `UPDATE feeds SET ${entries.map((key) => `${PREF_COLUMNS[key]} = ?`).join(', ')} WHERE id = ?`,
+    ...values,
+    id
+  );
+}
+
+/**
+ * Points a podcast at a new feed address (AntennaPod's "Edit feed URL"). The
+ * cache validators are cleared so the next refresh reads the new feed in full.
+ * Refuses an address another podcast already uses.
+ */
+export async function setFeedUrl(id: number, feedUrl: string): Promise<void> {
+  const taken = await getDb().getFirstAsync<{ id: number }>(
+    'SELECT id FROM feeds WHERE feed_url = ? AND id != ?',
+    feedUrl,
+    id
+  );
+  if (taken) throw new Error('Another podcast already uses that address.');
+  await getDb().runAsync(
+    'UPDATE feeds SET feed_url = ?, etag = NULL, last_modified = NULL WHERE id = ?',
+    feedUrl,
+    id
+  );
 }

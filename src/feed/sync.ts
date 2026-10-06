@@ -3,7 +3,17 @@ import { listAutoDownloadCandidates } from '@/db/episodes';
 import { getFeedByUrl, listFeedsToRefresh, subscribeFeed } from '@/db/feeds';
 import { getSettings } from '@/db/settings';
 import type { FeedRow } from '@/db/types';
-import { queueDownload, shouldAutoDownloadEpisode } from '@/player/downloads';
+import { enqueueMany } from '@/db/queue';
+import { queueDownload } from '@/player/downloads';
+
+import {
+  boolOverride,
+  parseNewEpisodesAction,
+  parseWords,
+  resolveOverride,
+  shouldAutoDownload,
+  type DownloadRules,
+} from './feedPrefs';
 
 import { fetchFeed, normalizeFeedUrl } from './fetch';
 import type { ParsedEpisode, ParsedFeed } from './parser';
@@ -28,9 +38,9 @@ async function upsertEpisodes(
   feedId: number,
   episodes: ParsedEpisode[],
   markAsNew: boolean
-): Promise<number> {
+): Promise<{ count: number; guids: string[] }> {
   const db = getDb();
-  if (episodes.length === 0) return 0;
+  if (episodes.length === 0) return { count: 0, guids: [] };
 
   // Pre-fetch all existing GUIDs in a single query rather than querying per episode.
   const existingRows = await db.getAllAsync<{ id: number; guid: string }>(
@@ -120,7 +130,7 @@ async function upsertEpisodes(
     }
   });
 
-  return inserted;
+  return { count: inserted, guids: toInsert.map((ep) => ep.guid) };
 }
 
 async function updateFeedRow(
@@ -252,12 +262,32 @@ export async function refreshFeed(feed: FeedRow, options: { full?: boolean } = {
     return { feedId: feed.id, newEpisodes: 0, unchanged: true };
   }
 
-  // A preview's new episodes aren't "new": only subscriptions feed the Inbox (D-016).
-  const newEpisodes = await upsertEpisodes(feed.id, parsed.episodes, feed.state !== 'preview');
+  // What new episodes do (AntennaPod's "New episodes" setting, per podcast or
+  // global): land in the Inbox, join the queue, or nothing. A preview's new
+  // episodes are never "new": only subscriptions feed the Inbox (D-016).
+  const settings = getSettings();
+  const subscribed = feed.state !== 'preview';
+  const action = parseNewEpisodesAction(feed.new_episodes_action) ?? settings.newEpisodesAction;
+  const { count: newEpisodes, guids } = await upsertEpisodes(
+    feed.id,
+    parsed.episodes,
+    subscribed && action === 'inbox'
+  );
   await updateFeedRow(feed.id, parsed, etag, lastModified);
 
-  if (feed.auto_download === 1 && newEpisodes > 0) {
-    for (const episodeId of await autoDownloadCandidates(feed.id)) {
+  if (subscribed && action === 'queue' && guids.length > 0) {
+    const rows = await getDb().getAllAsync<{ id: number }>(
+      `SELECT id FROM episodes WHERE feed_id = ? AND guid IN (${guids.map(() => '?').join(', ')})
+        ORDER BY published_at ASC, id ASC`,
+      feed.id,
+      ...guids
+    );
+    await enqueueMany(rows.map((row) => row.id));
+  }
+
+  const autoDownload = resolveOverride(boolOverride(feed.auto_download_override), settings.autoDownloadNew).value;
+  if (subscribed && autoDownload && newEpisodes > 0) {
+    for (const episodeId of await autoDownloadCandidates(feed)) {
       // Fire and forget: the download manager queues and throttles these, and
       // a refresh should not block waiting for audio to arrive.
       void queueDownload(episodeId, { isAuto: true });
@@ -321,13 +351,18 @@ export async function refreshAllFeeds(
 }
 
 /** Episode IDs a feed's auto-download setting says should be fetched. */
-export async function autoDownloadCandidates(feedId: number): Promise<number[]> {
+export async function autoDownloadCandidates(feed: FeedRow): Promise<number[]> {
   const limit = getSettings().autoDownloadLimit;
   if (limit <= 0) return [];
-  const rows = await listAutoDownloadCandidates(feedId, limit * 3);
+  const rules: DownloadRules = {
+    include: parseWords(feed.download_include),
+    exclude: parseWords(feed.download_exclude),
+    minMinutes: feed.download_min_minutes ?? 0,
+  };
+  const rows = await listAutoDownloadCandidates(feed.id, limit * 3);
   const candidates: number[] = [];
   for (const row of rows) {
-    if (shouldAutoDownloadEpisode(row)) {
+    if (shouldAutoDownload(row, rules)) {
       candidates.push(row.id);
       if (candidates.length >= limit) break;
     }
@@ -351,7 +386,7 @@ export async function fetchOlderFeedEpisodes(
   }
 
   const { feed: parsed } = await fetchFeed(feed.next_page_url);
-  const inserted = await upsertEpisodes(feedId, parsed.episodes, false);
+  const { count: inserted } = await upsertEpisodes(feedId, parsed.episodes, false);
   await db.runAsync(
     'UPDATE feeds SET next_page_url = ? WHERE id = ?',
     parsed.nextPageUrl ?? null,
