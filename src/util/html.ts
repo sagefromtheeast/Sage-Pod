@@ -54,22 +54,3 @@ export function excerpt(html: string | null | undefined, limit = 220): string {
   if (text.length <= limit) return text;
   return `${text.slice(0, limit).trimEnd()}…`;
 }
-
-/** Extracts http(s) links from show notes so the episode screen can list them. */
-export function extractLinks(html: string | null | undefined): { url: string; label: string }[] {
-  if (!html) return [];
-  const links: { url: string; label: string }[] = [];
-  const seen = new Set<string>();
-  const anchor = /<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi;
-
-  let match: RegExpExecArray | null;
-  while ((match = anchor.exec(String(html))) !== null) {
-    const url = decodeEntities(match[1]).trim();
-    if (!/^https?:\/\//i.test(url) || seen.has(url)) continue;
-    seen.add(url);
-    const label = htmlToPlainText(match[2]).replace(/\s+/g, ' ').trim();
-    links.push({ url, label: label || url });
-    if (links.length >= 40) break;
-  }
-  return links;
-}
