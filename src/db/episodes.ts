@@ -1,4 +1,5 @@
 import { SURPRISE_MODULUS } from '@/discover/surpriseSeed';
+import { EPISODE_WITH_FEED_COLUMNS } from './columns';
 import { getDb } from './index';
 import type { DownloadState, EpisodeRow, EpisodeWithFeed } from './types';
 
@@ -9,8 +10,7 @@ import type { DownloadState, EpisodeRow, EpisodeWithFeed } from './types';
 export const COMPLETION_TAIL_SECONDS = 20;
 
 const EPISODE_WITH_FEED = `
-  SELECT e.*, f.title AS feed_title, f.image_url AS feed_image_url, f.author AS feed_author,
-         f.playback_speed AS feed_playback_speed, f.skip_intro_seconds AS feed_skip_intro_seconds
+  SELECT ${EPISODE_WITH_FEED_COLUMNS}
     FROM episodes e
     JOIN feeds f ON f.id = e.feed_id
 `;

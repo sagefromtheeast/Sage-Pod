@@ -1,8 +1,9 @@
+import { EPISODE_WITH_FEED_COLUMNS } from './columns';
 import { getDb } from './index';
 import type { EpisodeWithFeed } from './types';
 
 const QUEUE_JOIN = `
-  SELECT e.*, f.title AS feed_title, f.image_url AS feed_image_url, f.author AS feed_author
+  SELECT ${EPISODE_WITH_FEED_COLUMNS}
     FROM queue q
     JOIN episodes e ON e.id = q.episode_id
     JOIN feeds f    ON f.id = e.feed_id
@@ -126,7 +127,7 @@ export async function nextInQueue(episodeId: number | null): Promise<EpisodeWith
     );
     if (current) {
       return db.getFirstAsync<EpisodeWithFeed>(
-        `SELECT e.*, f.title AS feed_title, f.image_url AS feed_image_url, f.author AS feed_author
+        `SELECT ${EPISODE_WITH_FEED_COLUMNS}
            FROM queue q
            JOIN episodes e ON e.id = q.episode_id
            JOIN feeds f    ON f.id = e.feed_id
