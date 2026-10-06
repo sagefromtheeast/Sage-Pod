@@ -2,6 +2,10 @@
 
 A React Native + Expo podcast player. See `README.md` for the architecture.
 
+**Taking over or continuing work?** Read `docs/HANDOVER.md` first (role,
+authority, workflow), then `TASKS.md` (what's next), `docs/DECISIONS.md`
+(what's settled) and `docs/PARITY-PLAN.md` (the AntennaPod parity roadmap).
+
 ## Expo has changed
 
 This project is on **Expo SDK 57**. Several APIs moved recently — check the
@@ -48,6 +52,11 @@ preset package must stay listed in the workflow's `extra_plugins`.
 
 ```bash
 npm run typecheck   # app + tests
-npm test            # feed parser suite
+npm test            # node:test suites in src/**/__tests__
+npx expo-doctor     # must pass every check
 npx expo export --platform android   # catches Metro resolution errors
+npm run shots -- before|after && npm run shots:diff   # UI changes: before/after screenshots
 ```
+
+UI changes need a before/after screenshot diff (`shots-tool/README.md`). After
+a schema migration, update `shots-tool/seed.mjs` in the same commit.

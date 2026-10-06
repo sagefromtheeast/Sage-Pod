@@ -57,9 +57,9 @@ export default function InboxScreen() {
     await dismissFromInbox(episode.id);
   };
 
+  // enqueue() takes the episode out of the inbox itself.
   const handleQueue = async (episode: EpisodeWithFeed) => {
     await enqueue(episode.id);
-    await dismissFromInbox(episode.id);
   };
 
   const clearCurrent = async () => {

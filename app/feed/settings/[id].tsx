@@ -3,6 +3,7 @@ import { useCallback, useState } from 'react';
 import { ScrollView, StyleSheet, View, Text } from 'react-native';
 
 import { getFeed, setFeedFlags } from '@/db/feeds';
+import { getSettings } from '@/db/settings';
 import type { FeedRow } from '@/db/types';
 import { useQuery } from '@/db/useQuery';
 import { PLAYBACK_RATES, player } from '@/player';
@@ -10,7 +11,9 @@ import { SettingsOptions, SettingsSection, SettingsSwitch } from '@/ui/SettingsR
 import { space, type as typography } from '@/ui/theme';
 import { useTheme } from '@/ui/useTheme';
 
-const SKIP_INTRO_OPTIONS = [-1, 0, 10, 15, 30, 45, 60] as const;
+// Skip intro is per podcast only (as in AntennaPod): there is no global value
+// to inherit, so "not set" simply means Off.
+const SKIP_INTRO_OPTIONS = [0, 10, 15, 30, 45, 60] as const;
 const SPEED_OPTIONS = [-1, ...PLAYBACK_RATES] as const;
 
 export default function FeedSettingsScreen() {
@@ -41,7 +44,6 @@ export default function FeedSettingsScreen() {
         if (current.episode?.feed_id === feedId) {
           if (flags.playbackSpeed === null) {
             // Revert to global
-            const { getSettings } = require('@/db/settings');
             player.setRate(getSettings().playbackRate);
           } else {
             player.setRate(flags.playbackSpeed);
@@ -57,7 +59,7 @@ export default function FeedSettingsScreen() {
   }
 
   const speedVal = feed.playback_speed === null ? -1 : feed.playback_speed;
-  const skipIntroVal = feed.skip_intro_seconds === null ? -1 : feed.skip_intro_seconds;
+  const skipIntroVal = feed.skip_intro_seconds ?? 0;
 
   return (
     <ScrollView style={[styles.root, { backgroundColor: theme.bg }]}>
@@ -77,8 +79,8 @@ export default function FeedSettingsScreen() {
         description="Automatically skip the first few seconds of every episode."
         value={skipIntroVal}
         options={SKIP_INTRO_OPTIONS}
-        format={(seconds) => (seconds === -1 ? 'Global' : seconds === 0 ? 'Off' : `${seconds}s`)}
-        onChange={(val) => void update({ skipIntroSeconds: val === -1 ? null : val })}
+        format={(seconds) => (seconds === 0 ? 'Off' : `${seconds}s`)}
+        onChange={(val) => void update({ skipIntroSeconds: val === 0 ? null : val })}
       />
 
       <SettingsSection title="Updates" />

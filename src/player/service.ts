@@ -18,6 +18,13 @@ import { dequeue, enqueueFront, nextInQueue } from '@/db/queue';
 import { deleteDownload, getLocalEpisodePath } from '@/player/downloads';
 import { getMeta, getSettings, setMeta } from '@/db/settings';
 import type { EpisodeWithFeed } from '@/db/types';
+import { positionAfterPause } from '@/player/resumeRewind';
+import {
+  pauseTimer,
+  resumeTimer,
+  startMinutesTimer,
+  type SleepTimer,
+} from '@/player/sleepTimer';
 
 /** Playback rates offered in the UI, and cycled through by the rate button. */
 export const PLAYBACK_RATES = [0.8, 1, 1.2, 1.5, 1.75, 2, 2.5, 3] as const;
@@ -32,8 +39,8 @@ export type PlayerState = {
   buffering: boolean;
   /** Playback rate currently applied to the audio engine. */
   rate: number;
-  /** Epoch ms at which the sleep timer fires, or null when it is off. */
-  sleepTimerEndsAt: number | null;
+  /** The active sleep timer, or null when it is off. */
+  sleepTimer: SleepTimer | null;
   error: string | null;
 };
 
@@ -44,7 +51,7 @@ const INITIAL_STATE: PlayerState = {
   playing: false,
   buffering: false,
   rate: 1,
-  sleepTimerEndsAt: null,
+  sleepTimer: null,
   error: null,
 };
 
@@ -71,8 +78,13 @@ class PlayerService {
   private statusSubscription: { remove: () => void } | null = null;
   private saveHandle: ReturnType<typeof setInterval> | null = null;
   private sleepHandle: ReturnType<typeof setTimeout> | null = null;
-  /** Epoch ms when playback was last paused, for smart resume rewind. */
+  /**
+   * Epoch ms when the current episode was last paused (or, right after a
+   * load, last listened to). The next resume rewinds by how long ago that was.
+   */
   private lastPausedAt: number | null = null;
+  /** Last play state reported by the engine, to spot real transitions. */
+  private enginePlaying = false;
 
   /** Guards against the double-advance a repeated `didJustFinish` would cause. */
   private finishing = false;
@@ -158,15 +170,16 @@ class PlayerService {
     const source = localUri ?? episode.media_url;
 
     const skipIntro = episode.feed_skip_intro_seconds ?? 0;
-    // Only rewind on resume when the listener has been away long enough to
-    // have lost context — a quick pause-unpause should not jump backwards.
-    const pauseGapMs = this.lastPausedAt ? Date.now() - this.lastPausedAt : Infinity;
-    const shouldRewind = pauseGapMs > 5 * 60_000; // 5 minutes
-    let startAt =
-      options.startAt ??
-      (shouldRewind && episode.position > settings.resumeRewind
-        ? episode.position - settings.resumeRewind
-        : episode.position);
+    let startAt = options.startAt ?? episode.position;
+    // Load at the saved position and let the first resume apply the rewind,
+    // measured from when this episode was last listened to. Rewinding here
+    // instead would shrink the saved position every time the app restores a
+    // paused episode, even if nothing is ever played.
+    this.lastPausedAt = options.startAt === undefined ? (episode.played_at ?? null) : null;
+    this.enginePlaying = false;
+
+    // "End of episode" belongs to the episode it was set on.
+    if (this.state.sleepTimer?.kind === 'endOfEpisode') this.cancelSleepTimer();
 
     if (startAt < skipIntro) {
       startAt = skipIntro;
@@ -279,6 +292,14 @@ class PlayerService {
     const duration =
       status.duration > 0 ? status.duration : this.state.duration || this.state.episode?.duration || 0;
 
+    // Pauses and resumes can come from outside the app (lock screen,
+    // headphones, a phone call), so follow the engine's own transitions —
+    // not our optimistic `state.playing`, which flips before audio starts.
+    if (status.playing !== this.enginePlaying) {
+      this.enginePlaying = status.playing;
+      this.onEnginePlayingChanged(status.playing);
+    }
+
     if (!this.seeking) {
       this.setState({
         position: status.currentTime,
@@ -298,6 +319,8 @@ class PlayerService {
 
   play(): void {
     if (!this.player) return;
+
+    this.applyResumeRewind();
     this.player.play();
     this.setState({ playing: true, error: null });
     this.startPositionSaver();
@@ -308,12 +331,43 @@ class PlayerService {
     this.player.pause();
     this.lastPausedAt = Date.now();
     this.setState({ playing: false });
+    this.syncSleepTimer(false);
     void this.flushPosition();
   }
 
   togglePlayPause(): void {
     if (this.state.playing) this.pause();
     else this.play();
+  }
+
+  /** Backs up by the pause-scaled amount if the episode was paused; once per pause. */
+  private applyResumeRewind(): void {
+    const pausedAt = this.lastPausedAt;
+    this.lastPausedAt = null;
+    if (pausedAt === null || !getSettings().rewindOnResume) return;
+
+    const target = positionAfterPause(this.state.position, Date.now() - pausedAt);
+    if (target < this.state.position) {
+      // seekTo() raises the `seeking` guard, so a status tick can't snap the
+      // position back before the engine has moved.
+      void this.seekTo(target).catch(() => {
+        // Losing a sub-second rewind is harmless; never block playback on it.
+      });
+    }
+  }
+
+  /** Engine-reported play/pause, including ones from outside the app. */
+  private onEnginePlayingChanged(playing: boolean): void {
+    this.syncSleepTimer(playing);
+    if (playing) {
+      // A resume we didn't initiate (lock screen, headset): rewind here.
+      // play() already consumed lastPausedAt for in-app resumes.
+      this.applyResumeRewind();
+    } else if (this.lastPausedAt === null && !this.finishing) {
+      // A pause we didn't initiate: remember it and save the position now.
+      this.lastPausedAt = Date.now();
+      void this.flushPosition();
+    }
   }
 
   /** Seeks to an absolute position, clamped to the episode. */
@@ -380,6 +434,13 @@ class PlayerService {
         await deleteDownload(finished.id);
       }
 
+      // "End of episode" means exactly that: stop here instead of advancing.
+      if (this.state.sleepTimer?.kind === 'endOfEpisode') {
+        this.cancelSleepTimer();
+        this.setState({ playing: false, position: 0 });
+        return;
+      }
+
       if (!settings.continuousPlayback) {
         this.setState({ playing: false, position: 0 });
         return;
@@ -412,13 +473,12 @@ class PlayerService {
     if (this.saveHandle) return;
     this.lastFlushPosition = this.state.position;
     this.saveHandle = setInterval(() => {
-      if (this.state.playing) {
-        // Calculate time played at current playback rate
-        const secondsPlayed = (POSITION_SAVE_INTERVAL_MS / 1000) * this.state.rate;
-        void this.flushPosition(secondsPlayed);
-      } else {
-        void this.flushPosition();
-      }
+      // Only while playing: a paused episode was already saved by pause(), and
+      // re-saving it would refresh played_at, which the resume rewind reads as
+      // "last listened".
+      if (!this.state.playing) return;
+      const secondsPlayed = (POSITION_SAVE_INTERVAL_MS / 1000) * this.state.rate;
+      void this.flushPosition(secondsPlayed);
     }, POSITION_SAVE_INTERVAL_MS);
   }
 
@@ -456,28 +516,22 @@ class PlayerService {
 
   // ------------------------------------------------------------- sleep timer
 
-  private shakeSubscription: any = null;
-  private sleepMinutes: number = 0;
+  private shakeSubscription: { remove: () => void } | null = null;
 
-  /** Starts the sleep timer to fire when the current episode finishes. */
+  /**
+   * Pauses when the current episode ends. No clock: the episode's real end is
+   * what counts, whatever the speed and however long it sits paused.
+   */
   startSleepTimerUntilEndOfEpisode(): void {
-    const { position, duration } = this.state;
-    const remainingSeconds = Math.max(10, (duration || 0) - position);
-    this.startSleepTimer(remainingSeconds / 60);
+    this.cancelSleepTimer();
+    this.setState({ sleepTimer: { kind: 'endOfEpisode' } });
   }
 
-  /** Starts (or restarts) the sleep timer. */
+  /** Starts (or restarts) a countdown that only runs while audio plays. */
   startSleepTimer(minutes: number): void {
     this.cancelSleepTimer();
-    this.sleepMinutes = minutes;
-    const endsAt = Date.now() + minutes * 60_000;
-
-    this.sleepHandle = setTimeout(() => {
-      this.pause();
-      this.cancelSleepTimer();
-    }, minutes * 60_000);
-
-    this.setState({ sleepTimerEndsAt: endsAt });
+    this.setState({ sleepTimer: startMinutesTimer(minutes, Date.now(), this.state.playing) });
+    this.scheduleSleepTimeout();
 
     Accelerometer.setUpdateInterval(100);
     this.shakeSubscription = Accelerometer.addListener(({ x, y, z }) => {
@@ -485,7 +539,7 @@ class PlayerService {
       const gForce = Math.sqrt(x * x + y * y + z * z);
       if (gForce > 2.25) {
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-        this.startSleepTimer(this.sleepMinutes);
+        this.startSleepTimer(minutes);
       }
     });
   }
@@ -493,14 +547,37 @@ class PlayerService {
   cancelSleepTimer(): void {
     if (this.sleepHandle) clearTimeout(this.sleepHandle);
     this.sleepHandle = null;
-    this.sleepMinutes = 0;
 
     if (this.shakeSubscription) {
       this.shakeSubscription.remove();
       this.shakeSubscription = null;
     }
 
-    this.setState({ sleepTimerEndsAt: null });
+    if (this.state.sleepTimer) this.setState({ sleepTimer: null });
+  }
+
+  /** Freezes or restarts a minutes countdown to match whether audio is playing. */
+  private syncSleepTimer(playing: boolean): void {
+    const timer = this.state.sleepTimer;
+    if (timer?.kind !== 'minutes') return;
+    const next = playing ? resumeTimer(timer, Date.now()) : pauseTimer(timer, Date.now());
+    if (next === timer) return;
+    this.setState({ sleepTimer: next });
+    this.scheduleSleepTimeout();
+  }
+
+  /** Arms the timeout for a running countdown; disarms it for a frozen one. */
+  private scheduleSleepTimeout(): void {
+    if (this.sleepHandle) clearTimeout(this.sleepHandle);
+    this.sleepHandle = null;
+
+    const timer = this.state.sleepTimer;
+    if (timer?.kind !== 'minutes' || timer.endsAt === null) return;
+
+    this.sleepHandle = setTimeout(() => {
+      this.cancelSleepTimer();
+      this.pause();
+    }, Math.max(0, timer.endsAt - Date.now()));
   }
 
   /** Stops playback and unloads the current episode. */

@@ -1,8 +1,10 @@
+import { EPISODE_WITH_FEED_COLUMNS } from './columns';
+import { dismissFromInbox } from './episodes';
 import { getDb } from './index';
 import type { EpisodeWithFeed } from './types';
 
 const QUEUE_JOIN = `
-  SELECT e.*, f.title AS feed_title, f.image_url AS feed_image_url, f.author AS feed_author
+  SELECT ${EPISODE_WITH_FEED_COLUMNS}
     FROM queue q
     JOIN episodes e ON e.id = q.episode_id
     JOIN feeds f    ON f.id = e.feed_id
@@ -56,6 +58,8 @@ function notifyEpisodeQueued(episodeId: number): void {
 
 /** Appends to the end of the queue. No-op if already queued. */
 export async function enqueue(episodeId: number): Promise<void> {
+  // Queueing takes an episode out of the inbox, wherever it was queued from (as in AntennaPod).
+  await dismissFromInbox(episodeId);
   if (await isQueued(episodeId)) return;
   const { max } = await bounds();
   await getDb().runAsync(
@@ -70,6 +74,7 @@ export async function enqueue(episodeId: number): Promise<void> {
 /** Puts an episode next without disturbing what is currently playing. */
 export async function enqueueNext(episodeId: number): Promise<void> {
   const db = getDb();
+  await dismissFromInbox(episodeId);
   await db.runAsync('DELETE FROM queue WHERE episode_id = ?', episodeId);
 
   // Slot between the head and the item after it; if the queue has fewer than
@@ -96,6 +101,7 @@ export async function enqueueNext(episodeId: number): Promise<void> {
 /** Moves an episode to the very front — used when the user hits play. */
 export async function enqueueFront(episodeId: number): Promise<void> {
   const db = getDb();
+  await dismissFromInbox(episodeId);
   await db.runAsync('DELETE FROM queue WHERE episode_id = ?', episodeId);
   const { min } = await bounds();
   await db.runAsync(
@@ -126,7 +132,7 @@ export async function nextInQueue(episodeId: number | null): Promise<EpisodeWith
     );
     if (current) {
       return db.getFirstAsync<EpisodeWithFeed>(
-        `SELECT e.*, f.title AS feed_title, f.image_url AS feed_image_url, f.author AS feed_author
+        `SELECT ${EPISODE_WITH_FEED_COLUMNS}
            FROM queue q
            JOIN episodes e ON e.id = q.episode_id
            JOIN feeds f    ON f.id = e.feed_id

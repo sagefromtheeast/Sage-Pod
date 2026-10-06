@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { listEpisodesForFeed, markFeedPlayed, type EpisodeSortKey } from '@/db/episodes';
@@ -8,7 +8,7 @@ import { deleteFeed, getFeed, setFeedFlags } from '@/db/feeds';
 import { enqueue } from '@/db/queue';
 import type { EpisodeWithFeed, FeedWithCounts } from '@/db/types';
 import { useQuery } from '@/db/useQuery';
-import { refreshFeed } from '@/feed/sync';
+import { fetchOlderFeedEpisodes, refreshFeed } from '@/feed/sync';
 import { player } from '@/player';
 import { Artwork } from '@/ui/Artwork';
 import { EmptyState } from '@/ui/EmptyState';
@@ -28,6 +28,9 @@ const FILTER_SEGMENTS: readonly SegmentOption<FeedFilterKey>[] = [
   { key: 'favorites', label: 'Favorites' },
 ];
 
+/** Episodes read from the database per page, as in AntennaPod. */
+const PAGE_SIZE = 150;
+
 const SORT_SEGMENTS: readonly SegmentOption<EpisodeSortKey>[] = [
   { key: 'date_desc', label: 'Newest' },
   { key: 'date_asc', label: 'Oldest' },
@@ -44,6 +47,8 @@ export default function FeedScreen() {
   const [sort, setSort] = useState<EpisodeSortKey>('date_desc');
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [limit, setLimit] = useState(PAGE_SIZE);
+  const [loadingOlder, setLoadingOlder] = useState(false);
 
   const hasActiveFilters = filter !== 'all';
 
@@ -58,7 +63,7 @@ export default function FeedScreen() {
     [feedId]
   );
 
-  const { data: episodes = [] } = useQuery<EpisodeWithFeed[]>(
+  const { data: episodes = [], loading: episodesLoading } = useQuery<EpisodeWithFeed[]>(
     () =>
       listEpisodesForFeed(feedId, {
         sort,
@@ -67,10 +72,37 @@ export default function FeedScreen() {
           downloadedOnly: filter === 'downloaded',
           favoritesOnly: filter === 'favorites',
         },
+        limit,
       }),
     ['episodes'],
-    [feedId, sort, filter]
+    [feedId, sort, filter, limit]
   );
+
+  // A different podcast, filter or sort is a new list: start from one page.
+  useEffect(() => {
+    setLimit(PAGE_SIZE);
+  }, [feedId, sort, filter]);
+
+  // A full page means there may be more stored episodes; a short one means the
+  // database is exhausted and only the feed's older pages (if any) remain.
+  const moreStored = episodes.length >= limit;
+  const showMoreStored = useCallback(() => {
+    if (moreStored) setLimit((value) => value + PAGE_SIZE);
+  }, [moreStored]);
+
+  const loadOlder = useCallback(async () => {
+    setLoadingOlder(true);
+    try {
+      await fetchOlderFeedEpisodes(feedId);
+    } catch (error) {
+      Alert.alert(
+        "Couldn't load older episodes",
+        error instanceof Error ? error.message : 'Check your connection and try again.'
+      );
+    } finally {
+      setLoadingOlder(false);
+    }
+  }, [feedId]);
 
   const play = useCallback((episode: EpisodeWithFeed) => {
     const current = player.getState();
@@ -218,6 +250,25 @@ export default function FeedScreen() {
             </View>
           </View>
         }
+        onEndReached={showMoreStored}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={
+          !episodesLoading && !moreStored && feed.next_page_url ? (
+            // Paged feeds (RFC 5005) only ship their newest page; older
+            // episodes are fetched on request, like AntennaPod's load-more footer.
+            <Pressable
+              onPress={() => void loadOlder()}
+              disabled={loadingOlder}
+              style={[styles.loadOlder, { borderColor: theme.border }]}
+              accessibilityRole="button"
+            >
+              <Ionicons name="time-outline" size={16} color={theme.accent} />
+              <Text style={[styles.chipLabel, { color: theme.accent }]}>
+                {loadingOlder ? 'Loading older episodes…' : 'Load older episodes'}
+              </Text>
+            </Pressable>
+          ) : null
+        }
         ListEmptyComponent={
           hasActiveFilters ? (
             <EmptyState
@@ -341,6 +392,16 @@ const styles = StyleSheet.create({
   chipLabel: {
     ...typography.caption,
     fontWeight: '600',
+  },
+  loadOlder: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: space.sm,
+    marginTop: space.md,
+    paddingVertical: space.md,
+    borderRadius: radius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
   },
   segmentedControls: {
     gap: space.sm,
