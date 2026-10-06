@@ -1,3 +1,4 @@
+import { SURPRISE_MODULUS } from '@/discover/surpriseSeed';
 import { getDb } from './index';
 import type { DownloadState, EpisodeRow, EpisodeWithFeed } from './types';
 
@@ -312,12 +313,44 @@ export async function dismissAllFromInbox(): Promise<void> {
   await getDb().runAsync('UPDATE episodes SET is_new = 0 WHERE is_new = 1');
 }
 
-export async function listRandomUnplayedEpisodes(limit = 10, seed = 0): Promise<EpisodeWithFeed[]> {
+const SURPRISE_MAX_AGE_MS = 2 * 365 * 24 * 60 * 60 * 1000;
+const SURPRISE_JUST_STARTED_MS = 60 * 60 * 1000;
+
+/**
+ * Unplayed episodes for the "Surprise Me" shelf, in an order fixed by `seed`.
+ *
+ * The same seed returns the same list, so the shelf holds still while the
+ * player saves positions; a new seed is a new shuffle. Picks round-robin
+ * across podcasts — one from each before a second from any — so the shelf
+ * favours variety but still fills up when there are only a few subscriptions.
+ *
+ * Skips episodes older than two years (stale feeds often have broken artwork)
+ * and half-listened ones, except an episode started within the last hour —
+ * otherwise the episode you just tapped play on would vanish from the shelf.
+ */
+export async function listSurpriseEpisodes(
+  limit: number,
+  seed: number,
+  now: number = Date.now()
+): Promise<EpisodeWithFeed[]> {
   return getDb().getAllAsync<EpisodeWithFeed>(
-    `${EPISODE_WITH_FEED}
-      WHERE e.is_played = 0 AND e.position = 0
-      ORDER BY RANDOM()
-      LIMIT ?`,
+    `SELECT * FROM (
+       SELECT c.*,
+              ROW_NUMBER() OVER (
+                PARTITION BY c.feed_id
+                ORDER BY (c.id * ?) % ${SURPRISE_MODULUS} DESC, c.id
+              ) AS feed_rank
+         FROM (${EPISODE_WITH_FEED}
+                WHERE e.is_played = 0
+                  AND (e.published_at IS NULL OR e.published_at > ?)
+                  AND (e.position = 0 OR e.played_at > ?)) c
+     )
+     ORDER BY feed_rank, (id * ? * 3) % ${SURPRISE_MODULUS} DESC, id
+     LIMIT ?`,
+    seed,
+    now - SURPRISE_MAX_AGE_MS,
+    now - SURPRISE_JUST_STARTED_MS,
+    seed,
     limit
   );
 }
