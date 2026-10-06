@@ -305,8 +305,12 @@ export async function getInboxCount(): Promise<number> {
   return row?.count ?? 0;
 }
 
+/**
+ * Takes an episode out of the inbox. Only touches a row still marked new, so
+ * it writes nothing (and wakes no screens) when the episode already left.
+ */
 export async function dismissFromInbox(episodeId: number): Promise<void> {
-  await getDb().runAsync('UPDATE episodes SET is_new = 0 WHERE id = ?', episodeId);
+  await getDb().runAsync('UPDATE episodes SET is_new = 0 WHERE id = ? AND is_new = 1', episodeId);
 }
 
 export async function dismissAllFromInbox(): Promise<void> {
