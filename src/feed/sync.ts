@@ -1,6 +1,6 @@
 import { getDb } from '@/db';
 import { listAutoDownloadCandidates } from '@/db/episodes';
-import { getFeedByUrl, listFeedsToRefresh } from '@/db/feeds';
+import { getFeedByUrl, listFeedsToRefresh, subscribeFeed } from '@/db/feeds';
 import { getSettings } from '@/db/settings';
 import type { FeedRow } from '@/db/types';
 import { queueDownload, shouldAutoDownloadEpisode } from '@/player/downloads';
@@ -133,7 +133,7 @@ async function updateFeedRow(
     `UPDATE feeds
         SET title = ?, author = ?, description = ?, image_url = ?, link = ?,
             language = ?, explicit = ?, etag = ?, last_modified = ?, last_refreshed_at = ?,
-            next_page_url = COALESCE(?, next_page_url)
+            next_page_url = COALESCE(?, next_page_url), funding = ?, last_refresh_error = NULL
       WHERE id = ?`,
     parsed.title,
     parsed.author,
@@ -146,34 +146,21 @@ async function updateFeedRow(
     lastModified,
     Date.now(),
     parsed.nextPageUrl ?? null,
+    fundingJson(parsed),
     feedId
   );
 }
 
-/**
- * Subscribes to a feed URL, or returns the existing subscription if the user
- * already has it.
- *
- * Episodes that exist at subscribe time are *not* marked new — otherwise a
- * fresh subscription would announce a 400-episode back catalogue as unread.
- */
-export async function subscribe(rawUrl: string): Promise<{ feedId: number; alreadySubscribed: boolean }> {
-  const feedUrl = normalizeFeedUrl(rawUrl);
+const fundingJson = (feed: ParsedFeed) => (feed.funding.length > 0 ? JSON.stringify(feed.funding) : null);
 
-  const existing = await getFeedByUrl(feedUrl);
-  if (existing) {
-    await refreshFeed(existing);
-    return { feedId: existing.id, alreadySubscribed: true };
-  }
-
+/** Fetches a feed and stores it with its episodes, as a subscription or a preview. */
+async function insertFeed(feedUrl: string, state: 'subscribed' | 'preview'): Promise<number> {
   const { feed, etag, lastModified } = await fetchFeed(feedUrl);
-  const db = getDb();
-
-  const result = await db.runAsync(
+  const result = await getDb().runAsync(
     `INSERT INTO feeds
        (feed_url, title, author, description, image_url, link, language, explicit,
-        etag, last_modified, last_refreshed_at, created_at, next_page_url)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        etag, last_modified, last_refreshed_at, created_at, next_page_url, funding, state)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     feedUrl,
     feed.title,
     feed.author,
@@ -186,23 +173,74 @@ export async function subscribe(rawUrl: string): Promise<{ feedId: number; alrea
     lastModified,
     Date.now(),
     Date.now(),
-    feed.nextPageUrl ?? null
+    feed.nextPageUrl ?? null,
+    fundingJson(feed),
+    state
   );
-
   const feedId = result.lastInsertRowId;
+  // Existing episodes are *not* marked new, or a fresh subscription would
+  // announce a 400-episode back catalogue as unread.
   await upsertEpisodes(feedId, feed.episodes, false);
-  return { feedId, alreadySubscribed: false };
+  return feedId;
+}
+
+/**
+ * Subscribes to a feed URL. An existing preview becomes a subscription; an
+ * existing subscription is just refreshed.
+ */
+export async function subscribe(rawUrl: string): Promise<{ feedId: number; alreadySubscribed: boolean }> {
+  const feedUrl = normalizeFeedUrl(rawUrl);
+
+  const existing = await getFeedByUrl(feedUrl);
+  if (existing) {
+    const alreadySubscribed = existing.state === 'subscribed';
+    if (!alreadySubscribed) await subscribeFeed(existing.id);
+    await refreshFeed({ ...existing, state: 'subscribed' });
+    return { feedId: existing.id, alreadySubscribed };
+  }
+
+  return { feedId: await insertFeed(feedUrl, 'subscribed'), alreadySubscribed: false };
+}
+
+/**
+ * Opens a podcast without subscribing (AntennaPod's preview, D-003.4): it is
+ * stored so its page and episodes work, but kept out of Library, the Inbox,
+ * refreshes and search until the listener taps Subscribe. Unsubscribed
+ * previews are cleared at the next start (`removeStalePreviews`).
+ */
+export async function previewFeed(rawUrl: string): Promise<{ feedId: number; subscribed: boolean }> {
+  const feedUrl = normalizeFeedUrl(rawUrl);
+  const existing = await getFeedByUrl(feedUrl);
+  if (existing) return { feedId: existing.id, subscribed: existing.state === 'subscribed' };
+  return { feedId: await insertFeed(feedUrl, 'preview'), subscribed: false };
 }
 
 /** Re-fetches one feed. Returns without writing if the server says 304. */
-export async function refreshFeed(feed: FeedRow): Promise<SyncResult> {
-  const { feed: parsed, etag, lastModified, notModified } = await fetchFeed(feed.feed_url, {
-    etag: feed.etag,
-    lastModified: feed.last_modified,
-  });
+export async function refreshFeed(feed: FeedRow, options: { full?: boolean } = {}): Promise<SyncResult> {
+  let fetched: Awaited<ReturnType<typeof fetchFeed>>;
+  try {
+    // A full refresh ignores the cache validators, so the server can't answer 304.
+    fetched = await fetchFeed(
+      feed.feed_url,
+      options.full ? {} : { etag: feed.etag, lastModified: feed.last_modified }
+    );
+  } catch (error) {
+    // Remembered for the podcast page's "Last refresh failed" banner.
+    await getDb().runAsync(
+      'UPDATE feeds SET last_refresh_error = ? WHERE id = ?',
+      error instanceof Error ? error.message : String(error),
+      feed.id
+    );
+    throw error;
+  }
+  const { feed: parsed, etag, lastModified, notModified } = fetched;
 
   if (notModified) {
-    await getDb().runAsync('UPDATE feeds SET last_refreshed_at = ? WHERE id = ?', Date.now(), feed.id);
+    await getDb().runAsync(
+      'UPDATE feeds SET last_refreshed_at = ?, last_refresh_error = NULL WHERE id = ?',
+      Date.now(),
+      feed.id
+    );
     return { feedId: feed.id, newEpisodes: 0, unchanged: true };
   }
 
@@ -315,4 +353,19 @@ export async function fetchOlderFeedEpisodes(
     newEpisodes: inserted,
     hasMore: Boolean(parsed.nextPageUrl),
   };
+}
+
+/**
+ * "Refresh complete podcast": re-reads the feed ignoring the cache, then
+ * fetches every older page of a paged feed (RFC 5005).
+ */
+export async function refreshFeedCompletely(feed: FeedRow): Promise<number> {
+  let total = (await refreshFeed(feed, { full: true })).newEpisodes;
+  // Bounded, in case a broken feed links its pages in a loop.
+  for (let page = 0; page < 50; page++) {
+    const { newEpisodes, hasMore } = await fetchOlderFeedEpisodes(feed.id);
+    total += newEpisodes;
+    if (!hasMore) break;
+  }
+  return total;
 }

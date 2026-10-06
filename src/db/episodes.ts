@@ -2,6 +2,7 @@ import { SURPRISE_MODULUS } from '@/discover/surpriseSeed';
 import { EPISODE_WITH_FEED_COLUMNS } from './columns';
 import { getDb } from './index';
 import { searchWords } from './search';
+import { filterClauses, type EpisodeFilter } from '@/feed/episodeFilter';
 import type { DownloadState, EpisodeRow, EpisodeWithFeed } from './types';
 
 /**
@@ -26,7 +27,18 @@ export type EpisodeSortKey =
   | 'duration_asc'
   | 'duration_desc'
   | 'title_asc'
+  | 'title_desc'
   | 'season_asc';
+
+export const EPISODE_SORT_KEYS: readonly EpisodeSortKey[] = [
+  'date_desc',
+  'date_asc',
+  'duration_asc',
+  'duration_desc',
+  'title_asc',
+  'title_desc',
+  'season_asc',
+];
 
 export type EpisodeFilterOptions = {
   includePlayed?: boolean;
@@ -38,6 +50,10 @@ export type EpisodeFilterOptions = {
 
 export type ListEpisodesOptions = {
   filters?: EpisodeFilterOptions;
+  /** The podcast page's saved include/exclude filter. */
+  episodeFilter?: EpisodeFilter;
+  /** Every word must appear in the title or show notes. */
+  search?: string;
   sort?: EpisodeSortKey;
   includePlayed?: boolean;
   limit?: number;
@@ -47,7 +63,7 @@ export async function listEpisodesForFeed(
   feedId: number,
   options: ListEpisodesOptions = {}
 ): Promise<EpisodeWithFeed[]> {
-  const { filters = {}, sort = 'date_desc', limit = 500, includePlayed } = options;
+  const { filters = {}, sort = 'date_desc', limit = 500, includePlayed, episodeFilter, search } = options;
   const whereClauses = ['e.feed_id = ?'];
   const args: (number | string)[] = [feedId];
 
@@ -64,6 +80,11 @@ export async function listEpisodesForFeed(
   if (filters.inProgressOnly) {
     whereClauses.push('e.position > 30 AND e.is_played = 0');
   }
+  if (episodeFilter) whereClauses.push(...filterClauses(episodeFilter));
+  for (const word of searchWords(search ?? '')) {
+    whereClauses.push("(e.title LIKE ? ESCAPE '\\' OR e.description LIKE ? ESCAPE '\\')");
+    args.push(word, word);
+  }
 
   const sortClauses: Record<EpisodeSortKey, string> = {
     date_desc: 'e.published_at DESC, e.id DESC',
@@ -71,6 +92,7 @@ export async function listEpisodesForFeed(
     duration_asc: 'e.duration ASC',
     duration_desc: 'e.duration DESC',
     title_asc: 'e.title COLLATE NOCASE ASC',
+    title_desc: 'e.title COLLATE NOCASE DESC',
     season_asc: 'COALESCE(e.season, 1) ASC, COALESCE(e.episode_number, 0) ASC, e.published_at ASC',
   };
 
@@ -101,6 +123,7 @@ export async function listFeedEpisodeIds(feedId: number): Promise<number[]> {
 export async function listRecentEpisodes(limit = 100): Promise<EpisodeWithFeed[]> {
   return getDb().getAllAsync<EpisodeWithFeed>(
     `${EPISODE_WITH_FEED}
+      WHERE f.state = 'subscribed'
       ORDER BY e.published_at DESC, e.id DESC
       LIMIT ?`,
     limit
@@ -117,7 +140,7 @@ export async function listInProgressEpisodes(
   const notQueued = options.excludeQueued ? 'AND e.id NOT IN (SELECT episode_id FROM queue)' : '';
   return getDb().getAllAsync<EpisodeWithFeed>(
     `${EPISODE_WITH_FEED}
-      WHERE e.position > 30 AND e.is_played = 0 ${notQueued}
+      WHERE f.state = 'subscribed' AND e.position > 30 AND e.is_played = 0 ${notQueued}
       ORDER BY e.played_at DESC
       LIMIT ?`,
     limit
@@ -168,7 +191,8 @@ export async function searchEpisodes(term: string, limit = 60): Promise<EpisodeW
   if (words.length === 0) return [];
   return getDb().getAllAsync<EpisodeWithFeed>(
     `${EPISODE_WITH_FEED}
-      WHERE ${words.map(() => "(e.title LIKE ? ESCAPE '\\' OR e.description LIKE ? ESCAPE '\\')").join(' AND ')}
+      WHERE f.state = 'subscribed'
+        AND ${words.map(() => "(e.title LIKE ? ESCAPE '\\' OR e.description LIKE ? ESCAPE '\\')").join(' AND ')}
       ORDER BY e.published_at DESC
       LIMIT ?`,
     ...words.flatMap((word) => [word, word]),
@@ -487,7 +511,7 @@ export async function listSurpriseEpisodes(
                 ORDER BY (c.id * ?) % ${SURPRISE_MODULUS} DESC, c.id
               ) AS feed_rank
          FROM (${EPISODE_WITH_FEED}
-                WHERE e.is_played = 0
+                WHERE f.state = 'subscribed' AND e.is_played = 0
                   AND (e.published_at IS NULL OR e.published_at > ?)
                   AND (e.position = 0 OR e.played_at > ?)) c
      )

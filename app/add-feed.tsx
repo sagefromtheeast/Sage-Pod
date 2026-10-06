@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { subscribe } from '@/feed/sync';
+import { previewFeed } from '@/feed/sync';
 import { radius, space, type as typography } from '@/ui/theme';
 import { useTheme } from '@/ui/useTheme';
 
@@ -41,7 +41,8 @@ export default function AddFeedScreen() {
     setBusy(true);
     setError(null);
     try {
-      const { feedId } = await subscribe(value);
+      // A preview, like a Discover result: Subscribe is on the podcast page.
+      const { feedId } = await previewFeed(value);
       // Replace, so backing out of the podcast lands on Discover rather than
       // this form.
       router.replace(`/feed/${feedId}`);

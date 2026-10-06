@@ -28,7 +28,11 @@ export type ParsedFeed = {
   explicit: boolean;
   episodes: ParsedEpisode[];
   nextPageUrl?: string | null;
+  /** Podcasting 2.0 `<podcast:funding url="…">label</podcast:funding>` links. */
+  funding: FundingLink[];
 };
+
+export type FundingLink = { url: string; label: string };
 
 /**
  * `fast-xml-parser` configured for podcast feeds specifically.
@@ -264,6 +268,13 @@ export function parseFeed(xml: string, base: string): ParsedFeed {
     }
   }
 
+  const funding: FundingLink[] = [];
+  for (const node of asArray(channel['podcast:funding'] as unknown)) {
+    const url = absolute(attr(node, 'url'), base);
+    if (!url || !/^https?:\/\//i.test(url) || funding.some((link) => link.url === url)) continue;
+    funding.push({ url, label: text(node) ?? 'Support this podcast' });
+  }
+
   return {
     title: text(channel.title) ?? 'Untitled podcast',
     author:
@@ -276,5 +287,6 @@ export function parseFeed(xml: string, base: string): ParsedFeed {
     explicit: explicitRaw === 'yes' || explicitRaw === 'true',
     episodes,
     nextPageUrl,
+    funding,
   };
 }
