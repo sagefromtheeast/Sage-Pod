@@ -110,6 +110,12 @@ Playwright, with seeded demo data and three web-only Metro shims
 change. Native visuals (glass, platform fonts, safe areas) are checked on an
 EAS preview build when they matter.
 
+The shims in `metro.config.js` apply to every **web** bundle (not behind an
+env flag): they only intercept imports from `app/` and `src/` on the web
+platform, native bundles never reach them, and without them the web build
+can't open its database at all, so gating them would only make
+`npm run web` fail. The web-only packages live in `devDependencies`.
+
 ## D-007 — Keyless discovery providers
 
 **Decision.** Use only providers that need no API key (Apple iTunes now, fyyd

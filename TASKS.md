@@ -53,7 +53,7 @@ destructive.
 
 ## Phase 6 — Inbox
 - [ ] Search; ⋯ Sort + Remove all (confirm); swipes swapped to AntennaPod's + undo (D-003.2); multi-select; paging
-- [ ] Drop the now-redundant dismiss after enqueue in `inbox.tsx`
+- [x] Drop the now-redundant dismiss after enqueue in `inbox.tsx` (done in Phase 1 review)
 
 ## Phase 7 — Home
 - [ ] Section chrome + empty texts; queue section; See what's new; Classics; Manage downloads; keep in-progress shelf (D-003.6)
