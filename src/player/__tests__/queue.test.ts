@@ -9,7 +9,7 @@ import {
   parseQueueSort,
   queueTimeLeft,
   serializeQueueSort,
-  sortOrderAt,
+  sortOrdersAt,
   sortQueue,
   type SortableEpisode,
 } from '../queueSorting';
@@ -102,11 +102,18 @@ describe('enqueue location', () => {
     assert.equal(enqueueIndex('whatever', ids, null), 3);
   });
 
-  it('picks a sort order between neighbours without renumbering', () => {
-    assert.equal(sortOrderAt([], 0), 0);
-    assert.equal(sortOrderAt([1, 2, 3], 0), 0);
-    assert.equal(sortOrderAt([1, 2, 3], 3), 4);
-    assert.equal(sortOrderAt([1, 2, 3], 1), 1.5);
+  it('picks sort orders between neighbours without renumbering', () => {
+    assert.deepEqual(sortOrdersAt([], 0), [0]);
+    assert.deepEqual(sortOrdersAt([1, 2, 3], 0), [0]);
+    assert.deepEqual(sortOrdersAt([1, 2, 3], 3), [4]);
+    assert.deepEqual(sortOrdersAt([1, 2, 3], 1), [1.5]);
+  });
+
+  it('keeps a batch in order wherever it is inserted', () => {
+    assert.deepEqual(sortOrdersAt([], 0, 3), [0, 1, 2]);
+    assert.deepEqual(sortOrdersAt([5, 6], 0, 3), [2, 3, 4]);
+    assert.deepEqual(sortOrdersAt([5, 6], 2, 2), [7, 8]);
+    assert.deepEqual(sortOrdersAt([1, 2], 1, 3), [1.25, 1.5, 1.75]);
   });
 });
 

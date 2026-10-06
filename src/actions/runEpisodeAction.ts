@@ -10,7 +10,7 @@ import {
   setFavoriteMany,
   type PlaybackSnapshot,
 } from '@/db/episodes';
-import { dequeue, enqueue, enqueueFront, getQueueSlots, moveToBottom, restoreQueueSlots } from '@/db/queue';
+import { dequeue, enqueueFront, enqueueMany, getQueueSlots, moveToBottom, restoreQueueSlots } from '@/db/queue';
 import { isQueuedNow } from '@/db/queueMembership';
 import type { EpisodeWithFeed } from '@/db/types';
 import { player } from '@/player';
@@ -135,7 +135,7 @@ export async function runEpisodeAction(
     }
 
     case 'addToQueue':
-      for (const episode of targets) await enqueue(episode.id);
+      await enqueueMany(ids(targets));
       showToast(count(n, 'Added to queue', 'added to queue'));
       return;
 

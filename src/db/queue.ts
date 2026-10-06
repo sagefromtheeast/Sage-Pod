@@ -1,12 +1,12 @@
 import { EPISODE_WITH_FEED_COLUMNS } from './columns';
-import { dismissFromInbox } from './episodes';
+import { dismissFromInbox, dismissManyFromInbox } from './episodes';
 import { getDb } from './index';
 import { getMeta, getSettings } from './settings';
 import type { EpisodeWithFeed } from './types';
 import {
   enqueueIndex,
   parseQueueSort,
-  sortOrderAt,
+  sortOrdersAt,
   sortQueue,
   type QueueSort,
 } from '@/player/queueSorting';
@@ -69,30 +69,48 @@ function notifyEpisodeQueued(episodeId: number): void {
  * by default). No-op if already queued.
  */
 export async function enqueue(episodeId: number): Promise<void> {
+  await enqueueMany([episodeId]);
+}
+
+/**
+ * Adds several episodes, in the given order, together at the Enqueue location
+ * (so "Front" doesn't reverse a multi-selection). Already-queued ones are skipped.
+ */
+export async function enqueueMany(episodeIds: readonly number[]): Promise<void> {
   // Queueing takes an episode out of the inbox, wherever it was queued from (as in AntennaPod).
-  await dismissFromInbox(episodeId);
-  if (await isQueued(episodeId)) return;
+  await dismissManyFromInbox(episodeIds);
   const db = getDb();
   const rows = await db.getAllAsync<{ episode_id: number; sort_order: number }>(
     'SELECT episode_id, sort_order FROM queue ORDER BY sort_order ASC'
   );
+  const queued = new Set(rows.map((row) => row.episode_id));
+  const adding = [...new Set(episodeIds)].filter((id) => !queued.has(id));
+  if (adding.length === 0) return;
+
   const loaded = await getMeta('lastEpisodeId');
   const index = enqueueIndex(
     getSettings().enqueueLocation,
     rows.map((row) => row.episode_id),
     loaded ? Number(loaded) : null
   );
-  await db.runAsync(
-    'INSERT INTO queue (episode_id, sort_order, added_at) VALUES (?, ?, ?)',
-    episodeId,
-    sortOrderAt(
-      rows.map((row) => row.sort_order),
-      index
-    ),
-    Date.now()
+  const orders = sortOrdersAt(
+    rows.map((row) => row.sort_order),
+    index,
+    adding.length
   );
+  const now = Date.now();
+  await db.withTransactionAsync(async () => {
+    for (let i = 0; i < adding.length; i++) {
+      await db.runAsync(
+        'INSERT INTO queue (episode_id, sort_order, added_at) VALUES (?, ?, ?)',
+        adding[i],
+        orders[i],
+        now
+      );
+    }
+  });
   await applyKeptSort();
-  notifyEpisodeQueued(episodeId);
+  for (const id of adding) notifyEpisodeQueued(id);
 }
 
 /** Re-sorts the whole queue in this order. */

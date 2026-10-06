@@ -142,14 +142,20 @@ export function enqueueIndex(
 }
 
 /**
- * A sort_order that places a new row at `index` among rows with these orders
- * (ascending), without renumbering anything.
+ * `count` ascending sort_orders that place new rows together at `index`
+ * among rows with these orders (ascending), in order, without renumbering
+ * anything. Adding several episodes at once keeps their order this way.
  */
-export function sortOrderAt(orders: readonly number[], index: number): number {
-  if (orders.length === 0) return 0;
-  if (index <= 0) return orders[0] - 1;
-  if (index >= orders.length) return orders[orders.length - 1] + 1;
-  return (orders[index - 1] + orders[index]) / 2;
+export function sortOrdersAt(orders: readonly number[], index: number, count = 1): number[] {
+  const at = (i: number) => {
+    if (orders.length === 0) return i;
+    if (index <= 0) return orders[0] - count + i;
+    if (index >= orders.length) return orders[orders.length - 1] + 1 + i;
+    const lo = orders[index - 1];
+    const hi = orders[index];
+    return lo + ((hi - lo) * (i + 1)) / (count + 1);
+  };
+  return Array.from({ length: count }, (_, i) => at(i));
 }
 
 /**
