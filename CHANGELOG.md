@@ -1,3 +1,25 @@
+## [0.10.0](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.9.0...v0.10.0) (2026-10-06)
+
+### 🚀 New Features
+
+* **podcast:** preview before subscribing, a real podcast menu, saved filter and sort, search, banners and an info page ([506a98f](https://github.com/sagefromtheeast/Sage-Pod/commit/506a98f431e61917270a8c24ac866188f1f49dbd))
+
+### 🐛 Bug Fixes
+
+* **podcast:** subscribing a preview always succeeds, and refreshing a preview never fills the Inbox ([ab8268b](https://github.com/sagefromtheeast/Sage-Pod/commit/ab8268be4d7e01b624c1ae1a6b4ee2e922fd4b9a))
+
+### 📚 Documentation
+
+* mark Phase 9 done and record D-016 (preview retention) ([3b1caa4](https://github.com/sagefromtheeast/Sage-Pod/commit/3b1caa4ac412708845a7addc4477b2d2ec9277a5))
+
+### ✅ Tests
+
+* **shots:** podcast filter, applied filter, info page, refresh-failed banner and preview ([12651c3](https://github.com/sagefromtheeast/Sage-Pod/commit/12651c3026981ae64f34b313cb97afab9250146f))
+
+### 📦 Build & Dependencies
+
+* **deps:** take Expo SDK 57's latest patch releases ([2e9f778](https://github.com/sagefromtheeast/Sage-Pod/commit/2e9f7783e3443a7bdce0cf22def5f8d831d0d8de))
+
 ## [0.9.0](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.8.0...v0.9.0) (2026-10-06)
 
 ### 🚀 New Features
