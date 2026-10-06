@@ -17,6 +17,8 @@ Format: context → decision → consequences → when to revisit.
 | D-009 | Tablet layout: window classes at 600 / 840 dp | Accepted |
 | D-010 | Row button streams by default ("Prefer streaming" on) | Accepted |
 | D-011 | Device builds: one EAS build at the end of the parity work | Accepted |
+| D-012 | Now Playing: sheets instead of inline lists; Show notes button | Accepted |
+| D-013 | Queue: in-house drag list; Keep sorted and Lock turn dragging off | Accepted |
 
 ---
 
@@ -55,7 +57,7 @@ Approved by the owner (2026-10-06) to match AntennaPod:
 1. **Rewind on resume is scaled by pause length** (0.8 s / 3 s / 10 s / 20 s),
    replacing the fixed-seconds setting. *(Shipped in Phase 1, D3.)*
 2. **Inbox swipe directions match AntennaPod**: right = add to queue,
-   left = remove from inbox, with undo.
+   left = remove from inbox, with undo. *(Shipped in Phase 6, v0.7.0.)*
 3. **The permanent speed-chip row on Now Playing moves into a speed sheet**
    opened from the speed button (slider + presets, saved).
 4. **A Discover tap opens a preview** (feed page in preview state with a

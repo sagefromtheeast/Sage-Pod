@@ -61,9 +61,13 @@ destructive.
 - [x] Shots: queue, menu, sort, select, search, and a real drag (`queue-drag`)
 - [ ] On device: drag inside the list on iOS and Android (handle vs scroll vs swipe), edge auto-scroll speed
 
-## Phase 6 — Inbox
-- [ ] Search; ⋯ Sort + Remove all (confirm); swipes swapped to AntennaPod's + undo (D-003.2); multi-select; paging
+## Phase 6 — Inbox ✅
+- [x] Search; ⋯ Sort (date / duration, saved) + Remove all (confirm, "Don't ask again", undo, follows the podcast chip)
+- [x] Swipes swapped to AntennaPod's (right = queue, left = remove) with undo (D-003.2); Add to queue is undoable everywhere
+- [x] Multi-select; ≥25 selected asks first on every screen (`needsBulkConfirm`, tested); paging by 100
 - [x] Drop the now-redundant dismiss after enqueue in `inbox.tsx` (done in Phase 1 review)
+- [x] Shots: inbox menu, sort, select, and a real touch swipe (`inbox-swipe`)
+- [ ] Sort also feeding Home's "See what's new" (Phase 7)
 
 ## Phase 7 — Home
 - [ ] Fix nested-Pressable button-in-button on Home cards (web a11y warning)
