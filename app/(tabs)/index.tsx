@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Tabs, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
+import { Tabs } from 'expo-router/js-tabs';
 import { useCallback, useMemo, useState, useSyncExternalStore, type ReactElement, type ReactNode } from 'react';
 import { FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
