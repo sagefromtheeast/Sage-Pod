@@ -1,3 +1,32 @@
+## [0.3.1](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.3.0...v0.3.1) (2026-10-06)
+
+### 🐛 Bug Fixes
+
+* **feed-settings:** drop the skip-intro "Global" option that meant Off ([b678b7a](https://github.com/sagefromtheeast/Sage-Pod/commit/b678b7a7ed0318cd4192cb4be7a112fab88e0888))
+* **feed:** page through long podcasts and load older feed pages ([6b0eda2](https://github.com/sagefromtheeast/Sage-Pod/commit/6b0eda2bb6083df2f1c2667c5d39fc81b20d2872))
+* **feed:** reset paging on filter or sort change; no footer while loading ([26337bd](https://github.com/sagefromtheeast/Sage-Pod/commit/26337bdfba6e472dff2186a925b325cc176e475e))
+* **player:** apply per-podcast speed and skip-intro to queue playback ([95484fb](https://github.com/sagefromtheeast/Sage-Pod/commit/95484fb3c0b78e676cf2ea8414a57060c5b6d43f))
+* **player:** make the sleep timer follow playback, not the wall clock ([75dae30](https://github.com/sagefromtheeast/Sage-Pod/commit/75dae30b3a1ac462031c79c812458a0a8032332a))
+* **player:** rewind on every resume, scaled by how long it was paused ([ff41a7e](https://github.com/sagefromtheeast/Sage-Pod/commit/ff41a7e437d99715187192005ee713368e4390c2))
+* **player:** rewind only on real resumes, including lock-screen ones ([01f580b](https://github.com/sagefromtheeast/Sage-Pod/commit/01f580bdfae4d77bcc2bf65157b431d065f10844))
+* **queue:** take an episode out of the inbox whenever it is queued ([40a0350](https://github.com/sagefromtheeast/Sage-Pod/commit/40a0350f76c6dcddde7e03a06edfc87293ea29ad))
+
+### ♻️ Refactoring
+
+* **db:** one inbox-dismiss rule, used by every enqueue path ([c6323e3](https://github.com/sagefromtheeast/Sage-Pod/commit/c6323e3d7738bbf28d9a21f76984085858c52b1d))
+
+### 📚 Documentation
+
+* add lead-developer handover, decision log, parity plan and TASKS ([9fd8560](https://github.com/sagefromtheeast/Sage-Pod/commit/9fd856036b08044a5ed7ee6c99d2a7dd202fc729))
+* merge phase PRs with a merge commit so their fix/feat commits release ([ff626dd](https://github.com/sagefromtheeast/Sage-Pod/commit/ff626dd64bbc3e9081b3e7d6f02a6dbe0eee2662))
+* record the web-shim scope decision and tick the inbox clean-up ([8dea72e](https://github.com/sagefromtheeast/Sage-Pod/commit/8dea72e71fa7452fc1a42f524d38547a654d6007))
+
+### 📦 Build & Dependencies
+
+* add a web screenshot harness for before/after comparisons ([0ddb762](https://github.com/sagefromtheeast/Sage-Pod/commit/0ddb7625005b44ea578009e303a1c5469fe1d29c))
+* keep web-only screenshot packages in devDependencies ([e199e69](https://github.com/sagefromtheeast/Sage-Pod/commit/e199e69ec1a9b4fce7753487ab2a8cb77846b503))
+* **shots:** fail on page errors; diff the union of before and after ([9247ebf](https://github.com/sagefromtheeast/Sage-Pod/commit/9247ebf8212207cfcc1771cbda7f91676b9388f4))
+
 ## [0.3.0](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.2.0...v0.3.0) (2026-10-06)
 
 ### 🚀 New Features
