@@ -45,6 +45,15 @@ export function onEpisodeQueued(listener: QueueListener): () => void {
   };
 }
 
+/**
+ * Queueing an episode takes it out of the inbox, wherever it was queued from
+ * (as in AntennaPod). Only touches rows still marked new, so it costs no
+ * write — and wakes no screens — for the common case.
+ */
+async function leaveInbox(episodeId: number): Promise<void> {
+  await getDb().runAsync('UPDATE episodes SET is_new = 0 WHERE id = ? AND is_new = 1', episodeId);
+}
+
 function notifyEpisodeQueued(episodeId: number): void {
   for (const listener of queueListeners) {
     try {
@@ -57,6 +66,7 @@ function notifyEpisodeQueued(episodeId: number): void {
 
 /** Appends to the end of the queue. No-op if already queued. */
 export async function enqueue(episodeId: number): Promise<void> {
+  await leaveInbox(episodeId);
   if (await isQueued(episodeId)) return;
   const { max } = await bounds();
   await getDb().runAsync(
@@ -71,6 +81,7 @@ export async function enqueue(episodeId: number): Promise<void> {
 /** Puts an episode next without disturbing what is currently playing. */
 export async function enqueueNext(episodeId: number): Promise<void> {
   const db = getDb();
+  await leaveInbox(episodeId);
   await db.runAsync('DELETE FROM queue WHERE episode_id = ?', episodeId);
 
   // Slot between the head and the item after it; if the queue has fewer than
@@ -97,6 +108,7 @@ export async function enqueueNext(episodeId: number): Promise<void> {
 /** Moves an episode to the very front — used when the user hits play. */
 export async function enqueueFront(episodeId: number): Promise<void> {
   const db = getDb();
+  await leaveInbox(episodeId);
   await db.runAsync('DELETE FROM queue WHERE episode_id = ?', episodeId);
   const { min } = await bounds();
   await db.runAsync(
