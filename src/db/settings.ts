@@ -65,6 +65,8 @@ export type Settings = {
   inboxSort: 'date:desc' | 'date:asc' | 'duration:asc' | 'duration:desc';
   /** Ask before "Remove all" empties the inbox (until "Don't ask again"). */
   confirmInboxRemoveAll: boolean;
+  /** Home's sections in order, hidden ones prefixed with '-' ('' = default; see src/home/sections.ts). */
+  homeSections: string;
 };
 
 /** Skip amounts offered by long-pressing the player's rewind / forward buttons (AntennaPod's list). */
@@ -99,6 +101,7 @@ export const DEFAULT_SETTINGS: Settings = {
   queueLockExplained: false,
   inboxSort: 'date:desc',
   confirmInboxRemoveAll: true,
+  homeSections: '',
 };
 
 const store = createStore<Settings>({ ...DEFAULT_SETTINGS });

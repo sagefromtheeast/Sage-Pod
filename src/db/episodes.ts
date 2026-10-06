@@ -1,6 +1,7 @@
 import { SURPRISE_MODULUS } from '@/discover/surpriseSeed';
 import { EPISODE_WITH_FEED_COLUMNS } from './columns';
 import { getDb } from './index';
+import { searchWords } from './search';
 import type { DownloadState, EpisodeRow, EpisodeWithFeed } from './types';
 
 /**
@@ -143,16 +144,19 @@ export async function listHistory(limit = 100): Promise<EpisodeWithFeed[]> {
   );
 }
 
-/** Full-text-ish search over titles and show notes of subscribed episodes. */
+/**
+ * Searches subscribed episodes: each word of `term` must appear in the title
+ * or the show notes (AntennaPod's search), newest first.
+ */
 export async function searchEpisodes(term: string, limit = 60): Promise<EpisodeWithFeed[]> {
-  const like = `%${term.replace(/[%_]/g, (c) => `\\${c}`)}%`;
+  const words = searchWords(term);
+  if (words.length === 0) return [];
   return getDb().getAllAsync<EpisodeWithFeed>(
     `${EPISODE_WITH_FEED}
-      WHERE e.title LIKE ? ESCAPE '\\' OR e.description LIKE ? ESCAPE '\\'
+      WHERE ${words.map(() => "(e.title LIKE ? ESCAPE '\\' OR e.description LIKE ? ESCAPE '\\')").join(' AND ')}
       ORDER BY e.published_at DESC
       LIMIT ?`,
-    like,
-    like,
+    ...words.flatMap((word) => [word, word]),
     limit
   );
 }
