@@ -78,8 +78,13 @@ class PlayerService {
   private statusSubscription: { remove: () => void } | null = null;
   private saveHandle: ReturnType<typeof setInterval> | null = null;
   private sleepHandle: ReturnType<typeof setTimeout> | null = null;
-  /** Epoch ms when playback was last paused, for smart resume rewind. */
+  /**
+   * Epoch ms when the current episode was last paused (or, right after a
+   * load, last listened to). The next resume rewinds by how long ago that was.
+   */
   private lastPausedAt: number | null = null;
+  /** Last play state reported by the engine, to spot real transitions. */
+  private enginePlaying = false;
 
   /** Guards against the double-advance a repeated `didJustFinish` would cause. */
   private finishing = false;
@@ -165,13 +170,16 @@ class PlayerService {
     const source = localUri ?? episode.media_url;
 
     const skipIntro = episode.feed_skip_intro_seconds ?? 0;
-    // Picking an episode back up: rewind by how long ago it was last played.
-    const awayMs = episode.played_at ? Date.now() - episode.played_at : 0;
-    let startAt =
-      options.startAt ??
-      (settings.rewindOnResume ? positionAfterPause(episode.position, awayMs) : episode.position);
-    // A pause of the previous episode says nothing about this one.
-    this.lastPausedAt = null;
+    let startAt = options.startAt ?? episode.position;
+    // Load at the saved position and let the first resume apply the rewind,
+    // measured from when this episode was last listened to. Rewinding here
+    // instead would shrink the saved position every time the app restores a
+    // paused episode, even if nothing is ever played.
+    this.lastPausedAt = options.startAt === undefined ? (episode.played_at ?? null) : null;
+    this.enginePlaying = false;
+
+    // "End of episode" belongs to the episode it was set on.
+    if (this.state.sleepTimer?.kind === 'endOfEpisode') this.cancelSleepTimer();
 
     if (startAt < skipIntro) {
       startAt = skipIntro;
@@ -284,9 +292,13 @@ class PlayerService {
     const duration =
       status.duration > 0 ? status.duration : this.state.duration || this.state.episode?.duration || 0;
 
-    // Pauses can come from outside the app (lock screen, headphones, a phone
-    // call), so the sleep timer follows the engine's state, not just our buttons.
-    if (status.playing !== this.state.playing) this.syncSleepTimer(status.playing);
+    // Pauses and resumes can come from outside the app (lock screen,
+    // headphones, a phone call), so follow the engine's own transitions —
+    // not our optimistic `state.playing`, which flips before audio starts.
+    if (status.playing !== this.enginePlaying) {
+      this.enginePlaying = status.playing;
+      this.onEnginePlayingChanged(status.playing);
+    }
 
     if (!this.seeking) {
       this.setState({
@@ -308,21 +320,9 @@ class PlayerService {
   play(): void {
     if (!this.player) return;
 
-    // Resuming after a pause: back up a little, scaled by how long it was.
-    if (this.lastPausedAt !== null && getSettings().rewindOnResume) {
-      const target = positionAfterPause(this.state.position, Date.now() - this.lastPausedAt);
-      if (target < this.state.position) {
-        this.setState({ position: target });
-        void this.player.seekTo(target).catch(() => {
-          // Losing a sub-second rewind is harmless; never block playback on it.
-        });
-      }
-    }
-    this.lastPausedAt = null;
-
+    this.applyResumeRewind();
     this.player.play();
     this.setState({ playing: true, error: null });
-    this.syncSleepTimer(true);
     this.startPositionSaver();
   }
 
@@ -338,6 +338,36 @@ class PlayerService {
   togglePlayPause(): void {
     if (this.state.playing) this.pause();
     else this.play();
+  }
+
+  /** Backs up by the pause-scaled amount if the episode was paused; once per pause. */
+  private applyResumeRewind(): void {
+    const pausedAt = this.lastPausedAt;
+    this.lastPausedAt = null;
+    if (pausedAt === null || !getSettings().rewindOnResume) return;
+
+    const target = positionAfterPause(this.state.position, Date.now() - pausedAt);
+    if (target < this.state.position) {
+      // seekTo() raises the `seeking` guard, so a status tick can't snap the
+      // position back before the engine has moved.
+      void this.seekTo(target).catch(() => {
+        // Losing a sub-second rewind is harmless; never block playback on it.
+      });
+    }
+  }
+
+  /** Engine-reported play/pause, including ones from outside the app. */
+  private onEnginePlayingChanged(playing: boolean): void {
+    this.syncSleepTimer(playing);
+    if (playing) {
+      // A resume we didn't initiate (lock screen, headset): rewind here.
+      // play() already consumed lastPausedAt for in-app resumes.
+      this.applyResumeRewind();
+    } else if (this.lastPausedAt === null && !this.finishing) {
+      // A pause we didn't initiate: remember it and save the position now.
+      this.lastPausedAt = Date.now();
+      void this.flushPosition();
+    }
   }
 
   /** Seeks to an absolute position, clamped to the episode. */
@@ -443,13 +473,12 @@ class PlayerService {
     if (this.saveHandle) return;
     this.lastFlushPosition = this.state.position;
     this.saveHandle = setInterval(() => {
-      if (this.state.playing) {
-        // Calculate time played at current playback rate
-        const secondsPlayed = (POSITION_SAVE_INTERVAL_MS / 1000) * this.state.rate;
-        void this.flushPosition(secondsPlayed);
-      } else {
-        void this.flushPosition();
-      }
+      // Only while playing: a paused episode was already saved by pause(), and
+      // re-saving it would refresh played_at, which the resume rewind reads as
+      // "last listened".
+      if (!this.state.playing) return;
+      const secondsPlayed = (POSITION_SAVE_INTERVAL_MS / 1000) * this.state.rate;
+      void this.flushPosition(secondsPlayed);
     }, POSITION_SAVE_INTERVAL_MS);
   }
 
