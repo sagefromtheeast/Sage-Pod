@@ -118,12 +118,10 @@ export default function ListScreen() {
             episode={item}
             onPlay={play}
             actionHooks={actionHooks}
-            selection={{
-              active: selection.active,
-              selected: selection.selected.has(item.id),
-              onToggle: selection.toggle,
-              onRangeMenu: selection.openRangeMenu,
-            }}
+            selecting={selection.active}
+            selected={selection.selected.has(item.id)}
+            onToggleSelect={selection.toggle}
+            onSelectRange={selection.openRangeMenu}
             trailing={
               kind === 'downloads' ? (
                 <Pressable

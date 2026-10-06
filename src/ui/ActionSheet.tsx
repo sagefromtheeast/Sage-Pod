@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useRef } from 'react';
+import { Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { radius, space, type as typography } from './theme';
@@ -28,15 +29,35 @@ type Props = {
 /**
  * A bottom sheet of actions — the long-press menu and the ⋯ overflow menus.
  *
- * Selecting an item closes the sheet first, then runs it, so an item that
- * opens another dialog (share sheet, confirmation) doesn't stack on top.
+ * Selecting an item closes the sheet and runs the item only once the sheet
+ * has gone: on iOS an Alert or share sheet presented while a modal is still
+ * dismissing can fail to appear.
  */
 export function ActionSheet({ visible, title, subtitle, items, onClose }: Props) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const pending = useRef<(() => void) | null>(null);
+
+  const runPending = () => {
+    const run = pending.current;
+    pending.current = null;
+    run?.();
+  };
+
+  // iOS reports the end of the dismissal through onDismiss; elsewhere the
+  // modal is gone as soon as it re-renders hidden.
+  useEffect(() => {
+    if (!visible && Platform.OS !== 'ios') runPending();
+  }, [visible]);
 
   return (
-    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+      onDismiss={Platform.OS === 'ios' ? runPending : undefined}
+    >
       <Pressable
         style={[styles.backdrop, { backgroundColor: theme.scrim }]}
         onPress={onClose}
@@ -75,8 +96,8 @@ export function ActionSheet({ visible, title, subtitle, items, onClose }: Props)
                 <Pressable
                   key={item.key}
                   onPress={() => {
+                    pending.current = item.onPress;
                     onClose();
-                    item.onPress();
                   }}
                   style={({ pressed }) => [
                     styles.item,

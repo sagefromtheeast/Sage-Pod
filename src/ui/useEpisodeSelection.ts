@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { BackHandler } from 'react-native';
 
 import { pruneSelection, selectRange, toggleSelected } from '@/actions/selection';
 import type { EpisodeWithFeed } from '@/db/types';
@@ -45,6 +46,7 @@ export function useEpisodeSelection(episodes: EpisodeWithFeed[]): EpisodeSelecti
     setSelected(new Set());
     setRangeAnchor(null);
   }, []);
+  const closeRangeMenu = useCallback(() => setRangeAnchor(null), []);
   const selectRangeFromAnchor = useCallback(
     (direction: 'above' | 'below') => {
       if (rangeAnchor !== null) setSelected((current) => selectRange(orderedIds, current, rangeAnchor, direction));
@@ -52,6 +54,21 @@ export function useEpisodeSelection(episodes: EpisodeWithFeed[]): EpisodeSelecti
     },
     [orderedIds, rangeAnchor]
   );
+
+  // Deselecting the last episode (or an action removing it) ends selection mode.
+  useEffect(() => {
+    if (active && selected.size === 0) clear();
+  }, [active, selected, clear]);
+
+  // Android back leaves selection mode instead of leaving the screen.
+  useEffect(() => {
+    if (!active) return;
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      clear();
+      return true;
+    });
+    return () => subscription.remove();
+  }, [active, clear]);
 
   const selectedEpisodes = useMemo(
     () => episodes.filter((episode) => selected.has(episode.id)),
@@ -68,7 +85,7 @@ export function useEpisodeSelection(episodes: EpisodeWithFeed[]): EpisodeSelecti
     clear,
     rangeAnchor,
     openRangeMenu: setRangeAnchor,
-    closeRangeMenu: () => setRangeAnchor(null),
+    closeRangeMenu,
     selectRangeFromAnchor,
   };
 }

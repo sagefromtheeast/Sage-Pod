@@ -7,7 +7,7 @@ import { rowButtonFor, subjectFor, type RowButton } from '@/actions/episodeActio
 import type { ActionHooks } from '@/actions/runEpisodeAction';
 import { markPlayed } from '@/db/episodes';
 import { useIsQueued } from '@/db/queueMembership';
-import { getSettings } from '@/db/settings';
+import { useSetting } from '@/db/settings';
 import type { EpisodeWithFeed } from '@/db/types';
 import { useEpisodePlayback } from '@/player';
 import { cancelDownload, formatBytes, queueDownload, useDownloadProgress } from '@/player/downloads';
@@ -32,14 +32,6 @@ const BUTTON_META: Record<RowButton, { icon: React.ComponentProps<typeof Ionicon
   markPlayed: { icon: 'checkmark', label: 'Mark as played' },
 };
 
-/** Selection-mode wiring for a row (see useEpisodeSelection). */
-export type RowSelection = {
-  active: boolean;
-  selected: boolean;
-  onToggle: (episodeId: number) => void;
-  /** Long-press while selecting: "select all above / below". */
-  onRangeMenu: (episodeId: number) => void;
-};
 
 type Props = {
   episode: EpisodeWithFeed;
@@ -51,8 +43,12 @@ type Props = {
   hideFeedTitle?: boolean;
   /** Passed to the long-press menu; `onMultiSelect` adds "Select multiple". */
   actionHooks?: ActionHooks;
-  /** Present on screens with multi-select. */
-  selection?: RowSelection;
+  /** Selection mode (screens with multi-select). Primitives + stable callbacks keep memo effective. */
+  selecting?: boolean;
+  selected?: boolean;
+  onToggleSelect?: (episodeId: number) => void;
+  /** Long-press while selecting: "select all above / below". */
+  onSelectRange?: (episodeId: number) => void;
 };
 
 function formatEpisodeBadge(
@@ -78,7 +74,10 @@ export const EpisodeRow = memo(function EpisodeRow({
   trailing,
   hideFeedTitle = false,
   actionHooks,
-  selection,
+  selecting = false,
+  selected = false,
+  onToggleSelect,
+  onSelectRange,
 }: Props) {
   const theme = useTheme();
   const router = useRouter();
@@ -99,11 +98,8 @@ export const EpisodeRow = memo(function EpisodeRow({
   const started = position > 30 && !episode.is_played;
 
   const artwork = episode.image_url ?? episode.feed_image_url;
-  const selecting = selection?.active ?? false;
-  const button = rowButtonFor(
-    subjectFor(episode, { queued, playing: isCurrent && playing }),
-    getSettings().streamOverDownload
-  );
+  const preferStreaming = useSetting('streamOverDownload');
+  const button = rowButtonFor(subjectFor(episode, { queued, playing: isCurrent && playing }), preferStreaming);
 
   const pressButton = () => {
     switch (button) {
@@ -127,10 +123,10 @@ export const EpisodeRow = memo(function EpisodeRow({
   return (
     <Pressable
       onPress={() =>
-        selecting ? selection?.onToggle(episode.id) : router.push(`/episode/${episode.id}`)
+        selecting ? onToggleSelect?.(episode.id) : router.push(`/episode/${episode.id}`)
       }
       onLongPress={() =>
-        selecting ? selection?.onRangeMenu(episode.id) : openEpisodeActions(episode, actionHooks)
+        selecting ? onSelectRange?.(episode.id) : openEpisodeActions(episode, actionHooks)
       }
       delayLongPress={350}
       style={({ pressed }) => [
@@ -138,7 +134,7 @@ export const EpisodeRow = memo(function EpisodeRow({
         {
           backgroundColor: pressed
             ? theme.surfaceAlt
-            : selection?.selected
+            : selected
               ? theme.surfaceAlt
               : isCurrent
                 ? theme.accentSoft
@@ -146,7 +142,7 @@ export const EpisodeRow = memo(function EpisodeRow({
         },
       ]}
       accessibilityRole="button"
-      accessibilityState={selecting ? { selected: selection?.selected } : undefined}
+      accessibilityState={selecting ? { selected } : undefined}
       accessibilityLabel={`${episode.title}, ${episode.feed_title}`}
       accessibilityHint={selecting ? undefined : 'Long-press for more actions'}
     >
@@ -235,9 +231,9 @@ export const EpisodeRow = memo(function EpisodeRow({
       <View style={styles.controls}>
         {selecting ? (
           <Ionicons
-            name={selection?.selected ? 'checkmark-circle' : 'ellipse-outline'}
+            name={selected ? 'checkmark-circle' : 'ellipse-outline'}
             size={26}
-            color={selection?.selected ? theme.accent : theme.textFaint}
+            color={selected ? theme.accent : theme.textFaint}
           />
         ) : (
           <>

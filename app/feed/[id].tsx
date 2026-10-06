@@ -327,12 +327,10 @@ export default function FeedScreen() {
             onPlay={play}
             hideFeedTitle
             actionHooks={actionHooks}
-            selection={{
-              active: selection.active,
-              selected: selection.selected.has(item.id),
-              onToggle: selection.toggle,
-              onRangeMenu: selection.openRangeMenu,
-            }}
+            selecting={selection.active}
+            selected={selection.selected.has(item.id)}
+            onToggleSelect={selection.toggle}
+            onSelectRange={selection.openRangeMenu}
             trailing={
               <Pressable
                 onPress={() => void enqueue(item.id)}
