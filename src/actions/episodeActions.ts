@@ -79,21 +79,62 @@ export type ActionSurface =
   /** Bottom bar while several episodes are selected. */
   | { kind: 'selection'; inQueue: boolean };
 
-function applicable(items: readonly ActionSubject[], multiple: boolean): Set<EpisodeAction> {
-  const can = new Set<EpisodeAction>();
-  for (const item of items) {
-    if (item.hasMedia && item.playing) can.add('skip');
-    if (item.queued) can.add('removeFromQueue');
-    if (item.hasMedia && !item.queued) can.add('addToQueue');
-    if (item.isNew) can.add('removeFromInbox');
-    if (!item.isPlayed) can.add('markPlayed');
-    if (item.isPlayed) can.add('markUnplayed');
-    if (item.hasMedia && item.position !== 0) can.add('resetPosition');
-    if (item.hasMedia && (item.downloaded || item.downloading)) can.add('delete');
-    if (item.hasMedia && !item.downloaded && !item.downloading) can.add('download');
-    if (!item.isFavorite) can.add('addToFavorites');
-    if (item.isFavorite) can.add('removeFromFavorites');
+/**
+ * Whether one action makes sense for one episode. The menu shows an action if
+ * it applies to any selected episode; running it acts only on those it applies
+ * to (so "Delete" on a mixed selection deletes just the downloaded ones).
+ */
+export function appliesTo(action: EpisodeAction, item: ActionSubject): boolean {
+  switch (action) {
+    case 'skip':
+      return item.hasMedia && item.playing;
+    case 'removeFromQueue':
+    case 'moveToTop':
+    case 'moveToBottom':
+      return item.queued;
+    case 'addToQueue':
+      return item.hasMedia && !item.queued;
+    case 'removeFromInbox':
+      return item.isNew;
+    case 'markPlayed':
+      return !item.isPlayed;
+    case 'markUnplayed':
+      return item.isPlayed;
+    case 'resetPosition':
+      return item.hasMedia && item.position !== 0;
+    case 'delete':
+      return item.hasMedia && (item.downloaded || item.downloading);
+    case 'download':
+      return item.hasMedia && !item.downloaded && !item.downloading;
+    case 'addToFavorites':
+      return !item.isFavorite;
+    case 'removeFromFavorites':
+      return item.isFavorite;
+    case 'share':
+    case 'multiSelect':
+      return true;
   }
+}
+
+/** Actions decided per item (everything except the surface-level extras). */
+const PER_ITEM: readonly EpisodeAction[] = [
+  'skip',
+  'removeFromQueue',
+  'addToQueue',
+  'removeFromInbox',
+  'markPlayed',
+  'markUnplayed',
+  'resetPosition',
+  'delete',
+  'download',
+  'addToFavorites',
+  'removeFromFavorites',
+];
+
+function applicable(items: readonly ActionSubject[], multiple: boolean): Set<EpisodeAction> {
+  const can = new Set<EpisodeAction>(
+    PER_ITEM.filter((action) => items.some((item) => appliesTo(action, item)))
+  );
   if (!multiple) can.add('share');
   // With a mixed selection, one "Add to favourites" covers everyone.
   if (multiple && can.has('addToFavorites')) can.delete('removeFromFavorites');

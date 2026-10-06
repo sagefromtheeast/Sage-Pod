@@ -128,23 +128,48 @@ export async function moveToBottom(episodeId: number): Promise<void> {
   notifyEpisodeQueued(episodeId);
 }
 
-/** Where an episode sits in the queue, or null if it isn't queued. Saved for Undo. */
-export async function getQueueSlot(episodeId: number): Promise<number | null> {
-  const row = await getDb().getFirstAsync<{ sort_order: number }>(
-    'SELECT sort_order FROM queue WHERE episode_id = ?',
-    episodeId
+/** Where an episode sat in the queue, saved so Undo can put it back. */
+export type QueueSlot = { episodeId: number; sortOrder: number; addedAt: number };
+
+export async function getQueueSlots(episodeIds: readonly number[]): Promise<QueueSlot[]> {
+  if (episodeIds.length === 0) return [];
+  return getDb().getAllAsync<QueueSlot>(
+    `SELECT episode_id AS episodeId, sort_order AS sortOrder, added_at AS addedAt FROM queue
+      WHERE episode_id IN (${episodeIds.map(() => '?').join(', ')})`,
+    ...episodeIds
   );
-  return row?.sort_order ?? null;
 }
 
-/** Puts an episode back exactly where it was (Undo for "remove from queue"). */
-export async function restoreQueueSlot(episodeId: number, sortOrder: number): Promise<void> {
-  await getDb().runAsync(
-    'INSERT OR REPLACE INTO queue (episode_id, sort_order, added_at) VALUES (?, ?, ?)',
-    episodeId,
-    sortOrder,
-    Date.now()
-  );
+/**
+ * Puts episodes back where they were (Undo for "remove from queue"), keeping
+ * their original "date added". If another episode has taken a slot since, the
+ * restored one goes just before it, so no two share a position.
+ */
+export async function restoreQueueSlots(slots: readonly QueueSlot[]): Promise<void> {
+  const db = getDb();
+  await db.withTransactionAsync(async () => {
+    for (const slot of slots) {
+      const taken = await db.getFirstAsync<{ episode_id: number }>(
+        'SELECT episode_id FROM queue WHERE sort_order = ? AND episode_id != ?',
+        slot.sortOrder,
+        slot.episodeId
+      );
+      let order = slot.sortOrder;
+      if (taken) {
+        const before = await db.getFirstAsync<{ prev: number | null }>(
+          'SELECT MAX(sort_order) AS prev FROM queue WHERE sort_order < ?',
+          slot.sortOrder
+        );
+        order = ((before?.prev ?? slot.sortOrder - 1) + slot.sortOrder) / 2;
+      }
+      await db.runAsync(
+        'INSERT OR REPLACE INTO queue (episode_id, sort_order, added_at) VALUES (?, ?, ?)',
+        slot.episodeId,
+        order,
+        slot.addedAt
+      );
+    }
+  });
 }
 
 export async function dequeue(episodeId: number): Promise<void> {

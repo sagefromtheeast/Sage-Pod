@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { episodeActionsFor, rowButtonFor, type ActionSubject } from '../episodeActions';
+import { appliesTo, episodeActionsFor, rowButtonFor, type ActionSubject } from '../episodeActions';
 
 const base: ActionSubject = {
   hasMedia: true,
@@ -79,6 +79,22 @@ describe('selection bar', () => {
 
   it('is empty for an empty selection', () => {
     assert.deepEqual(episodeActionsFor([], selection), []);
+  });
+});
+
+describe('appliesTo (what a bulk action acts on)', () => {
+  it('limits delete and download to the episodes they fit', () => {
+    assert.equal(appliesTo('delete', ep({ downloaded: true })), true);
+    assert.equal(appliesTo('delete', ep({})), false);
+    assert.equal(appliesTo('download', ep({ hasMedia: false })), false);
+    assert.equal(appliesTo('addToQueue', ep({ hasMedia: false })), false);
+  });
+
+  it('matches the menu rules', () => {
+    for (const subject of [ep({}), ep({ isPlayed: true, queued: true }), ep({ downloaded: true, isNew: true })]) {
+      const menu = episodeActionsFor([subject], { kind: 'menu', canMultiSelect: false });
+      for (const action of menu) assert.ok(appliesTo(action, subject), `${action} shown but not applicable`);
+    }
   });
 });
 

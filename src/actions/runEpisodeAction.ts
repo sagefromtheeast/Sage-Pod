@@ -1,22 +1,16 @@
 import { Alert } from 'react-native';
 
 import {
-  dismissFromInbox,
-  getPlaybackSnapshot,
-  markPlayed,
-  resetPosition,
-  restorePlaybackSnapshot,
-  setFavorite,
+  dismissManyFromInbox,
+  getPlaybackSnapshots,
+  markPlayedMany,
+  resetPositionMany,
+  restorePlaybackSnapshots,
+  setFavoriteMany,
   type PlaybackSnapshot,
 } from '@/db/episodes';
-import {
-  dequeue,
-  enqueue,
-  enqueueFront,
-  getQueueSlot,
-  moveToBottom,
-  restoreQueueSlot,
-} from '@/db/queue';
+import { dequeue, enqueue, enqueueFront, getQueueSlots, moveToBottom, restoreQueueSlots } from '@/db/queue';
+import { isQueuedNow } from '@/db/queueMembership';
 import type { EpisodeWithFeed } from '@/db/types';
 import { player } from '@/player';
 import { cancelDownload, deleteDownload, queueDownload } from '@/player/downloads';
@@ -24,7 +18,7 @@ import type { IconName } from '@/ui/ActionSheet';
 import { showToast } from '@/ui/UndoToast';
 import { shareEpisode } from '@/util/share';
 
-import type { EpisodeAction } from './episodeActions';
+import { appliesTo, subjectFor, type EpisodeAction } from './episodeActions';
 
 /** Label and icon for every action; a Record so a new action can't ship unlabelled. */
 export const ACTION_META: Record<EpisodeAction, { label: string; icon: IconName; destructive?: boolean }> = {
@@ -52,32 +46,45 @@ export type ActionHooks = {
 
 const count = (n: number, one: string, many: string) => (n === 1 ? one : `${n} episodes ${many}`);
 
-async function snapshots(episodes: EpisodeWithFeed[]): Promise<[number, PlaybackSnapshot][]> {
-  const rows = await Promise.all(episodes.map((episode) => getPlaybackSnapshot(episode.id)));
-  return episodes.flatMap((episode, index) => {
-    const row = rows[index];
-    return row ? [[episode.id, row] as [number, PlaybackSnapshot]] : [];
-  });
+/** The episodes an action actually applies to, judged with live queue/player state. */
+function targetsFor(action: EpisodeAction, episodes: EpisodeWithFeed[]): EpisodeWithFeed[] {
+  const state = player.getState();
+  return episodes.filter((episode) =>
+    appliesTo(
+      action,
+      subjectFor(episode, {
+        queued: isQueuedNow(episode.id),
+        playing: state.episode?.id === episode.id && state.playing,
+      })
+    )
+  );
 }
 
-function undoSnapshots(saved: [number, PlaybackSnapshot][]) {
+/** Undo for playback-field changes; also moves the player back if the episode is loaded. */
+function undoSnapshots(saved: Map<number, PlaybackSnapshot>) {
   return async () => {
-    for (const [id, snapshot] of saved) await restorePlaybackSnapshot(id, snapshot);
+    await restorePlaybackSnapshots(saved);
+    const current = player.getState().episode;
+    const snapshot = current ? saved.get(current.id) : undefined;
+    if (snapshot) await player.seekTo(snapshot.position);
   };
 }
 
+const ids = (episodes: EpisodeWithFeed[]) => episodes.map((episode) => episode.id);
+
 /**
- * Carries out an action on one or more episodes. Reversible ones (inbox,
- * played state, queue removal, position reset) capture the old state first
- * and offer Undo; deleting files asks for confirmation instead.
+ * Carries out an action on one or more episodes — only those it applies to.
+ * Reversible ones (inbox, played state, queue removal, position reset) capture
+ * the old state first and offer Undo; deleting files asks for confirmation.
  */
 export async function runEpisodeAction(
   action: EpisodeAction,
   episodes: EpisodeWithFeed[],
   hooks: ActionHooks = {}
 ): Promise<void> {
-  if (episodes.length === 0) return;
-  const n = episodes.length;
+  const targets = targetsFor(action, episodes);
+  if (targets.length === 0) return;
+  const n = targets.length;
 
   switch (action) {
     case 'skip':
@@ -85,18 +92,17 @@ export async function runEpisodeAction(
       return;
 
     case 'removeFromInbox': {
-      const targets = episodes.filter((episode) => episode.is_new === 1);
-      const saved = await snapshots(targets);
-      for (const episode of targets) await dismissFromInbox(episode.id);
-      showToast(count(targets.length, 'Removed from inbox', 'removed from inbox'), undoSnapshots(saved));
+      const saved = await getPlaybackSnapshots(ids(targets));
+      await dismissManyFromInbox(ids(targets));
+      showToast(count(n, 'Removed from inbox', 'removed from inbox'), undoSnapshots(saved));
       return;
     }
 
     case 'markPlayed':
     case 'markUnplayed': {
       const played = action === 'markPlayed';
-      const saved = await snapshots(episodes);
-      for (const episode of episodes) await markPlayed(episode.id, played);
+      const saved = await getPlaybackSnapshots(ids(targets));
+      await markPlayedMany(ids(targets), played);
       showToast(
         played ? count(n, 'Marked as played', 'marked as played') : count(n, 'Marked as unplayed', 'marked as unplayed'),
         undoSnapshots(saved)
@@ -104,27 +110,20 @@ export async function runEpisodeAction(
       return;
     }
 
-    case 'addToQueue': {
-      for (const episode of episodes) await enqueue(episode.id);
+    case 'addToQueue':
+      for (const episode of targets) await enqueue(episode.id);
       showToast(count(n, 'Added to queue', 'added to queue'));
       return;
-    }
 
     case 'removeFromQueue': {
-      const slots: [number, number][] = [];
-      for (const episode of episodes) {
-        const slot = await getQueueSlot(episode.id);
-        if (slot !== null) slots.push([episode.id, slot]);
-        await dequeue(episode.id);
-      }
-      showToast(count(slots.length, 'Removed from queue', 'removed from queue'), async () => {
-        for (const [id, slot] of slots) await restoreQueueSlot(id, slot);
-      });
+      const slots = await getQueueSlots(ids(targets));
+      for (const episode of targets) await dequeue(episode.id);
+      showToast(count(n, 'Removed from queue', 'removed from queue'), () => restoreQueueSlots(slots));
       return;
     }
 
     case 'download':
-      for (const episode of episodes) await queueDownload(episode.id);
+      for (const episode of targets) await queueDownload(episode.id);
       showToast(count(n, 'Downloading', 'downloading'));
       return;
 
@@ -139,7 +138,7 @@ export async function runEpisodeAction(
             style: 'destructive',
             onPress: () =>
               void (async () => {
-                for (const episode of episodes) {
+                for (const episode of targets) {
                   if (episode.download_state === 'done') await deleteDownload(episode.id);
                   else await cancelDownload(episode.id);
                 }
@@ -151,21 +150,19 @@ export async function runEpisodeAction(
 
     case 'addToFavorites':
     case 'removeFromFavorites':
-      for (const episode of episodes) await setFavorite(episode.id, action === 'addToFavorites');
+      await setFavoriteMany(ids(targets), action === 'addToFavorites');
       return;
 
     case 'resetPosition': {
-      const saved = await snapshots(episodes);
-      for (const episode of episodes) {
-        await resetPosition(episode.id);
-        if (player.getState().episode?.id === episode.id) await player.seekTo(0);
-      }
+      const saved = await getPlaybackSnapshots(ids(targets));
+      await resetPositionMany(ids(targets));
+      if (targets.some((episode) => episode.id === player.getState().episode?.id)) await player.seekTo(0);
       showToast(count(n, 'Position reset', 'reset'), undoSnapshots(saved));
       return;
     }
 
     case 'share': {
-      const [episode] = episodes;
+      const [episode] = targets;
       await shareEpisode({
         title: episode.title,
         podcastTitle: episode.feed_title,
@@ -176,15 +173,15 @@ export async function runEpisodeAction(
 
     case 'moveToTop':
       // Front-insert in reverse so the selection keeps its relative order.
-      for (const episode of [...episodes].reverse()) await enqueueFront(episode.id);
+      for (const episode of [...targets].reverse()) await enqueueFront(episode.id);
       return;
 
     case 'moveToBottom':
-      for (const episode of episodes) await moveToBottom(episode.id);
+      for (const episode of targets) await moveToBottom(episode.id);
       return;
 
     case 'multiSelect':
-      hooks.onMultiSelect?.(episodes[0]);
+      hooks.onMultiSelect?.(targets[0]);
       return;
   }
 }
