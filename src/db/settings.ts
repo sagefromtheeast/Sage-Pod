@@ -8,8 +8,11 @@ export type Settings = {
   skipBackward: number;
   /** Playback rate applied to newly loaded episodes. */
   playbackRate: number;
-  /** Rewind this many seconds when resuming a partially played episode. */
-  resumeRewind: number;
+  /**
+   * Back up a little on resume, scaled by how long playback was paused
+   * (AntennaPod's rule: 0.8s, 3s, 10s or 20s). See src/player/resumeRewind.ts.
+   */
+  rewindOnResume: boolean;
   /** Remove an episode from the queue once it finishes. */
   removeFromQueueWhenFinished: boolean;
   /** Start the next queue item automatically when one ends. */
@@ -34,7 +37,7 @@ export const DEFAULT_SETTINGS: Settings = {
   skipForward: 30,
   skipBackward: 10,
   playbackRate: 1,
-  resumeRewind: 3,
+  rewindOnResume: true,
   removeFromQueueWhenFinished: true,
   continuousPlayback: true,
   downloadOnWifiOnly: true,
@@ -75,6 +78,13 @@ export async function loadSettings(): Promise<Settings> {
   );
 
   const next = { ...DEFAULT_SETTINGS };
+
+  // Pre-0.4 builds stored a fixed rewind in seconds; 0 meant off.
+  const legacyRewind = rows.find((row) => row.key === 'resumeRewind');
+  if (legacyRewind && !rows.some((row) => row.key === 'rewindOnResume')) {
+    next.rewindOnResume = legacyRewind.value !== '0';
+  }
+
   for (const { key, value } of rows) {
     if (key in next) {
       const typedKey = key as keyof Settings;

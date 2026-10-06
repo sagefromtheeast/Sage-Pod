@@ -175,13 +175,11 @@ export default function SettingsScreen() {
         format={(rate) => `${rate}×`}
         onChange={(value) => void update('playbackRate', value)}
       />
-      <SettingsOptions
+      <SettingsSwitch
         label="Rewind on resume"
-        description="Backs up a few seconds when you pick an episode up again."
-        value={settings.resumeRewind}
-        options={[0, 3, 5, 10] as const}
-        format={(seconds) => (seconds === 0 ? 'Off' : `${seconds}s`)}
-        onChange={(value) => void update('resumeRewind', value)}
+        description="Backs up a little when you press play again: under a second after a quick pause, up to 20 seconds after a day away."
+        value={settings.rewindOnResume}
+        onValueChange={(value) => void update('rewindOnResume', value)}
       />
       <SettingsSwitch
         label="Play the next episode"

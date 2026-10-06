@@ -18,6 +18,7 @@ import { dequeue, enqueueFront, nextInQueue } from '@/db/queue';
 import { deleteDownload, getLocalEpisodePath } from '@/player/downloads';
 import { getMeta, getSettings, setMeta } from '@/db/settings';
 import type { EpisodeWithFeed } from '@/db/types';
+import { positionAfterPause } from '@/player/resumeRewind';
 import {
   pauseTimer,
   resumeTimer,
@@ -164,15 +165,13 @@ class PlayerService {
     const source = localUri ?? episode.media_url;
 
     const skipIntro = episode.feed_skip_intro_seconds ?? 0;
-    // Only rewind on resume when the listener has been away long enough to
-    // have lost context — a quick pause-unpause should not jump backwards.
-    const pauseGapMs = this.lastPausedAt ? Date.now() - this.lastPausedAt : Infinity;
-    const shouldRewind = pauseGapMs > 5 * 60_000; // 5 minutes
+    // Picking an episode back up: rewind by how long ago it was last played.
+    const awayMs = episode.played_at ? Date.now() - episode.played_at : 0;
     let startAt =
       options.startAt ??
-      (shouldRewind && episode.position > settings.resumeRewind
-        ? episode.position - settings.resumeRewind
-        : episode.position);
+      (settings.rewindOnResume ? positionAfterPause(episode.position, awayMs) : episode.position);
+    // A pause of the previous episode says nothing about this one.
+    this.lastPausedAt = null;
 
     if (startAt < skipIntro) {
       startAt = skipIntro;
@@ -308,6 +307,19 @@ class PlayerService {
 
   play(): void {
     if (!this.player) return;
+
+    // Resuming after a pause: back up a little, scaled by how long it was.
+    if (this.lastPausedAt !== null && getSettings().rewindOnResume) {
+      const target = positionAfterPause(this.state.position, Date.now() - this.lastPausedAt);
+      if (target < this.state.position) {
+        this.setState({ position: target });
+        void this.player.seekTo(target).catch(() => {
+          // Losing a sub-second rewind is harmless; never block playback on it.
+        });
+      }
+    }
+    this.lastPausedAt = null;
+
     this.player.play();
     this.setState({ playing: true, error: null });
     this.syncSleepTimer(true);
