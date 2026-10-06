@@ -187,16 +187,24 @@ async function insertFeed(feedUrl: string, state: 'subscribed' | 'preview'): Pro
 /**
  * Subscribes to a feed URL. An existing preview becomes a subscription; an
  * existing subscription is just refreshed.
+ *
+ * Subscribing a preview never fails: its episodes are already stored, so the
+ * state flips first and the refresh is best effort. A failed refresh shows on
+ * the podcast page's "Last refresh failed" banner instead of undoing (or
+ * misreporting) the subscription.
  */
 export async function subscribe(rawUrl: string): Promise<{ feedId: number; alreadySubscribed: boolean }> {
   const feedUrl = normalizeFeedUrl(rawUrl);
 
   const existing = await getFeedByUrl(feedUrl);
   if (existing) {
-    const alreadySubscribed = existing.state === 'subscribed';
-    if (!alreadySubscribed) await subscribeFeed(existing.id);
-    await refreshFeed({ ...existing, state: 'subscribed' });
-    return { feedId: existing.id, alreadySubscribed };
+    if (existing.state === 'subscribed') {
+      await refreshFeed(existing);
+      return { feedId: existing.id, alreadySubscribed: true };
+    }
+    await subscribeFeed(existing.id);
+    await refreshFeed({ ...existing, state: 'subscribed' }).catch(() => undefined);
+    return { feedId: existing.id, alreadySubscribed: false };
   }
 
   return { feedId: await insertFeed(feedUrl, 'subscribed'), alreadySubscribed: false };
@@ -244,7 +252,8 @@ export async function refreshFeed(feed: FeedRow, options: { full?: boolean } = {
     return { feedId: feed.id, newEpisodes: 0, unchanged: true };
   }
 
-  const newEpisodes = await upsertEpisodes(feed.id, parsed.episodes, true);
+  // A preview's new episodes aren't "new": only subscriptions feed the Inbox (D-016).
+  const newEpisodes = await upsertEpisodes(feed.id, parsed.episodes, feed.state !== 'preview');
   await updateFeedRow(feed.id, parsed, etag, lastModified);
 
   if (feed.auto_download === 1 && newEpisodes > 0) {
