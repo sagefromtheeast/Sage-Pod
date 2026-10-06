@@ -2,7 +2,19 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import { positionAfterPause, rewindSecondsAfterPause } from '../resumeRewind';
-import { pauseTimer, remainingMs, resumeTimer, startMinutesTimer } from '../sleepTimer';
+import {
+  afterEpisodeFinished,
+  describeTimer,
+  extendTimer,
+  fadeVolume,
+  inHourWindow,
+  pauseTimer,
+  remainingMs,
+  resumeTimer,
+  SLEEP_WARNING_MS,
+  startEpisodesTimer,
+  startMinutesTimer,
+} from '../sleepTimer';
 
 const MIN = 60_000;
 
@@ -35,12 +47,60 @@ describe('minutes sleep timer', () => {
   });
 });
 
-describe('end-of-episode sleep timer', () => {
+describe('episodes sleep timer', () => {
   it('has no clock', () => {
-    const timer = { kind: 'endOfEpisode' } as const;
+    const timer = startEpisodesTimer(1);
     assert.equal(remainingMs(timer, 123), null);
     assert.deepEqual(pauseTimer(timer, 5), timer);
     assert.deepEqual(resumeTimer(timer, 5), timer);
+  });
+
+  it('stops after the last counted episode', () => {
+    let state = afterEpisodeFinished(startEpisodesTimer(2));
+    assert.equal(state.stop, false);
+    assert.equal(state.timer?.kind === 'episodes' && state.timer.remaining, 1);
+    state = afterEpisodeFinished(state.timer!);
+    assert.deepEqual(state, { timer: null, stop: true });
+  });
+
+  it('ignores minutes timers', () => {
+    const timer = startMinutesTimer(5, 0, true);
+    assert.deepEqual(afterEpisodeFinished(timer), { timer, stop: false });
+  });
+});
+
+describe('extend, fade and auto-enable window', () => {
+  it('extends minutes (running or paused) and episodes', () => {
+    const running = extendTimer(startMinutesTimer(1, 0, true), 5);
+    assert.equal(remainingMs(running, 0), 6 * MIN);
+    const paused = extendTimer(startMinutesTimer(1, 0, false), 10);
+    assert.equal(remainingMs(paused, 0), 11 * MIN);
+    const episodes = extendTimer(startEpisodesTimer(1), 1);
+    assert.equal(episodes.kind === 'episodes' && episodes.remaining, 2);
+  });
+
+  it('fades from full volume to 0.1 over the last 10 s', () => {
+    assert.equal(fadeVolume(SLEEP_WARNING_MS), 1);
+    assert.equal(fadeVolume(0), 0.1);
+    assert.ok(Math.abs(fadeVolume(5_000) - 0.55) < 1e-9);
+  });
+
+  it('handles windows that wrap midnight', () => {
+    assert.equal(inHourWindow(23, 22, 6), true);
+    assert.equal(inHourWindow(3, 22, 6), true);
+    assert.equal(inHourWindow(12, 22, 6), false);
+    assert.equal(inHourWindow(9, 8, 17), true);
+    assert.equal(inHourWindow(17, 8, 17), false);
+  });
+});
+
+describe('timer labels', () => {
+  it('describes episodes and minutes timers', () => {
+    assert.deepEqual(describeTimer(startEpisodesTimer(1), 0), { short: 'End', long: 'Pauses at the end of this episode' });
+    assert.equal(describeTimer(startEpisodesTimer(3), 0).short, '3 ep');
+    assert.deepEqual(describeTimer(startMinutesTimer(10, 0, true), 4 * MIN + 1), { short: '6m', long: 'Pauses in 6 min' });
+    assert.equal(describeTimer(startMinutesTimer(10, 0, false), 0).long, 'Pauses in 10 min of listening');
+    assert.equal(describeTimer(startMinutesTimer(1, 0, true), 15_500).short, '45s');
   });
 });
 

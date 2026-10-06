@@ -162,3 +162,19 @@ phases are done, rather than one per phase. Until then, verification is unit
 tests, the CI checks and the web screenshot harness; the "On device" checklists
 in each phase PR accumulate for that build. Native-only items (Phase 17) still
 need that build and the owner's budget approval.
+
+## D-012 — Now Playing: sheets instead of inline lists, notes one tap away
+
+**Context.** Sage Pod's player showed the speed chips, sleep chips and the
+full chapter list inline. AntennaPod keeps the player to the cover and the
+controls, with speed, sleep and chapters in dialogs, and the show notes on a
+second page.
+
+**Decision.** Speed, sleep timer, chapters and skip amounts open bottom sheets
+from the controls. Show notes stay on the episode screen, reached from a
+"Show notes" button, instead of a swipe page, because the episode screen
+already renders them well. Speed chosen in the sheet is saved on the podcast if
+it has its own speed, otherwise as the global speed.
+The episodes sleep timer counts episodes that actually finish, so it
+survives a pause or a skip. *(Shipped in v0.5.0.)*
+

@@ -1,44 +1,63 @@
 import { Ionicons } from '@expo/vector-icons';
-import Slider from '@react-native-community/slider';
 import { useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import {
+  Linking,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { getSettings } from '@/db/settings';
-import { PLAYBACK_RATES, player, usePlayerState } from '@/player';
-import { remainingMs, type SleepTimer } from '@/player/sleepTimer';
+import { isFavorite, toggleFavorite } from '@/db/episodes';
+import { setSetting, SKIP_AMOUNTS, useSetting } from '@/db/settings';
+import { useQuery } from '@/db/useQuery';
+import { player, usePlayerState } from '@/player';
+import { currentChapterIndex, nextChapterTarget, prevChapterTarget } from '@/player/chapters';
+import { describeTimer } from '@/player/sleepTimer';
+import { formatSpeed } from '@/player/speed';
 import { useChapters } from '@/player/useChapters';
+import { ActionSheet } from '@/ui/ActionSheet';
 import { Artwork } from '@/ui/Artwork';
 import { triggerHaptic } from '@/ui/haptics';
+import { OverflowMenu } from '@/ui/OverflowMenu';
+import { ChaptersSheet } from '@/ui/player/ChaptersSheet';
+import { SeekBar } from '@/ui/player/SeekBar';
+import { SleepSheet } from '@/ui/player/SleepSheet';
+import { SpeedSheet } from '@/ui/player/SpeedSheet';
 import { radius, space, type as typography } from '@/ui/theme';
 import { useTheme } from '@/ui/useTheme';
 import { shareEpisode } from '@/util/share';
-import { formatDuration } from '@/util/time';
 
-const SLEEP_TIMER_OPTIONS = [5, 10, 15, 30, 45, 60] as const;
+type Sheet = 'speed' | 'sleep' | 'chapters' | 'skipBackward' | 'skipForward' | null;
+
+/** Artwork never grows past this, so tablets keep room for the controls. */
+const MAX_ARTWORK = 360;
 
 export default function PlayerScreen() {
   const theme = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const window = useWindowDimensions();
 
   const { episode, position, duration, playing, buffering, rate, sleepTimer, error } =
     usePlayerState();
+  const { chapters } = useChapters(episode?.chapters_url);
+  const skipBackward = useSetting('skipBackward');
+  const skipForward = useSetting('skipForward');
+  const episodeId = episode?.id ?? null;
+  const { data: favorite = false } = useQuery(
+    () => (episodeId === null ? Promise.resolve(false) : isFavorite(episodeId)),
+    ['episodes'],
+    [episodeId]
+  );
 
-  // While the user drags the scrubber, show their finger position rather than
-  // the engine's — otherwise the thumb fights the playback ticks.
-  const [scrubbing, setScrubbing] = useState<number | null>(null);
-  const [showSleepOptions, setShowSleepOptions] = useState(false);
-
-  const settings = getSettings();
-  const displayPosition = scrubbing ?? position;
-
-  const commitSeek = useCallback(async (value: number) => {
-    triggerHaptic('selection');
-    await player.seekTo(value);
-    setScrubbing(null);
-  }, []);
+  const [sheet, setSheet] = useState<Sheet>(null);
+  // While the seek bar is dragged, chapter title and art follow the finger.
+  const [scrub, setScrub] = useState<number | null>(null);
 
   if (!episode) {
     return (
@@ -51,316 +70,313 @@ export default function PlayerScreen() {
     );
   }
 
-  const artwork = episode.image_url ?? episode.feed_image_url;
+  const shown = scrub ?? position;
+  const chapterIndex = currentChapterIndex(chapters, shown);
+  const chapter = chapterIndex >= 0 ? chapters[chapterIndex] : null;
+  const nextChapter = nextChapterTarget(chapters, position);
+  const artwork = chapter?.img ?? episode.image_url ?? episode.feed_image_url;
+  const artworkSize = Math.max(160, Math.min(window.width - space.xl * 2, window.height * 0.4, MAX_ARTWORK));
+  const sleepLabel = sleepTimer ? describeTimer(sleepTimer, Date.now()) : null;
+
+  const seek = (seconds: number) => void player.seekTo(seconds);
+  const openPodcast = () => {
+    router.back();
+    router.push(`/feed/${episode.feed_id}`);
+  };
+  const openNotes = () => {
+    router.back();
+    router.push(`/episode/${episode.id}`);
+  };
 
   return (
-    <ScrollView
-      style={{ backgroundColor: theme.bg }}
-      contentContainerStyle={[
-        styles.content,
-        { paddingTop: insets.top + space.sm, paddingBottom: insets.bottom + space.xl },
-      ]}
-    >
-      <View style={styles.topBar}>
-        <Pressable
-          onPress={() => router.back()}
-          hitSlop={10}
-          accessibilityRole="button"
-          accessibilityLabel="Close player"
-        >
-          <Ionicons name="chevron-down" size={28} color={theme.textMuted} />
-        </Pressable>
-        <Text style={[styles.topBarTitle, { color: theme.textMuted }]} numberOfLines={1}>
-          {episode.feed_title}
-        </Text>
-        <View style={styles.topBarRight}>
+    <View style={[styles.screen, { backgroundColor: theme.bg }]}>
+      <ScrollView
+        contentContainerStyle={[
+          styles.content,
+          { paddingTop: insets.top + space.sm, paddingBottom: insets.bottom + space.xl },
+        ]}
+      >
+        <View style={styles.topBar}>
           <Pressable
-            onPress={() =>
-              void shareEpisode({
-                title: episode.title,
-                podcastTitle: episode.feed_title,
-                url: episode.link ?? episode.media_url,
-                positionSeconds: displayPosition,
-              })
-            }
+            onPress={() => router.back()}
             hitSlop={10}
             accessibilityRole="button"
-            accessibilityLabel="Share episode"
+            accessibilityLabel="Close player"
           >
-            <Ionicons name="share-outline" size={22} color={theme.textMuted} />
+            <Ionicons name="chevron-down" size={28} color={theme.textMuted} />
           </Pressable>
-          <Pressable
-            onPress={() => router.push(`/episode/${episode.id}`)}
-            hitSlop={10}
-            accessibilityRole="button"
-            accessibilityLabel="Episode details"
-          >
-            <Ionicons name="information-circle-outline" size={24} color={theme.textMuted} />
-          </Pressable>
+          <View style={styles.topBarRight}>
+            <Pressable
+              onPress={() => {
+                triggerHaptic('light');
+                void toggleFavorite(episode.id);
+              }}
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel={favorite ? 'Remove from favourites' : 'Add to favourites'}
+              accessibilityState={{ selected: favorite }}
+            >
+              <Ionicons
+                name={favorite ? 'heart' : 'heart-outline'}
+                size={24}
+                color={favorite ? theme.accent : theme.textMuted}
+              />
+            </Pressable>
+            <Pressable
+              onPress={() => setSheet('sleep')}
+              hitSlop={10}
+              style={[styles.sleepIcon, sleepLabel ? { backgroundColor: theme.accent } : null]}
+              accessibilityRole="button"
+              accessibilityLabel={sleepLabel ? `Sleep timer. ${sleepLabel.long}` : 'Sleep timer'}
+            >
+              <Ionicons
+                name={sleepLabel ? 'moon' : 'moon-outline'}
+                size={sleepLabel ? 15 : 22}
+                color={sleepLabel ? theme.onAccent : theme.textMuted}
+              />
+              {sleepLabel ? (
+                <Text style={[styles.sleepLabel, { color: theme.onAccent }]}>{sleepLabel.short}</Text>
+              ) : null}
+            </Pressable>
+            <OverflowMenu
+              color={theme.textMuted}
+              title={episode.title}
+              items={[
+                { key: 'podcast', label: 'Open podcast', icon: 'albums-outline', onPress: openPodcast },
+                ...(episode.link
+                  ? [
+                      {
+                        key: 'website',
+                        label: 'Visit website',
+                        icon: 'globe-outline' as const,
+                        onPress: () => void Linking.openURL(episode.link!),
+                      },
+                    ]
+                  : []),
+                {
+                  key: 'share',
+                  label: 'Share…',
+                  icon: 'share-outline',
+                  onPress: () =>
+                    void shareEpisode({
+                      title: episode.title,
+                      podcastTitle: episode.feed_title,
+                      url: episode.link ?? episode.media_url,
+                      positionSeconds: position,
+                    }),
+                },
+              ]}
+            />
+          </View>
         </View>
-      </View>
-
-      <View style={styles.artworkWrap}>
-        <Artwork uri={artwork} size={300} borderRadius={radius.xl} />
-      </View>
-
-      <Text style={[styles.title, { color: theme.text }]} numberOfLines={3}>
-        {episode.title}
-      </Text>
-
-      {error ? <Text style={[styles.error, { color: theme.danger }]}>{error}</Text> : null}
-
-      <View style={styles.scrubber}>
-        <Slider
-          value={displayPosition}
-          minimumValue={0}
-          // A zero maximum makes the slider unusable before metadata loads, so
-          // fall back to a nominal length until the real duration arrives.
-          maximumValue={duration > 0 ? duration : 1}
-          minimumTrackTintColor={theme.accent}
-          maximumTrackTintColor={theme.track}
-          thumbTintColor={theme.accent}
-          onValueChange={setScrubbing}
-          onSlidingComplete={(value) => void commitSeek(value)}
-          disabled={duration <= 0}
-          accessibilityLabel="Seek"
-        />
-        <View style={styles.times}>
-          <Text style={[styles.time, { color: theme.textFaint }]}>
-            {formatDuration(displayPosition)}
-          </Text>
-          <Text style={[styles.time, { color: theme.textFaint }]}>
-            −{formatDuration(Math.max(0, duration - displayPosition))}
-          </Text>
-        </View>
-      </View>
-
-      <View style={styles.transport}>
-        <Pressable
-          onPress={() => {
-            triggerHaptic('light');
-            void player.skipBackward();
-          }}
-          hitSlop={10}
-          style={styles.skip}
-          accessibilityRole="button"
-          accessibilityLabel={`Skip back ${settings.skipBackward} seconds`}
-        >
-          <Ionicons name="play-back" size={30} color={theme.text} />
-          <Text style={[styles.skipLabel, { color: theme.textFaint }]}>{settings.skipBackward}</Text>
-        </Pressable>
 
         <Pressable
           onPress={() => {
             triggerHaptic('medium');
             player.togglePlayPause();
           }}
-          style={[styles.playButton, { backgroundColor: theme.accent }]}
+          style={styles.artworkWrap}
           accessibilityRole="button"
-          accessibilityLabel={playing ? 'Pause' : 'Play'}
+          accessibilityLabel={playing ? 'Artwork. Pause.' : 'Artwork. Play.'}
         >
-          <Ionicons
-            name={buffering && !playing ? 'ellipsis-horizontal' : playing ? 'pause' : 'play'}
-            size={34}
-            color={theme.onAccent}
-            style={!playing && !buffering ? styles.playGlyph : undefined}
-          />
+          <Artwork uri={artwork} size={artworkSize} borderRadius={radius.xl} />
         </Pressable>
 
-        <Pressable
-          onPress={() => {
-            triggerHaptic('light');
-            void player.skipForward();
-          }}
-          hitSlop={10}
-          style={styles.skip}
-          accessibilityRole="button"
-          accessibilityLabel={`Skip forward ${settings.skipForward} seconds`}
-        >
-          <Ionicons name="play-forward" size={30} color={theme.text} />
-          <Text style={[styles.skipLabel, { color: theme.textFaint }]}>{settings.skipForward}</Text>
-        </Pressable>
-      </View>
-
-      <View style={styles.secondaryRow}>
-        <Pressable
-          onPress={() => player.cycleRate()}
-          style={[styles.pill, { backgroundColor: theme.surfaceAlt }]}
-          accessibilityRole="button"
-          accessibilityLabel={`Playback speed ${rate}x`}
-        >
-          <Text style={[styles.pillLabel, { color: theme.text }]}>{rate}×</Text>
-        </Pressable>
-
-        <SleepTimerButton
-          timer={sleepTimer}
-          expanded={showSleepOptions}
-          onToggle={() => setShowSleepOptions((value) => !value)}
-        />
-
-        <Pressable
-          onPress={() => void player.skipToNext()}
-          style={[styles.pill, { backgroundColor: theme.surfaceAlt }]}
-          accessibilityRole="button"
-          accessibilityLabel="Next in queue"
-        >
-          <Ionicons name="play-skip-forward" size={17} color={theme.text} />
-        </Pressable>
-      </View>
-
-      {showSleepOptions ? (
-        <View style={styles.sleepOptions}>
-          <Pressable
-            onPress={() => {
-              player.startSleepTimerUntilEndOfEpisode();
-              setShowSleepOptions(false);
-            }}
-            style={[styles.sleepChip, { backgroundColor: theme.surfaceAlt }]}
-            accessibilityRole="button"
-          >
-            <Text style={[styles.pillLabel, { color: theme.text }]}>End of episode</Text>
+        <View style={styles.titles}>
+          <Text style={[styles.title, { color: theme.text }]} numberOfLines={3}>
+            {episode.title}
+          </Text>
+          <Pressable onPress={openPodcast} hitSlop={6} accessibilityRole="link">
+            <Text style={[styles.podcast, { color: theme.accent }]} numberOfLines={1}>
+              {episode.feed_title}
+            </Text>
           </Pressable>
-          {SLEEP_TIMER_OPTIONS.map((minutes) => (
-            <Pressable
-              key={minutes}
-              onPress={() => {
-                player.startSleepTimer(minutes);
-                setShowSleepOptions(false);
-              }}
-              style={[styles.sleepChip, { backgroundColor: theme.surfaceAlt }]}
-              accessibilityRole="button"
-            >
-              <Text style={[styles.pillLabel, { color: theme.text }]}>{minutes}m</Text>
-            </Pressable>
-          ))}
-          {sleepTimer ? (
-            <Pressable
-              onPress={() => {
-                player.cancelSleepTimer();
-                setShowSleepOptions(false);
-              }}
-              style={[styles.sleepChip, { backgroundColor: theme.surfaceAlt }]}
-              accessibilityRole="button"
-            >
-              <Text style={[styles.pillLabel, { color: theme.danger }]}>Off</Text>
-            </Pressable>
-          ) : null}
         </View>
-      ) : null}
 
-      <View style={styles.rateRow}>
-        {PLAYBACK_RATES.map((option) => {
-          const selected = Math.abs(option - rate) < 0.01;
-          return (
+        {chapters.length > 0 ? (
+          <View style={styles.chapterRow}>
             <Pressable
-              key={option}
-              onPress={() => player.setRate(option)}
-              style={[
-                styles.rateChip,
-                { backgroundColor: selected ? theme.accent : 'transparent' },
-              ]}
-              accessibilityRole="radio"
-              accessibilityState={{ selected }}
+              onPress={() => seek(prevChapterTarget(chapters, position, rate))}
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel="Previous chapter"
             >
-              <Text
-                style={[styles.rateLabel, { color: selected ? theme.onAccent : theme.textFaint }]}
-              >
-                {option}×
+              <Ionicons name="play-skip-back" size={20} color={theme.textMuted} />
+            </Pressable>
+            <Pressable
+              onPress={() => setSheet('chapters')}
+              style={[styles.chapterTitle, { backgroundColor: theme.surfaceAlt }]}
+              accessibilityRole="button"
+              accessibilityLabel={`Chapter: ${chapter?.title || 'none'}. Show all chapters.`}
+            >
+              <Ionicons name="list" size={16} color={theme.textMuted} />
+              <Text style={[styles.chapterText, { color: theme.text }]} numberOfLines={1}>
+                {chapter ? chapter.title || `Chapter ${chapterIndex + 1}` : 'Chapters'}
               </Text>
             </Pressable>
-          );
-        })}
-      </View>
+            <Pressable
+              onPress={() => nextChapter !== null && seek(nextChapter)}
+              disabled={nextChapter === null}
+              hitSlop={10}
+              accessibilityRole="button"
+              accessibilityLabel="Next chapter"
+              style={{ opacity: nextChapter === null ? 0.35 : 1 }}
+            >
+              <Ionicons name="play-skip-forward" size={20} color={theme.textMuted} />
+            </Pressable>
+          </View>
+        ) : null}
 
-      <ChaptersList chaptersUrl={episode.chapters_url} position={displayPosition} />
-    </ScrollView>
-  );
-}
+        {error ? <Text style={[styles.error, { color: theme.danger }]}>{error}</Text> : null}
 
-function ChaptersList({ chaptersUrl, position }: { chaptersUrl?: string | null; position: number }) {
-  const theme = useTheme();
-  const { chapters } = useChapters(chaptersUrl);
+        <SeekBar position={position} duration={duration} chapters={chapters} onSeek={seek} onScrub={setScrub} />
 
-  if (!chapters || chapters.length === 0) return null;
-
-  return (
-    <View style={styles.chapters}>
-      <Text style={[styles.chaptersTitle, { color: theme.textMuted }]}>CHAPTERS</Text>
-      {chapters.map((ch, i) => {
-        const nextTime = i < chapters.length - 1 ? chapters[i + 1].startTime : Infinity;
-        const active = position >= ch.startTime && position < nextTime;
-        return (
+        <View style={styles.transport}>
           <Pressable
-            key={i}
-            onPress={() => void player.seekTo(ch.startTime)}
-            style={[styles.chapterRow, active ? { backgroundColor: theme.surfaceAlt } : null]}
+            onPress={() => setSheet('speed')}
+            hitSlop={8}
+            style={[styles.speed, { backgroundColor: theme.surfaceAlt }]}
+            accessibilityRole="button"
+            accessibilityLabel={`Playback speed ${formatSpeed(rate)}. Change speed.`}
           >
-            <Text style={[styles.chapterTime, { color: active ? theme.accent : theme.textMuted }]}>
-              {formatDuration(ch.startTime)}
-            </Text>
-            <Text style={[styles.chapterLabel, { color: active ? theme.text : theme.textMuted }]} numberOfLines={1}>
-              {ch.title}
+            <Text style={[styles.speedLabel, { color: theme.text }]} numberOfLines={1} adjustsFontSizeToFit>
+              {formatSpeed(rate)}
             </Text>
           </Pressable>
-        );
-      })}
+
+          <Pressable
+            onPress={() => {
+              triggerHaptic('light');
+              void player.skipBackward();
+            }}
+            onLongPress={() => setSheet('skipBackward')}
+            hitSlop={10}
+            style={styles.skip}
+            accessibilityRole="button"
+            accessibilityLabel={`Skip back ${skipBackward} seconds`}
+            accessibilityHint="Long press to change the amount"
+          >
+            <Ionicons name="play-back" size={30} color={theme.text} />
+            <Text style={[styles.skipLabel, { color: theme.textFaint }]}>{skipBackward}</Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => {
+              triggerHaptic('medium');
+              player.togglePlayPause();
+            }}
+            style={[styles.playButton, { backgroundColor: theme.accent }]}
+            accessibilityRole="button"
+            accessibilityLabel={playing ? 'Pause' : 'Play'}
+          >
+            <Ionicons
+              name={buffering && !playing ? 'ellipsis-horizontal' : playing ? 'pause' : 'play'}
+              size={34}
+              color={theme.onAccent}
+              style={!playing && !buffering ? styles.playGlyph : undefined}
+            />
+          </Pressable>
+
+          <Pressable
+            onPress={() => {
+              triggerHaptic('light');
+              void player.skipForward();
+            }}
+            onLongPress={() => setSheet('skipForward')}
+            hitSlop={10}
+            style={styles.skip}
+            accessibilityRole="button"
+            accessibilityLabel={`Skip forward ${skipForward} seconds`}
+            accessibilityHint="Long press to change the amount"
+          >
+            <Ionicons name="play-forward" size={30} color={theme.text} />
+            <Text style={[styles.skipLabel, { color: theme.textFaint }]}>{skipForward}</Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => void player.skipToNext()}
+            hitSlop={8}
+            style={styles.next}
+            accessibilityRole="button"
+            accessibilityLabel="Skip to next in queue"
+          >
+            <Ionicons name="play-skip-forward" size={22} color={theme.text} />
+          </Pressable>
+        </View>
+
+        <Pressable
+          onPress={openNotes}
+          style={[styles.notes, { borderColor: theme.border }]}
+          accessibilityRole="button"
+        >
+          <Ionicons name="document-text-outline" size={18} color={theme.textMuted} />
+          <Text style={[styles.notesLabel, { color: theme.text }]}>Show notes</Text>
+        </Pressable>
+      </ScrollView>
+
+      <SpeedSheet
+        visible={sheet === 'speed'}
+        rate={rate}
+        feedTitle={episode.feed_playback_speed !== null ? episode.feed_title : null}
+        onClose={() => setSheet(null)}
+      />
+      <SleepSheet visible={sheet === 'sleep'} timer={sleepTimer} onClose={() => setSheet(null)} />
+      <ChaptersSheet
+        visible={sheet === 'chapters'}
+        chapters={chapters}
+        position={position}
+        onSeek={seek}
+        onClose={() => setSheet(null)}
+      />
+      <SkipAmountSheet
+        kind={sheet === 'skipBackward' || sheet === 'skipForward' ? sheet : null}
+        current={sheet === 'skipForward' ? skipForward : skipBackward}
+        onClose={() => setSheet(null)}
+      />
     </View>
   );
 }
 
-/** Shows the sleep timer's remaining minutes (or "End"), ticking while it counts down. */
-function SleepTimerButton({
-  timer,
-  expanded,
-  onToggle,
+/** Long-press on rewind / forward: pick how far it skips (saved as the global setting). */
+function SkipAmountSheet({
+  kind,
+  current,
+  onClose,
 }: {
-  timer: SleepTimer | null;
-  expanded: boolean;
-  onToggle: () => void;
+  kind: 'skipBackward' | 'skipForward' | null;
+  current: number;
+  onClose: () => void;
 }) {
-  const theme = useTheme();
-  const [, forceTick] = useState(0);
-  const counting = timer?.kind === 'minutes' && timer.endsAt !== null;
-
-  useEffect(() => {
-    if (!counting) return;
-    // A minute-resolution label needs a minute-resolution timer; anything
-    // faster just burns wakeups while the screen is on.
-    const handle = setInterval(() => forceTick((value) => value + 1), 30_000);
-    return () => clearInterval(handle);
-  }, [counting]);
-
-  const active = timer !== null;
-  const ms = timer ? remainingMs(timer, Date.now()) : null;
-  const label = timer?.kind === 'endOfEpisode' ? 'End' : ms !== null ? `${Math.ceil(ms / 60_000)}m` : null;
-  const a11y =
-    timer?.kind === 'endOfEpisode'
-      ? 'Sleep timer, pauses at the end of this episode'
-      : label
-        ? `Sleep timer, ${label.replace('m', '')} minutes left`
-        : 'Sleep timer';
+  // Remember the last kind so the sheet keeps its title while it fades out.
+  const [shownKind, setShownKind] = useState<'skipBackward' | 'skipForward'>('skipBackward');
+  if (kind !== null && kind !== shownKind) setShownKind(kind);
 
   return (
-    <Pressable
-      onPress={onToggle}
-      style={[
-        styles.pill,
-        { backgroundColor: active ? theme.accent : theme.surfaceAlt },
-        expanded && !active ? { borderColor: theme.accent, borderWidth: 1 } : null,
-      ]}
-      accessibilityRole="button"
-      accessibilityLabel={a11y}
-    >
-      <Ionicons name="moon" size={15} color={active ? theme.onAccent : theme.text} />
-      {label ? <Text style={[styles.pillLabel, { color: theme.onAccent }]}>{label}</Text> : null}
-    </Pressable>
+    <ActionSheet
+      visible={kind !== null}
+      title={shownKind === 'skipForward' ? 'Skip forward by' : 'Skip back by'}
+      items={SKIP_AMOUNTS.map((seconds) => ({
+        key: String(seconds),
+        label: `${seconds} seconds`,
+        icon: shownKind === 'skipForward' ? 'play-forward-outline' : 'play-back-outline',
+        selected: seconds === current,
+        onPress: () => void setSetting(shownKind, seconds),
+      }))}
+      onClose={onClose}
+    />
   );
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+  },
   content: {
     paddingHorizontal: space.xl,
     gap: space.lg,
+    width: '100%',
+    maxWidth: 640,
+    alignSelf: 'center',
   },
   empty: {
     flex: 1,
@@ -380,47 +396,81 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: space.md,
   },
-  topBarTitle: {
-    ...typography.caption,
-    flex: 1,
-    textAlign: 'center',
-    fontWeight: '600',
-  },
   topBarRight: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: space.md,
+    gap: space.lg,
+  },
+  sleepIcon: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    minHeight: 26,
+    paddingHorizontal: space.xs,
+    borderRadius: radius.pill,
+  },
+  sleepLabel: {
+    ...typography.caption,
+    fontWeight: '700',
+    fontVariant: ['tabular-nums'],
+    paddingRight: 2,
   },
   artworkWrap: {
     alignItems: 'center',
-    paddingVertical: space.md,
+    paddingVertical: space.sm,
+  },
+  titles: {
+    alignItems: 'center',
+    gap: space.xs,
   },
   title: {
     ...typography.heading,
     textAlign: 'center',
     lineHeight: 26,
   },
+  podcast: {
+    ...typography.label,
+    fontWeight: '600',
+  },
+  chapterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+  },
+  chapterTitle: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+    paddingHorizontal: space.md,
+    paddingVertical: space.sm,
+    borderRadius: radius.pill,
+  },
+  chapterText: {
+    ...typography.label,
+    flex: 1,
+  },
   error: {
     ...typography.caption,
     textAlign: 'center',
   },
-  scrubber: {
-    gap: space.xs,
-  },
-  times: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingHorizontal: space.xs,
-  },
-  time: {
-    ...typography.caption,
-    fontVariant: ['tabular-nums'],
-  },
   transport: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  speed: {
+    width: 56,
+    height: 36,
+    borderRadius: radius.pill,
+    alignItems: 'center',
     justifyContent: 'center',
-    gap: space.xxl,
+    paddingHorizontal: space.xs,
+  },
+  speedLabel: {
+    ...typography.label,
+    fontWeight: '700',
+    fontVariant: ['tabular-nums'],
   },
   skip: {
     alignItems: 'center',
@@ -441,77 +491,26 @@ const styles = StyleSheet.create({
   playGlyph: {
     marginLeft: 4,
   },
-  secondaryRow: {
-    flexDirection: 'row',
+  next: {
+    width: 56,
+    height: 36,
+    alignItems: 'center',
     justifyContent: 'center',
-    gap: space.md,
   },
-  pill: {
+  notes: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: space.xs,
-    minWidth: 56,
-    justifyContent: 'center',
-    paddingHorizontal: space.md,
-    paddingVertical: space.sm,
-    borderRadius: radius.pill,
-  },
-  pillLabel: {
-    ...typography.label,
-    fontWeight: '600',
-  },
-  sleepOptions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
     justifyContent: 'center',
     gap: space.sm,
-  },
-  sleepChip: {
-    paddingHorizontal: space.md,
+    alignSelf: 'center',
+    paddingHorizontal: space.lg,
     paddingVertical: space.sm,
     borderRadius: radius.pill,
+    borderWidth: StyleSheet.hairlineWidth,
+    marginTop: space.sm,
   },
-  rateRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: space.xs,
-  },
-  rateChip: {
-    paddingHorizontal: space.md,
-    paddingVertical: space.xs,
-    borderRadius: radius.pill,
-  },
-  rateLabel: {
-    ...typography.caption,
+  notesLabel: {
+    ...typography.label,
     fontWeight: '600',
-  },
-  chapters: {
-    marginTop: space.lg,
-    gap: space.xs,
-  },
-  chaptersTitle: {
-    ...typography.caption,
-    fontWeight: '700',
-    letterSpacing: 0.6,
-    paddingHorizontal: space.xs,
-    marginBottom: space.xs,
-  },
-  chapterRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.md,
-    paddingHorizontal: space.sm,
-    paddingVertical: space.sm,
-    borderRadius: radius.sm,
-  },
-  chapterTime: {
-    ...typography.caption,
-    fontVariant: ['tabular-nums'],
-    minWidth: 45,
-  },
-  chapterLabel: {
-    ...typography.body,
-    flex: 1,
   },
 });

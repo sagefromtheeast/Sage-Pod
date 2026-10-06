@@ -13,6 +13,8 @@ export type SheetItem = {
   label: string;
   icon: IconName;
   destructive?: boolean;
+  /** Shows a check mark, for single-choice lists (e.g. skip amounts). */
+  selected?: boolean;
   onPress: () => void;
 };
 
@@ -26,28 +28,32 @@ type Props = {
   onClose: () => void;
 };
 
+type SheetProps = {
+  visible: boolean;
+  /** Bold first line, e.g. the episode title. */
+  title?: string;
+  /** Muted second line, e.g. the podcast name. */
+  subtitle?: string;
+  onClose: () => void;
+  /** Runs once the sheet has fully gone (see ActionSheet for why that matters). */
+  onDismissed?: () => void;
+  children: React.ReactNode;
+};
+
 /**
- * A bottom sheet of actions — the long-press menu and the ⋯ overflow menus.
- *
- * Selecting an item closes the sheet and runs the item only once the sheet
- * has gone: on iOS an Alert or share sheet presented while a modal is still
- * dismissing can fail to appear.
+ * The bottom sheet every menu and picker shares: a scrim, a grabber, an
+ * optional title, and whatever content the caller puts inside.
  */
-export function ActionSheet({ visible, title, subtitle, items, onClose }: Props) {
+export function BottomSheet({ visible, title, subtitle, onClose, onDismissed, children }: SheetProps) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-  const pending = useRef<(() => void) | null>(null);
-
-  const runPending = () => {
-    const run = pending.current;
-    pending.current = null;
-    run?.();
-  };
+  const dismissed = useRef(onDismissed);
+  dismissed.current = onDismissed;
 
   // iOS reports the end of the dismissal through onDismiss; elsewhere the
   // modal is gone as soon as it re-renders hidden.
   useEffect(() => {
-    if (!visible && Platform.OS !== 'ios') runPending();
+    if (!visible && Platform.OS !== 'ios') dismissed.current?.();
   }, [visible]);
 
   return (
@@ -56,7 +62,7 @@ export function ActionSheet({ visible, title, subtitle, items, onClose }: Props)
       transparent
       animationType="fade"
       onRequestClose={onClose}
-      onDismiss={Platform.OS === 'ios' ? runPending : undefined}
+      onDismiss={Platform.OS === 'ios' ? () => dismissed.current?.() : undefined}
     >
       <Pressable
         style={[styles.backdrop, { backgroundColor: theme.scrim }]}
@@ -89,31 +95,57 @@ export function ActionSheet({ visible, title, subtitle, items, onClose }: Props)
               ) : null}
             </View>
           ) : null}
-          <ScrollView bounces={false}>
-            {items.map((item) => {
-              const color = item.destructive ? theme.danger : theme.text;
-              return (
-                <Pressable
-                  key={item.key}
-                  onPress={() => {
-                    pending.current = item.onPress;
-                    onClose();
-                  }}
-                  style={({ pressed }) => [
-                    styles.item,
-                    { backgroundColor: pressed ? theme.surfaceAlt : 'transparent' },
-                  ]}
-                  accessibilityRole="button"
-                >
-                  <Ionicons name={item.icon} size={20} color={item.destructive ? theme.danger : theme.textMuted} />
-                  <Text style={[styles.label, { color }]}>{item.label}</Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
+          {children}
         </View>
       </View>
     </Modal>
+  );
+}
+
+/**
+ * A bottom sheet of actions — the long-press menu and the ⋯ overflow menus.
+ *
+ * Selecting an item closes the sheet and runs the item only once the sheet
+ * has gone: on iOS an Alert or share sheet presented while a modal is still
+ * dismissing can fail to appear.
+ */
+export function ActionSheet({ visible, title, subtitle, items, onClose }: Props) {
+  const theme = useTheme();
+  const pending = useRef<(() => void) | null>(null);
+
+  const runPending = () => {
+    const run = pending.current;
+    pending.current = null;
+    run?.();
+  };
+
+  return (
+    <BottomSheet visible={visible} title={title} subtitle={subtitle} onClose={onClose} onDismissed={runPending}>
+      <ScrollView bounces={false}>
+        {items.map((item) => {
+          const color = item.destructive ? theme.danger : theme.text;
+          return (
+            <Pressable
+              key={item.key}
+              onPress={() => {
+                pending.current = item.onPress;
+                onClose();
+              }}
+              style={({ pressed }) => [
+                styles.item,
+                { backgroundColor: pressed ? theme.surfaceAlt : 'transparent' },
+              ]}
+              accessibilityRole="button"
+              accessibilityState={item.selected !== undefined ? { selected: item.selected } : undefined}
+            >
+              <Ionicons name={item.icon} size={20} color={item.destructive ? theme.danger : theme.textMuted} />
+              <Text style={[styles.label, { color }]}>{item.label}</Text>
+              {item.selected ? <Ionicons name="checkmark" size={20} color={theme.accent} /> : null}
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+    </BottomSheet>
   );
 }
 
@@ -165,5 +197,6 @@ const styles = StyleSheet.create({
   },
   label: {
     ...typography.body,
+    flex: 1,
   },
 });

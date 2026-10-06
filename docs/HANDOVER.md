@@ -206,14 +206,17 @@ releasing, so a red check on `main` blocks the release.
 
 ## 10. Where things stand
 
-- **Done**: Phases 0–3 of `TASKS.md`: six defects fixed (v0.3.1), the
-  screenshot harness, and the shared building blocks (long-press action sheet,
+- **Done**: Phases 0–4 of `TASKS.md`: six defects fixed (v0.3.1), the
+  screenshot harness, the shared building blocks (long-press action sheet,
   undo toast, overflow menu, multi-select bar, smart row button, status
-  markers). Earlier: EAS device builds, stable Surprise Me, tablet layouts.
-- **Next**: Phase 4, Now Playing and the mini player, then the remaining
-  screen-by-screen phases. Building blocks to reuse: `openEpisodeActions`,
-  `runEpisodeAction`, `showToast`, `OverflowMenu`, `useEpisodeSelection` +
-  `SelectionBar` (see `src/actions/` and `src/ui/`).
+  markers; v0.4.0), and Now Playing (speed / sleep / chapters sheets, chapter
+  seek bar, mini player on pushed screens; v0.5.0). Earlier: EAS device
+  builds, stable Surprise Me, tablet layouts.
+- **Next**: Phase 5, the Queue, then the remaining screen-by-screen phases.
+  Building blocks to reuse: `openEpisodeActions`, `runEpisodeAction`,
+  `showToast`, `OverflowMenu`, `BottomSheet` / `ActionSheet`,
+  `useEpisodeSelection` + `SelectionBar`, `MiniPlayerDock` (see
+  `src/actions/` and `src/ui/`).
 - **Device build**: one EAS build at the end (D-011).
 - **The owner's preferences** (learned): keep the existing design; match
   AntennaPod's placement; release per phase, merged by you; show before/after screenshots;

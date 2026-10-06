@@ -14,19 +14,28 @@ import {
   markPlayed,
   savePosition,
 } from '@/db/episodes';
+import { setFeedFlags } from '@/db/feeds';
 import { dequeue, enqueueFront, nextInQueue } from '@/db/queue';
 import { deleteDownload, getLocalEpisodePath } from '@/player/downloads';
-import { getMeta, getSettings, setMeta } from '@/db/settings';
+import { getMeta, getSettings, setMeta, setSetting } from '@/db/settings';
 import type { EpisodeWithFeed } from '@/db/types';
 import { positionAfterPause } from '@/player/resumeRewind';
+import { clampSpeed } from '@/player/speed';
 import {
+  afterEpisodeFinished,
+  extendTimer,
+  fadeVolume,
+  inHourWindow,
   pauseTimer,
+  remainingMs,
   resumeTimer,
+  SLEEP_WARNING_MS,
+  startEpisodesTimer,
   startMinutesTimer,
   type SleepTimer,
 } from '@/player/sleepTimer';
 
-/** Playback rates offered in the UI, and cycled through by the rate button. */
+/** Speed choices in Settings and podcast settings (the player sheet uses editable presets). */
 export const PLAYBACK_RATES = [0.8, 1, 1.2, 1.5, 1.75, 2, 2.5, 3] as const;
 
 export type PlayerState = {
@@ -178,9 +187,6 @@ class PlayerService {
     this.lastPausedAt = options.startAt === undefined ? (episode.played_at ?? null) : null;
     this.enginePlaying = false;
 
-    // "End of episode" belongs to the episode it was set on.
-    if (this.state.sleepTimer?.kind === 'endOfEpisode') this.cancelSleepTimer();
-
     if (startAt < skipIntro) {
       startAt = skipIntro;
     }
@@ -321,6 +327,7 @@ class PlayerService {
     if (!this.player) return;
 
     this.applyResumeRewind();
+    this.maybeAutoEnableSleepTimer();
     this.player.play();
     this.setState({ playing: true, error: null });
     this.startPositionSaver();
@@ -360,6 +367,7 @@ class PlayerService {
   private onEnginePlayingChanged(playing: boolean): void {
     this.syncSleepTimer(playing);
     if (playing) {
+      this.maybeAutoEnableSleepTimer();
       // A resume we didn't initiate (lock screen, headset): rewind here.
       // play() already consumed lastPausedAt for in-app resumes.
       this.applyResumeRewind();
@@ -405,12 +413,20 @@ class PlayerService {
     this.setState({ rate });
   }
 
-  /** Advances to the next rate in `PLAYBACK_RATES`, wrapping around. */
-  cycleRate(): number {
-    const index = PLAYBACK_RATES.findIndex((rate) => Math.abs(rate - this.state.rate) < 0.01);
-    const next = PLAYBACK_RATES[(index + 1) % PLAYBACK_RATES.length];
-    this.setRate(next);
-    return next;
+  /**
+   * The speed sheet's choice: applies it now and keeps it, on the podcast if
+   * that podcast has its own speed, otherwise as the global speed.
+   */
+  async setSpeed(rate: number): Promise<void> {
+    const value = clampSpeed(rate);
+    this.setRate(value);
+    const episode = this.state.episode;
+    if (episode && episode.feed_playback_speed !== null) {
+      this.setState({ episode: { ...episode, feed_playback_speed: value } });
+      await setFeedFlags(episode.feed_id, { playbackSpeed: value });
+    } else {
+      await setSetting('playbackRate', value);
+    }
   }
 
   // ------------------------------------------------------------------- queue
@@ -434,11 +450,16 @@ class PlayerService {
         await deleteDownload(finished.id);
       }
 
-      // "End of episode" means exactly that: stop here instead of advancing.
-      if (this.state.sleepTimer?.kind === 'endOfEpisode') {
-        this.cancelSleepTimer();
-        this.setState({ playing: false, position: 0 });
-        return;
+      // An episodes sleep timer counts finished episodes; on the last one,
+      // stop here instead of advancing.
+      if (this.state.sleepTimer?.kind === 'episodes') {
+        const { timer, stop } = afterEpisodeFinished(this.state.sleepTimer);
+        if (stop) {
+          this.cancelSleepTimer();
+          this.setState({ playing: false, position: 0 });
+          return;
+        }
+        this.setState({ sleepTimer: timer });
       }
 
       if (!settings.continuousPlayback) {
@@ -517,14 +538,13 @@ class PlayerService {
   // ------------------------------------------------------------- sleep timer
 
   private shakeSubscription: { remove: () => void } | null = null;
+  private warningHandle: ReturnType<typeof setInterval> | null = null;
+  private inWarning = false;
 
-  /**
-   * Pauses when the current episode ends. No clock: the episode's real end is
-   * what counts, whatever the speed and however long it sits paused.
-   */
-  startSleepTimerUntilEndOfEpisode(): void {
+  /** Pauses after `count` episodes finish (1 = at the end of this one). No clock. */
+  startEpisodesSleepTimer(count = 1): void {
     this.cancelSleepTimer();
-    this.setState({ sleepTimer: { kind: 'endOfEpisode' } });
+    this.setState({ sleepTimer: startEpisodesTimer(count) });
   }
 
   /** Starts (or restarts) a countdown that only runs while audio plays. */
@@ -532,28 +552,30 @@ class PlayerService {
     this.cancelSleepTimer();
     this.setState({ sleepTimer: startMinutesTimer(minutes, Date.now(), this.state.playing) });
     this.scheduleSleepTimeout();
+  }
 
-    Accelerometer.setUpdateInterval(100);
-    this.shakeSubscription = Accelerometer.addListener(({ x, y, z }) => {
-      // AntennaPod uses ~2.25g as the threshold for a "shake"
-      const gForce = Math.sqrt(x * x + y * y + z * z);
-      if (gForce > 2.25) {
-        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-        this.startSleepTimer(minutes);
-      }
-    });
+  /** "+5 min" / "+1 episode": extends the running timer. */
+  extendSleepTimer(amount: number): void {
+    const timer = this.state.sleepTimer;
+    if (!timer) return;
+    this.setState({ sleepTimer: extendTimer(timer, amount) });
+    this.scheduleSleepTimeout();
   }
 
   cancelSleepTimer(): void {
-    if (this.sleepHandle) clearTimeout(this.sleepHandle);
-    this.sleepHandle = null;
-
-    if (this.shakeSubscription) {
-      this.shakeSubscription.remove();
-      this.shakeSubscription = null;
-    }
-
+    this.clearSleepHandles();
+    this.leaveWarning();
     if (this.state.sleepTimer) this.setState({ sleepTimer: null });
+  }
+
+  /** AntennaPod's auto-enable: starting playback inside the hour window arms the timer. */
+  private maybeAutoEnableSleepTimer(): void {
+    const settings = getSettings();
+    if (this.state.sleepTimer || !settings.sleepAutoEnable) return;
+    if (inHourWindow(new Date().getHours(), settings.sleepAutoFrom, settings.sleepAutoTo)) {
+      this.setState({ sleepTimer: startMinutesTimer(settings.sleepMinutes, Date.now(), true) });
+      this.scheduleSleepTimeout();
+    }
   }
 
   /** Freezes or restarts a minutes countdown to match whether audio is playing. */
@@ -566,18 +588,76 @@ class PlayerService {
     this.scheduleSleepTimeout();
   }
 
-  /** Arms the timeout for a running countdown; disarms it for a frozen one. */
+  /**
+   * Arms the timeout for a running countdown (disarms it for a frozen one), plus
+   * a ticker for the last 10 s: fade the volume to 0.1, optionally vibrate, and
+   * listen for a shake that restarts the timer (AntennaPod only listens then).
+   */
   private scheduleSleepTimeout(): void {
-    if (this.sleepHandle) clearTimeout(this.sleepHandle);
-    this.sleepHandle = null;
+    this.clearSleepHandles();
 
     const timer = this.state.sleepTimer;
-    if (timer?.kind !== 'minutes' || timer.endsAt === null) return;
+    if (timer?.kind !== 'minutes' || timer.endsAt === null) {
+      // Frozen (paused) or not a countdown: full volume, no shake listener.
+      // Resuming re-enters the warning on the first tick.
+      this.leaveWarning();
+      return;
+    }
 
+    const left = Math.max(0, timer.endsAt - Date.now());
     this.sleepHandle = setTimeout(() => {
-      this.cancelSleepTimer();
+      // Pause before cancelling: cancelling restores full volume, which would
+      // otherwise blare for a moment after the fade.
       this.pause();
-    }, Math.max(0, timer.endsAt - Date.now()));
+      this.cancelSleepTimer();
+    }, left);
+
+    const tick = () => {
+      const current = this.state.sleepTimer;
+      const remaining = current ? remainingMs(current, Date.now()) : null;
+      if (remaining === null) return;
+      if (remaining <= SLEEP_WARNING_MS) this.enterWarning(remaining, current!);
+      else this.leaveWarning();
+    };
+    tick();
+    this.warningHandle = setInterval(tick, 250);
+  }
+
+  private enterWarning(remaining: number, timer: SleepTimer): void {
+    if (this.player) this.player.volume = fadeVolume(remaining);
+    if (this.inWarning) return;
+    this.inWarning = true;
+
+    const settings = getSettings();
+    if (settings.sleepVibrate) void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+    if (settings.sleepShakeToReset && timer.kind === 'minutes') {
+      const minutes = timer.minutes;
+      Accelerometer.setUpdateInterval(100);
+      this.shakeSubscription = Accelerometer.addListener(({ x, y, z }) => {
+        // AntennaPod uses ~2.25g as the threshold for a "shake"
+        const gForce = Math.sqrt(x * x + y * y + z * z);
+        if (gForce > 2.25) {
+          void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+          this.startSleepTimer(minutes);
+        }
+      });
+    }
+  }
+
+  private clearSleepHandles(): void {
+    if (this.sleepHandle) clearTimeout(this.sleepHandle);
+    this.sleepHandle = null;
+    if (this.warningHandle) clearInterval(this.warningHandle);
+    this.warningHandle = null;
+  }
+
+  /** Back to full volume and no shake listener (timer extended, reset, paused, fired or cancelled). */
+  private leaveWarning(): void {
+    if (!this.inWarning) return;
+    this.inWarning = false;
+    if (this.player) this.player.volume = 1;
+    this.shakeSubscription?.remove();
+    this.shakeSubscription = null;
   }
 
   /** Stops playback and unloads the current episode. */

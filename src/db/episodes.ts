@@ -285,6 +285,15 @@ export async function restorePlaybackSnapshots(
   });
 }
 
+/** Just the favourite flag, for the player's heart (cheaper than re-reading the whole episode). */
+export async function isFavorite(episodeId: number): Promise<boolean> {
+  const row = await getDb().getFirstAsync<{ is_favorite: number }>(
+    'SELECT is_favorite FROM episodes WHERE id = ?',
+    episodeId
+  );
+  return row?.is_favorite === 1;
+}
+
 export async function toggleFavorite(episodeId: number): Promise<void> {
   await getDb().runAsync(
     'UPDATE episodes SET is_favorite = CASE is_favorite WHEN 1 THEN 0 ELSE 1 END WHERE id = ?',

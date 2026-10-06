@@ -1,37 +1,48 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
-export type Chapter = {
-  startTime: number;
-  title: string;
-  img?: string;
-  url?: string;
-};
+import { parseChapters, type Chapter } from './chapters';
+
+export type { Chapter };
+
+/**
+ * Chapters already fetched this session, by URL. Reopening the player (or the
+ * mini player re-rendering it) shouldn't refetch a file that never changes.
+ */
+const cache = new Map<string, Chapter[]>();
 
 export function useChapters(chaptersUrl: string | null | undefined) {
-  const [chapters, setChapters] = useState<Chapter[]>([]);
+  const [chapters, setChapters] = useState<Chapter[]>(() =>
+    chaptersUrl ? (cache.get(chaptersUrl) ?? []) : []
+  );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    
+    setError(null);
+
     if (!chaptersUrl) {
       setChapters([]);
       return;
     }
 
-    setLoading(true);
-    setError(null);
+    const cached = cache.get(chaptersUrl);
+    if (cached) {
+      setChapters(cached);
+      return;
+    }
 
+    setChapters([]);
+    setLoading(true);
     fetch(chaptersUrl)
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();
       })
       .then((data) => {
-        if (!cancelled && data && Array.isArray(data.chapters)) {
-          setChapters(data.chapters);
-        }
+        const parsed = parseChapters(data);
+        cache.set(chaptersUrl, parsed);
+        if (!cancelled) setChapters(parsed);
       })
       .catch((err) => {
         if (!cancelled) setError(err);
