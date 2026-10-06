@@ -19,6 +19,7 @@ import { useEpisodeSelection } from '@/ui/useEpisodeSelection';
 import { GlassSegmentedControl, type SegmentOption } from '@/ui/glass';
 import { triggerHaptic } from '@/ui/haptics';
 import { MINI_PLAYER_HEIGHT, radius, space, type as typography } from '@/ui/theme';
+import { MiniPlayerDock, useMiniPlayerDockPadding } from '@/ui/MiniPlayerDock';
 import { useTheme } from '@/ui/useTheme';
 import { excerpt } from '@/util/html';
 
@@ -42,6 +43,7 @@ const SORT_SEGMENTS: readonly SegmentOption<EpisodeSortKey>[] = [
 
 export default function FeedScreen() {
   const theme = useTheme();
+  const dockPadding = useMiniPlayerDockPadding();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const feedId = Number(id);
@@ -219,7 +221,7 @@ export default function FeedScreen() {
         extraData={selection.selected}
         contentContainerStyle={[
           styles.content,
-          selection.active ? { paddingBottom: SELECTION_BAR_HEIGHT + space.xl } : null,
+          { paddingBottom: selection.active ? SELECTION_BAR_HEIGHT + space.xl : dockPadding },
         ]}
         ListHeaderComponent={
           <View style={styles.header}>
@@ -345,6 +347,7 @@ export default function FeedScreen() {
         )}
       />
       <SelectionBar selection={selection} />
+      <MiniPlayerDock hidden={selection.active} />
     </>
   );
 }

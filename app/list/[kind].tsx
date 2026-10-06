@@ -17,6 +17,7 @@ import { useEpisodeSelection } from '@/ui/useEpisodeSelection';
 import { triggerHaptic } from '@/ui/haptics';
 import { GlassSegmentedControl } from '@/ui/glass';
 import { MINI_PLAYER_HEIGHT, radius, space, type as typography } from '@/ui/theme';
+import { MiniPlayerDock, useMiniPlayerDockPadding } from '@/ui/MiniPlayerDock';
 import { useTheme } from '@/ui/useTheme';
 
 type Kind = 'favorites' | 'downloads' | 'history';
@@ -48,6 +49,7 @@ const VIEWS: Record<
 /** Shared screen for the library's three saved views. */
 export default function ListScreen() {
   const theme = useTheme();
+  const dockPadding = useMiniPlayerDockPadding();
   const { kind } = useLocalSearchParams<{ kind: string }>();
   const [downloadSort, setDownloadSort] = useState<DownloadSortKey>('date');
 
@@ -82,7 +84,7 @@ export default function ListScreen() {
         extraData={selection.selected}
         contentContainerStyle={[
           styles.content,
-          selection.active ? { paddingBottom: SELECTION_BAR_HEIGHT + space.xl } : null,
+          { paddingBottom: selection.active ? SELECTION_BAR_HEIGHT + space.xl : dockPadding },
         ]}
         ListHeaderComponent={
           kind === 'downloads' && episodes.length > 0 ? (
@@ -148,6 +150,7 @@ export default function ListScreen() {
         )}
       />
       <SelectionBar selection={selection} />
+      <MiniPlayerDock hidden={selection.active} />
     </>
   );
 }

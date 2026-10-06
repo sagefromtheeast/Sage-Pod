@@ -19,6 +19,7 @@ import {
 import { Artwork } from '@/ui/Artwork';
 import { ProgressBar } from '@/ui/ProgressBar';
 import { MINI_PLAYER_HEIGHT, radius, space, type as typography } from '@/ui/theme';
+import { MiniPlayerDock, useMiniPlayerDockPadding } from '@/ui/MiniPlayerDock';
 import { useTheme } from '@/ui/useTheme';
 import { extractLinks, htmlToPlainText } from '@/util/html';
 import { shareEpisode } from '@/util/share';
@@ -27,6 +28,7 @@ import { formatDuration, formatPublishDate } from '@/util/time';
 
 export default function EpisodeScreen() {
   const theme = useTheme();
+  const dockPadding = useMiniPlayerDockPadding();
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const episodeId = Number(id);
@@ -92,7 +94,7 @@ export default function EpisodeScreen() {
   return (
     <>
       <Stack.Screen options={{ title: '' }} />
-      <ScrollView contentContainerStyle={styles.content}>
+      <ScrollView contentContainerStyle={[styles.content, { paddingBottom: dockPadding }]}>
         <Pressable
           onPress={() => router.push(`/feed/${episode.feed_id}`)}
           style={styles.header}
@@ -248,6 +250,7 @@ export default function EpisodeScreen() {
           </View>
         ) : null}
       </ScrollView>
+      <MiniPlayerDock />
     </>
   );
 }
