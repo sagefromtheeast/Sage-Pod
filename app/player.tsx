@@ -212,7 +212,7 @@ export default function PlayerScreen() {
         <View style={styles.sleepOptions}>
           <Pressable
             onPress={() => {
-              player.startSleepTimerUntilEndOfEpisode();
+              player.startEpisodesSleepTimer(1);
               setShowSleepOptions(false);
             }}
             style={[styles.sleepChip, { backgroundColor: theme.surfaceAlt }]}
@@ -332,10 +332,17 @@ function SleepTimerButton({
 
   const active = timer !== null;
   const ms = timer ? remainingMs(timer, Date.now()) : null;
-  const label = timer?.kind === 'endOfEpisode' ? 'End' : ms !== null ? `${Math.ceil(ms / 60_000)}m` : null;
+  const label =
+    timer?.kind === 'episodes'
+      ? timer.remaining === 1
+        ? 'End'
+        : `${timer.remaining} ep`
+      : ms !== null
+        ? `${Math.ceil(ms / 60_000)}m`
+        : null;
   const a11y =
-    timer?.kind === 'endOfEpisode'
-      ? 'Sleep timer, pauses at the end of this episode'
+    timer?.kind === 'episodes'
+      ? `Sleep timer, pauses after ${timer.remaining === 1 ? 'this episode' : `${timer.remaining} episodes`}`
       : label
         ? `Sleep timer, ${label.replace('m', '')} minutes left`
         : 'Sleep timer';

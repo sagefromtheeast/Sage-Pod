@@ -38,6 +38,17 @@ export type Settings = {
   refreshIntervalMinutes: number;
   /** UI appearance mode: system, light, dark, or OLED true black. */
   themePreference: 'system' | 'light' | 'dark' | 'oled';
+  /** Last minutes chosen for the sleep timer, offered again (AntennaPod default 15). */
+  sleepMinutes: number;
+  /** Shake the phone in the timer's last 10 s to restart it. */
+  sleepShakeToReset: boolean;
+  /** Vibrate when the timer enters its last 10 s. */
+  sleepVibrate: boolean;
+  /** Start the sleep timer automatically when playback starts inside the window. */
+  sleepAutoEnable: boolean;
+  /** Auto-enable window, hours 0–23; may wrap midnight (default 22 → 6). */
+  sleepAutoFrom: number;
+  sleepAutoTo: number;
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -55,6 +66,12 @@ export const DEFAULT_SETTINGS: Settings = {
   deleteAfterFinished: false,
   refreshIntervalMinutes: 60,
   themePreference: 'system',
+  sleepMinutes: 15,
+  sleepShakeToReset: true,
+  sleepVibrate: false,
+  sleepAutoEnable: false,
+  sleepAutoFrom: 22,
+  sleepAutoTo: 6,
 };
 
 const store = createStore<Settings>({ ...DEFAULT_SETTINGS });
