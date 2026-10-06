@@ -1,3 +1,21 @@
+## [0.9.0](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.8.0...v0.9.0) (2026-10-06)
+
+### 🚀 New Features
+
+* **episode:** menu, inline show-note links, smarter timestamps, copy titles and swipe between episodes ([d087845](https://github.com/sagefromtheeast/Sage-Pod/commit/d08784597de171beb464a985632226f8f16403cf))
+
+### 🐛 Bug Fixes
+
+* **episode:** keep brackets that belong to links, stay on the same page after rotating, and allow reset for replayed episodes ([e561c4d](https://github.com/sagefromtheeast/Sage-Pod/commit/e561c4d04eaa535690e734719df13cc59b6bbe61))
+
+### 📚 Documentation
+
+* mark Phase 8 done and record D-015 (episode pager) ([73478f6](https://github.com/sagefromtheeast/Sage-Pod/commit/73478f6f826b9dcff1b017ba7f36486e31958d36))
+
+### ✅ Tests
+
+* **shots:** episode menu and a real swipe to the next episode ([155ca91](https://github.com/sagefromtheeast/Sage-Pod/commit/155ca910f6d8d88e620c6bed640b150b45be5659))
+
 ## [0.8.0](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.7.0...v0.8.0) (2026-10-06)
 
 ### 🚀 New Features
