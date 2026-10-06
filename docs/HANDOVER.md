@@ -209,13 +209,14 @@ releasing, so a red check on `main` blocks the release.
 - **Done**: Phases 0–4 of `TASKS.md`: six defects fixed (v0.3.1), the
   screenshot harness, the shared building blocks (long-press action sheet,
   undo toast, overflow menu, multi-select bar, smart row button, status
-  markers; v0.4.0), and Now Playing (speed / sleep / chapters sheets, chapter
-  seek bar, mini player on pushed screens; v0.5.0). Earlier: EAS device
-  builds, stable Surprise Me, tablet layouts.
-- **Next**: Phase 5, the Queue, then the remaining screen-by-screen phases.
+  markers; v0.4.0), Now Playing (speed / sleep / chapters sheets, chapter
+  seek bar, mini player on pushed screens; v0.5.0), and the Queue (drag,
+  sort / keep sorted, lock, search, enqueue location; v0.6.0). Earlier: EAS
+  device builds, stable Surprise Me, tablet layouts.
+- **Next**: Phase 6, the Inbox, then the remaining screen-by-screen phases.
   Building blocks to reuse: `openEpisodeActions`, `runEpisodeAction`,
   `showToast`, `OverflowMenu`, `BottomSheet` / `ActionSheet`,
-  `useEpisodeSelection` + `SelectionBar`, `MiniPlayerDock` (see
+  `useEpisodeSelection` + `SelectionBar`, `MiniPlayerDock`, `DraggableList` (see
   `src/actions/` and `src/ui/`).
 - **Device build**: one EAS build at the end (D-011).
 - **The owner's preferences** (learned): keep the existing design; match
