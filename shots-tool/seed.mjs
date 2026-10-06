@@ -45,10 +45,23 @@ export function seedSql() {
   // Listening history for the stats screen.
   for (let d = 0; d < 14; d++) s.push(`INSERT INTO playback_history (episode_id, feed_id, listened_seconds, date)
     VALUES (${(d % 6) * 8 + 6}, ${(d % 6) + 1}, ${600 + ((d * 1337) % 3000)}, '${new Date(NOW - d * DAY).toISOString().slice(0, 10)}');`);
+  // Chapters for the Now Playing episode (served by shoot.mjs from CHAPTERS).
+  s.push(`UPDATE episodes SET chapters_url = 'https://chapters.sagepod.test/3.json' WHERE id = 3;`);
   // Now Playing: the player restores this episode (paused) on startup.
   s.push(`INSERT INTO settings (key, value) VALUES ('meta:lastEpisodeId', '3') ON CONFLICT(key) DO UPDATE SET value = excluded.value;`);
   return s.join('\n');
 }
+// Episode 3 is 4431 s long and restored at 1772 s, inside "A detour" (which has its own art).
+export const CHAPTERS = {
+  version: '1.2.0',
+  chapters: [
+    { startTime: 0, title: 'Intro' },
+    { startTime: 330, title: 'The main story' },
+    { startTime: 1500, title: 'A detour into deep time', img: 'https://art.sagepod.test/4.svg' },
+    { startTime: 2400, title: 'Interview' },
+    { startTime: 3800, title: 'Listener mail' },
+  ],
+};
 export function artSvg(id) {
   const [title, , color] = FEEDS[(Number(id) - 1) % FEEDS.length] ?? ['?', '', '#555'];
   const initials = title.split(/\s+/).filter((w) => /^[A-Za-z]/.test(w)).slice(0, 2).map((w) => w[0]).join('');

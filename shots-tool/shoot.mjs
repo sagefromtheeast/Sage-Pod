@@ -2,7 +2,7 @@
 import { createRequire } from 'node:module';
 import fs from 'node:fs';
 import path from 'node:path';
-import { NOW, seedSql, artSvg } from './seed.mjs';
+import { NOW, seedSql, artSvg, CHAPTERS } from './seed.mjs';
 const require = createRequire(import.meta.url);
 let pw; try { pw = require('playwright'); } catch { pw = require('/opt/node22/lib/node_modules/playwright'); }
 const { chromium } = pw;
@@ -39,6 +39,18 @@ const ROUTES = [
     await page.getByText('Select multiple').first().click();
     await page.getByText(/^119\. /).first().click();
     await page.getByText('2 selected').waitFor({ timeout: 10000 });
+  }],
+  ['player-speed', '/player', async (page) => {
+    await page.getByRole('button', { name: /Change speed/ }).first().click();
+    await page.getByText('Saved for all podcasts').waitFor({ timeout: 10000 });
+  }],
+  ['player-sleep', '/player', async (page) => {
+    await page.getByRole('button', { name: 'Sleep timer' }).first().click();
+    await page.getByText('MINUTES').waitFor({ timeout: 10000 });
+  }],
+  ['player-chapters', '/player', async (page) => {
+    await page.getByRole('button', { name: /Show all chapters/ }).first().click();
+    await page.getByText('5 chapters').waitFor({ timeout: 10000 });
   }],
   ['feed-menu', '/feed/1', async (page) => {
     await page.getByRole('button', { name: 'More options' }).first().click();
@@ -80,6 +92,7 @@ async function routeNetwork(context) {
     if (url.hostname === 'art.sagepod.test') {
       return route.fulfill({ contentType: 'image/svg+xml', body: artSvg(path.basename(url.pathname, '.svg')) });
     }
+    if (url.hostname === 'chapters.sagepod.test') return route.fulfill({ json: CHAPTERS });
     if (url.hostname === 'rss.applemarketingtools.com') {
       return route.fulfill({ json: { feed: { results: CHART.map((c) => ({ id: String(c.collectionId) })) } } });
     }
