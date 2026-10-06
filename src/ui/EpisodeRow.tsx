@@ -3,17 +3,43 @@ import { useRouter } from 'expo-router';
 import { memo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
+import { rowButtonFor, subjectFor, type RowButton } from '@/actions/episodeActions';
+import type { ActionHooks } from '@/actions/runEpisodeAction';
+import { markPlayed } from '@/db/episodes';
+import { useIsQueued } from '@/db/queueMembership';
+import { getSettings } from '@/db/settings';
 import type { EpisodeWithFeed } from '@/db/types';
 import { useEpisodePlayback } from '@/player';
+import { cancelDownload, formatBytes, queueDownload, useDownloadProgress } from '@/player/downloads';
 import { formatDuration, formatPublishDate, formatRemaining } from '@/util/time';
 
 import { Artwork } from './Artwork';
+import { openEpisodeActions } from './EpisodeActionsHost';
 import { ProgressBar } from './ProgressBar';
-import { formatBytes } from '@/player/downloads';
+import { ProgressRing } from './ProgressRing';
 import { radius, space, type as typography } from './theme';
 import { useTheme } from './useTheme';
 
 const ARTWORK_SIZE = 56;
+const BUTTON_SIZE = 36;
+
+const BUTTON_META: Record<RowButton, { icon: React.ComponentProps<typeof Ionicons>['name']; label: string }> = {
+  pause: { icon: 'pause', label: 'Pause' },
+  play: { icon: 'play', label: 'Play' },
+  stream: { icon: 'play', label: 'Stream' },
+  cancel: { icon: 'close', label: 'Cancel download' },
+  download: { icon: 'arrow-down', label: 'Download' },
+  markPlayed: { icon: 'checkmark', label: 'Mark as played' },
+};
+
+/** Selection-mode wiring for a row (see useEpisodeSelection). */
+export type RowSelection = {
+  active: boolean;
+  selected: boolean;
+  onToggle: (episodeId: number) => void;
+  /** Long-press while selecting: "select all above / below". */
+  onRangeMenu: (episodeId: number) => void;
+};
 
 type Props = {
   episode: EpisodeWithFeed;
@@ -23,6 +49,10 @@ type Props = {
   trailing?: React.ReactNode;
   /** Hide the podcast name — redundant inside a single podcast's episode list. */
   hideFeedTitle?: boolean;
+  /** Passed to the long-press menu; `onMultiSelect` adds "Select multiple". */
+  actionHooks?: ActionHooks;
+  /** Present on screens with multi-select. */
+  selection?: RowSelection;
 };
 
 function formatEpisodeBadge(
@@ -47,9 +77,15 @@ export const EpisodeRow = memo(function EpisodeRow({
   onPlay,
   trailing,
   hideFeedTitle = false,
+  actionHooks,
+  selection,
 }: Props) {
   const theme = useTheme();
   const router = useRouter();
+  const queued = useIsQueued(episode.id);
+  const download = useDownloadProgress(
+    episode.download_state === 'downloading' || episode.download_state === 'queued' ? episode.id : null
+  );
 
   // Scoped subscription: this row re-renders on player ticks only while it is
   // the episode being played.
@@ -63,17 +99,56 @@ export const EpisodeRow = memo(function EpisodeRow({
   const started = position > 30 && !episode.is_played;
 
   const artwork = episode.image_url ?? episode.feed_image_url;
-  const isPlayingThis = playing;
+  const selecting = selection?.active ?? false;
+  const button = rowButtonFor(
+    subjectFor(episode, { queued, playing: isCurrent && playing }),
+    getSettings().streamOverDownload
+  );
+
+  const pressButton = () => {
+    switch (button) {
+      case 'pause':
+      case 'play':
+      case 'stream':
+        onPlay(episode);
+        return;
+      case 'cancel':
+        void cancelDownload(episode.id);
+        return;
+      case 'download':
+        void queueDownload(episode.id);
+        return;
+      case 'markPlayed':
+        void markPlayed(episode.id, true);
+        return;
+    }
+  };
 
   return (
     <Pressable
-      onPress={() => router.push(`/episode/${episode.id}`)}
+      onPress={() =>
+        selecting ? selection?.onToggle(episode.id) : router.push(`/episode/${episode.id}`)
+      }
+      onLongPress={() =>
+        selecting ? selection?.onRangeMenu(episode.id) : openEpisodeActions(episode, actionHooks)
+      }
+      delayLongPress={350}
       style={({ pressed }) => [
         styles.container,
-        { backgroundColor: pressed ? theme.surfaceAlt : 'transparent' },
+        {
+          backgroundColor: pressed
+            ? theme.surfaceAlt
+            : selection?.selected
+              ? theme.surfaceAlt
+              : isCurrent
+                ? theme.accentSoft
+                : 'transparent',
+        },
       ]}
       accessibilityRole="button"
+      accessibilityState={selecting ? { selected: selection?.selected } : undefined}
       accessibilityLabel={`${episode.title}, ${episode.feed_title}`}
+      accessibilityHint={selecting ? undefined : 'Long-press for more actions'}
     >
       <Artwork uri={artwork} size={ARTWORK_SIZE} />
 
@@ -84,15 +159,23 @@ export const EpisodeRow = memo(function EpisodeRow({
           </Text>
         ) : null}
 
-        <Text
-          style={[
-            styles.title,
-            { color: episode.is_played ? theme.textMuted : theme.text },
-          ]}
-          numberOfLines={2}
-        >
-          {episode.title}
-        </Text>
+        <View style={styles.titleRow}>
+          {episode.is_new ? (
+            <View
+              style={[styles.newDot, { backgroundColor: theme.accent }]}
+              accessibilityLabel="New"
+            />
+          ) : null}
+          <Text
+            style={[
+              styles.title,
+              { color: episode.is_played ? theme.textMuted : theme.text },
+            ]}
+            numberOfLines={2}
+          >
+            {episode.title}
+          </Text>
+        </View>
 
         <View style={styles.meta}>
           {formatEpisodeBadge(episode.season, episode.episode_number) ? (
@@ -137,6 +220,9 @@ export const EpisodeRow = memo(function EpisodeRow({
           {episode.is_favorite ? (
             <Ionicons name="heart" size={13} color={theme.danger} />
           ) : null}
+          {queued ? (
+            <Ionicons name="list" size={13} color={theme.textMuted} accessibilityLabel="In queue" />
+          ) : null}
         </View>
 
         {started ? (
@@ -147,22 +233,40 @@ export const EpisodeRow = memo(function EpisodeRow({
       </View>
 
       <View style={styles.controls}>
-        <Pressable
-          onPress={() => onPlay(episode)}
-          hitSlop={8}
-          style={[styles.playButton, { backgroundColor: theme.surfaceAlt }]}
-          accessibilityRole="button"
-          accessibilityLabel={isPlayingThis ? 'Pause' : 'Play'}
-        >
+        {selecting ? (
           <Ionicons
-            name={isPlayingThis ? 'pause' : 'play'}
-            size={16}
-            color={theme.accent}
-            // The play glyph's visual centre sits left of its bounding box.
-            style={isPlayingThis ? undefined : styles.playGlyph}
+            name={selection?.selected ? 'checkmark-circle' : 'ellipse-outline'}
+            size={26}
+            color={selection?.selected ? theme.accent : theme.textFaint}
           />
-        </Pressable>
-        {trailing}
+        ) : (
+          <>
+            <Pressable
+              onPress={pressButton}
+              hitSlop={8}
+              style={[styles.playButton, { backgroundColor: theme.surfaceAlt }]}
+              accessibilityRole="button"
+              accessibilityLabel={BUTTON_META[button].label}
+            >
+              {button === 'cancel' ? (
+                <ProgressRing
+                  size={BUTTON_SIZE}
+                  progress={download?.progress ?? null}
+                  color={theme.accent}
+                  trackColor={theme.track}
+                />
+              ) : null}
+              <Ionicons
+                name={BUTTON_META[button].icon}
+                size={16}
+                color={theme.accent}
+                // The play glyph's visual centre sits left of its bounding box.
+                style={BUTTON_META[button].icon === 'play' ? styles.playGlyph : undefined}
+              />
+            </Pressable>
+            {trailing}
+          </>
+        )}
       </View>
     </Pressable>
   );
@@ -186,10 +290,22 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.4,
   },
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: space.xs,
+  },
+  newDot: {
+    width: 7,
+    height: 7,
+    borderRadius: radius.pill,
+    marginTop: 7,
+  },
   title: {
     ...typography.body,
     fontWeight: '600',
     lineHeight: 20,
+    flexShrink: 1,
   },
   meta: {
     flexDirection: 'row',
@@ -224,8 +340,8 @@ const styles = StyleSheet.create({
     gap: space.sm,
   },
   playButton: {
-    width: 36,
-    height: 36,
+    width: BUTTON_SIZE,
+    height: BUTTON_SIZE,
     borderRadius: radius.pill,
     alignItems: 'center',
     justifyContent: 'center',
