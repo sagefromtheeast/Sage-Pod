@@ -24,8 +24,16 @@ export function selectRange(
   return new Set([...selected, ...range]);
 }
 
-/** Drops ids that are no longer in the list (e.g. removed by the last action). */
-export function pruneSelection(orderedIds: readonly number[], selected: ReadonlySet<number>): Set<number> {
+/**
+ * Drops ids that are no longer in the list (e.g. removed by the last action).
+ * Returns the same set when nothing was dropped, so a caller storing it in
+ * React state doesn't re-render (and loop) on every new list array.
+ */
+export function pruneSelection(
+  orderedIds: readonly number[],
+  selected: ReadonlySet<number>
+): ReadonlySet<number> {
   const present = new Set(orderedIds);
-  return new Set([...selected].filter((id) => present.has(id)));
+  const kept = [...selected].filter((id) => present.has(id));
+  return kept.length === selected.size ? selected : new Set(kept);
 }

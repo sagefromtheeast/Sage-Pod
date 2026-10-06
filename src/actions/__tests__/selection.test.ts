@@ -27,4 +27,11 @@ describe('selection', () => {
   it('prunes ids that left the list', () => {
     assert.deepEqual([...pruneSelection([10, 30], new Set([10, 20, 30]))].sort(), [10, 30]);
   });
+
+  it('returns the same set when nothing was pruned (no re-render loop)', () => {
+    const selected = new Set([10, 30]);
+    assert.equal(pruneSelection(ids, selected), selected);
+    const empty = new Set<number>();
+    assert.equal(pruneSelection([], empty), empty);
+  });
 });
