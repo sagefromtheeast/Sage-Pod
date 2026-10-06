@@ -2,6 +2,7 @@ import { Alert } from 'react-native';
 
 import {
   dismissManyFromInbox,
+  getEpisode,
   getPlaybackSnapshots,
   markPlayedMany,
   resetPositionMany,
@@ -60,13 +61,35 @@ function targetsFor(action: EpisodeAction, episodes: EpisodeWithFeed[]): Episode
   );
 }
 
-/** Undo for playback-field changes; also moves the player back if the episode is loaded. */
-function undoSnapshots(saved: Map<number, PlaybackSnapshot>) {
+/**
+ * Undo that restores only the fields the action changed. The episode loaded
+ * in the player keeps its live position: the player owns it, and restoring
+ * an older saved value would rewind it. Only undoing "reset position" moves
+ * the player, since there the position is the thing being undone.
+ */
+function undoSnapshots(
+  saved: Map<number, PlaybackSnapshot>,
+  fields: readonly (keyof PlaybackSnapshot)[],
+  options: { seekPlayer?: boolean } = {}
+) {
   return async () => {
-    await restorePlaybackSnapshots(saved);
-    const current = player.getState().episode;
-    const snapshot = current ? saved.get(current.id) : undefined;
-    if (snapshot) await player.seekTo(snapshot.position);
+    const loadedId = player.getState().episode?.id;
+    const restoresPosition = fields.includes('position');
+    if (restoresPosition && loadedId !== undefined && saved.has(loadedId) && !options.seekPlayer) {
+      // Restore the loaded episode's other fields, but leave its position alone.
+      const rest = new Map(saved);
+      const loaded = rest.get(loadedId)!;
+      rest.delete(loadedId);
+      await restorePlaybackSnapshots(rest, fields);
+      await restorePlaybackSnapshots(new Map([[loadedId, loaded]]), fields.filter((field) => field !== 'position'));
+      // Re-save its live position now: the action may have zeroed the stored one,
+      // and a paused player won't save again until it next plays or pauses.
+      await player.flushPosition();
+      return;
+    }
+    await restorePlaybackSnapshots(saved, fields);
+    const snapshot = loadedId !== undefined ? saved.get(loadedId) : undefined;
+    if (options.seekPlayer && snapshot) await player.seekTo(snapshot.position);
   };
 }
 
@@ -94,7 +117,7 @@ export async function runEpisodeAction(
     case 'removeFromInbox': {
       const saved = await getPlaybackSnapshots(ids(targets));
       await dismissManyFromInbox(ids(targets));
-      showToast(count(n, 'Removed from inbox', 'removed from inbox'), undoSnapshots(saved));
+      showToast(count(n, 'Removed from inbox', 'removed from inbox'), undoSnapshots(saved, ['is_new']));
       return;
     }
 
@@ -105,7 +128,8 @@ export async function runEpisodeAction(
       await markPlayedMany(ids(targets), played);
       showToast(
         played ? count(n, 'Marked as played', 'marked as played') : count(n, 'Marked as unplayed', 'marked as unplayed'),
-        undoSnapshots(saved)
+        // Marking played also clears is_new and the saved position.
+        undoSnapshots(saved, ['is_played', 'is_new', 'played_at', 'position'])
       );
       return;
     }
@@ -138,9 +162,14 @@ export async function runEpisodeAction(
             style: 'destructive',
             onPress: () =>
               void (async () => {
-                for (const episode of targets) {
-                  if (episode.download_state === 'done') await deleteDownload(episode.id);
-                  else await cancelDownload(episode.id);
+                for (const { id } of targets) {
+                  // Re-read: a download may have finished while the dialog was
+                  // open, and cancelling a finished one would orphan its file.
+                  const fresh = await getEpisode(id);
+                  if (fresh?.download_state === 'done') await deleteDownload(id);
+                  else if (fresh?.download_state === 'queued' || fresh?.download_state === 'downloading') {
+                    await cancelDownload(id);
+                  }
                 }
               })(),
           },
@@ -157,7 +186,7 @@ export async function runEpisodeAction(
       const saved = await getPlaybackSnapshots(ids(targets));
       await resetPositionMany(ids(targets));
       if (targets.some((episode) => episode.id === player.getState().episode?.id)) await player.seekTo(0);
-      showToast(count(n, 'Position reset', 'reset'), undoSnapshots(saved));
+      showToast(count(n, 'Position reset', 'reset'), undoSnapshots(saved, ['position'], { seekPlayer: true }));
       return;
     }
 

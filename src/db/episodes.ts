@@ -261,17 +261,24 @@ export async function getPlaybackSnapshots(
   return new Map(rows.map(({ id, ...snapshot }) => [id, snapshot]));
 }
 
-/** Puts back what `getPlaybackSnapshots` captured, in one transaction. */
-export async function restorePlaybackSnapshots(snapshots: Map<number, PlaybackSnapshot>): Promise<void> {
+/**
+ * Puts back the given fields of what `getPlaybackSnapshots` captured, in one
+ * transaction. Restore only what the undone action changed: restoring
+ * `position` for an inbox undo would rewind an episode that kept playing.
+ */
+export async function restorePlaybackSnapshots(
+  snapshots: Map<number, PlaybackSnapshot>,
+  fields: readonly (keyof PlaybackSnapshot)[]
+): Promise<void> {
+  if (fields.length === 0 || snapshots.size === 0) return;
+  // Column names come from the PlaybackSnapshot keys, never from input.
+  const assignments = fields.map((field) => `${field} = ?`).join(', ');
   const db = getDb();
   await db.withTransactionAsync(async () => {
     for (const [id, snapshot] of snapshots) {
       await db.runAsync(
-        'UPDATE episodes SET is_played = ?, is_new = ?, position = ?, played_at = ? WHERE id = ?',
-        snapshot.is_played,
-        snapshot.is_new,
-        snapshot.position,
-        snapshot.played_at,
+        `UPDATE episodes SET ${assignments} WHERE id = ?`,
+        ...fields.map((field) => snapshot[field]),
         id
       );
     }
