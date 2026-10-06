@@ -105,7 +105,7 @@ export async function fetchFeed(
 
   if (response.status === 304) {
     return {
-      feed: { title: '', author: null, description: null, imageUrl: null, link: null, language: null, explicit: false, episodes: [] },
+      feed: { title: '', author: null, description: null, imageUrl: null, link: null, language: null, explicit: false, episodes: [], funding: [] },
       etag: validators.etag ?? null,
       lastModified: validators.lastModified ?? null,
       notModified: true,

@@ -21,6 +21,16 @@ export type FeedRow = {
   playback_speed: number | null;
   skip_intro_seconds: number | null;
   next_page_url: string | null;
+  /** 'preview' while looking before subscribing; previews are kept out of Library, refresh and search. */
+  state: 'subscribed' | 'preview';
+  /** Why the last refresh failed, or null if it worked. */
+  last_refresh_error: string | null;
+  /** Saved podcast-page filter (see src/feed/episodeFilter.ts). */
+  episode_filter: string | null;
+  /** Saved podcast-page sort (an EpisodeSortKey). */
+  episode_sort: string | null;
+  /** JSON array of { url, label } funding links. */
+  funding: string | null;
 };
 
 export type EpisodeRow = {

@@ -132,3 +132,27 @@ describe('parseFeed — RFC 5005 feed paging', () => {
   });
 });
 
+
+describe('parseFeed — podcast:funding', () => {
+  const xml = `<?xml version="1.0"?>
+<rss version="2.0" xmlns:podcast="https://podcastindex.org/namespace/1.0">
+  <channel>
+    <title>Funded</title>
+    <podcast:funding url="https://donate.example.com/show">Support the show!</podcast:funding>
+    <podcast:funding url="/members"></podcast:funding>
+    <podcast:funding url="https://donate.example.com/show">Duplicate</podcast:funding>
+    <podcast:funding url="javascript:alert(1)">Bad</podcast:funding>
+  </channel>
+</rss>`;
+
+  it('reads funding links, resolving relative URLs and skipping duplicates and non-web ones', () => {
+    assert.deepEqual(parseFeed(xml, BASE).funding, [
+      { url: 'https://donate.example.com/show', label: 'Support the show!' },
+      { url: 'https://feeds.example.com/members', label: 'Support this podcast' },
+    ]);
+  });
+
+  it('is empty when a feed has none', () => {
+    assert.deepEqual(parseFeed(RSS_STANDARD, BASE).funding, []);
+  });
+});

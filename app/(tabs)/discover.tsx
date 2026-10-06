@@ -20,7 +20,7 @@ import {
   searchPodcasts,
   type PodcastResult,
 } from '@/discover/itunes';
-import { subscribe } from '@/feed/sync';
+import { previewFeed } from '@/feed/sync';
 import { Artwork } from '@/ui/Artwork';
 import { GlassSurface } from '@/ui/glass';
 import { MINI_PLAYER_HEIGHT, radius, space, type as typography } from '@/ui/theme';
@@ -183,11 +183,12 @@ function PodcastResultRow({ podcast }: { podcast: PodcastResult }) {
   const add = useCallback(async () => {
     setAdding(true);
     try {
-      const { feedId } = await subscribe(podcast.feedUrl);
+      // Opens a preview first (AntennaPod, D-003.4); its page has the Subscribe button.
+      const { feedId } = await previewFeed(podcast.feedUrl);
       router.push(`/feed/${feedId}`);
     } catch (error) {
       Alert.alert(
-        'Could not subscribe',
+        'Could not open podcast',
         error instanceof Error ? error.message : 'That feed could not be loaded.'
       );
     } finally {
@@ -204,7 +205,7 @@ function PodcastResultRow({ podcast }: { podcast: PodcastResult }) {
         { backgroundColor: pressed ? theme.surfaceAlt : 'transparent' },
       ]}
       accessibilityRole="button"
-      accessibilityLabel={`Subscribe to ${podcast.title}`}
+      accessibilityLabel={`Open ${podcast.title}`}
     >
       <Artwork uri={podcast.artworkUrl} size={56} />
 
@@ -227,7 +228,7 @@ function PodcastResultRow({ podcast }: { podcast: PodcastResult }) {
       {adding ? (
         <ActivityIndicator size="small" color={theme.accent} />
       ) : (
-        <Ionicons name="add-circle-outline" size={24} color={theme.accent} />
+        <Ionicons name="chevron-forward" size={22} color={theme.textMuted} />
       )}
     </Pressable>
   );

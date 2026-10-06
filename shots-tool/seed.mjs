@@ -45,6 +45,19 @@ export function seedSql() {
   // Listening history for the stats screen.
   for (let d = 0; d < 14; d++) s.push(`INSERT INTO playback_history (episode_id, feed_id, listened_seconds, date)
     VALUES (${(d % 6) * 8 + 6}, ${(d % 6) + 1}, ${600 + ((d * 1337) % 3000)}, '${new Date(NOW - d * DAY).toISOString().slice(0, 10)}');`);
+  // Phase 9: funding links on The Quiet Hour, a failed refresh on Night Shift
+  // Stories, and a podcast being previewed (not subscribed: kept out of Library).
+  s.push(`UPDATE feeds SET funding = ${q(JSON.stringify([{ url: 'https://sagepod.test/support', label: 'Become a member' }]))} WHERE id = 1;`);
+  s.push(`UPDATE feeds SET last_refresh_error = 'The server answered 503 (Service Unavailable).' WHERE id = 6;`);
+  s.push(`INSERT INTO feeds (id, feed_url, title, author, description, image_url, link, language, last_refreshed_at, created_at, state)
+    VALUES (7, 'https://feeds.sagepod.test/7.xml', 'Window Seat', 'Lena Ortiz', 'Stories told from the window seat of night trains.',
+    'https://art.sagepod.test/3.svg', 'https://sagepod.test/7', 'en', ${NOW}, ${NOW}, 'preview');`);
+  for (let n = 0; n < 3; n++) {
+    const id = 49 + n;
+    s.push(`INSERT INTO episodes (id, feed_id, guid, title, description, published_at, duration, media_url, media_type, is_new, created_at)
+      VALUES (${id}, 7, 'ep-${id}', ${q(`${3 - n}. ${['Night train to Lisbon', 'The sleeper car', 'Platform nine'][n]}`)},
+      '<p>A preview episode.</p>', ${NOW - n * 7 * DAY}, ${1800 + n * 300}, 'https://media.sagepod.test/${id}.wav?d=${1800 + n * 300}', 'audio/wav', 0, ${NOW});`);
+  }
   // Chapters for the Now Playing episode (served by shoot.mjs from CHAPTERS).
   s.push(`UPDATE episodes SET chapters_url = 'https://chapters.sagepod.test/3.json' WHERE id = 3;`);
   // Now Playing: the player restores this episode (paused) on startup.

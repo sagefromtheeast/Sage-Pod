@@ -7,7 +7,8 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { initDb } from '@/db';
-import { getSettings, loadSettings } from '@/db/settings';
+import { removeStalePreviews } from '@/db/feeds';
+import { getMeta, getSettings, loadSettings } from '@/db/settings';
 import { refreshAllFeeds } from '@/feed/sync';
 import { player } from '@/player';
 import { manageAutoDownloads } from '@/player/downloads';
@@ -34,6 +35,10 @@ export default function RootLayout() {
         await initDb();
         await loadSettings();
         if (!cancelled) setInitialPref(getSettings().themePreference);
+        // Previews looked at but not subscribed to go now, before the player
+        // restores its episode (which keeps that one's podcast).
+        const restoring = await getMeta('lastEpisodeId');
+        await removeStalePreviews(restoring ? Number(restoring) : null).catch(() => 0);
         await player.init();
 
         // Check for new episodes in the background. Not awaited: the UI should
@@ -116,6 +121,7 @@ function AppShell() {
           />
           <Stack.Screen name="feed/[id]" options={{ title: '' }} />
           <Stack.Screen name="feed/settings/[id]" options={{ title: 'Podcast Settings', presentation: 'modal' }} />
+          <Stack.Screen name="feed/info/[id]" options={{ title: 'Podcast info' }} />
           <Stack.Screen name="episode/[id]" options={{ title: '' }} />
           <Stack.Screen name="search" options={{ title: 'Search' }} />
           <Stack.Screen name="settings" options={{ title: 'Settings', presentation: 'modal' }} />

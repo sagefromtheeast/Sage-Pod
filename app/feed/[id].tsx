@@ -1,45 +1,65 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Alert, FlatList, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  Alert,
+  FlatList,
+  Linking,
+  Pressable,
+  RefreshControl,
+  Share,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 
-import { listEpisodesForFeed, markFeedPlayed, type EpisodeSortKey } from '@/db/episodes';
-import { deleteFeed, getFeed, setFeedFlags } from '@/db/feeds';
+import {
+  dismissManyFromInbox,
+  EPISODE_SORT_KEYS,
+  getPlaybackSnapshots,
+  listEpisodesForFeed,
+  listInboxIds,
+  markFeedPlayed,
+  restorePlaybackSnapshots,
+  type EpisodeSortKey,
+} from '@/db/episodes';
+import { deleteFeed, getFeed, setFeedFlags, setFeedViewPrefs } from '@/db/feeds';
 import { enqueue } from '@/db/queue';
 import type { EpisodeWithFeed, FeedWithCounts } from '@/db/types';
 import { useQuery } from '@/db/useQuery';
-import { fetchOlderFeedEpisodes, refreshFeed } from '@/feed/sync';
+import { describeFilter, isFiltered, parseEpisodeFilter } from '@/feed/episodeFilter';
+import { fetchOlderFeedEpisodes, refreshFeed, refreshFeedCompletely, subscribe } from '@/feed/sync';
 import { player } from '@/player';
+import { ActionSheet, type IconName } from '@/ui/ActionSheet';
 import { Artwork } from '@/ui/Artwork';
 import { EmptyState } from '@/ui/EmptyState';
 import { EpisodeRow } from '@/ui/EpisodeRow';
+import { FeedFilterSheet } from '@/ui/feed/FeedFilterSheet';
+import { MiniPlayerDock, useMiniPlayerDockPadding } from '@/ui/MiniPlayerDock';
 import { OverflowMenu } from '@/ui/OverflowMenu';
 import { SELECTION_BAR_HEIGHT, SelectionBar } from '@/ui/SelectionBar';
+import { radius, space, type as typography } from '@/ui/theme';
+import { showToast } from '@/ui/UndoToast';
 import { useEpisodeSelection } from '@/ui/useEpisodeSelection';
-import { GlassSegmentedControl, type SegmentOption } from '@/ui/glass';
-import { triggerHaptic } from '@/ui/haptics';
-import { MINI_PLAYER_HEIGHT, radius, space, type as typography } from '@/ui/theme';
-import { MiniPlayerDock, useMiniPlayerDockPadding } from '@/ui/MiniPlayerDock';
 import { useTheme } from '@/ui/useTheme';
 import { excerpt } from '@/util/html';
-
-type FeedFilterKey = 'all' | 'unplayed' | 'downloaded' | 'favorites';
-
-const FILTER_SEGMENTS: readonly SegmentOption<FeedFilterKey>[] = [
-  { key: 'all', label: 'All' },
-  { key: 'unplayed', label: 'Unplayed' },
-  { key: 'downloaded', label: 'Downloaded' },
-  { key: 'favorites', label: 'Favorites' },
-];
 
 /** Episodes read from the database per page, as in AntennaPod. */
 const PAGE_SIZE = 150;
 
-const SORT_SEGMENTS: readonly SegmentOption<EpisodeSortKey>[] = [
-  { key: 'date_desc', label: 'Newest' },
-  { key: 'date_asc', label: 'Oldest' },
-  { key: 'season_asc', label: 'Season' },
-];
+const SORT_LABELS: Record<EpisodeSortKey, string> = {
+  date_desc: 'Newest first',
+  date_asc: 'Oldest first',
+  duration_asc: 'Shortest first',
+  duration_desc: 'Longest first',
+  title_asc: 'Title A–Z',
+  title_desc: 'Title Z–A',
+  season_asc: 'Season and episode',
+};
+
+const parseSort = (raw: string | null | undefined): EpisodeSortKey =>
+  EPISODE_SORT_KEYS.includes(raw as EpisodeSortKey) ? (raw as EpisodeSortKey) : 'date_desc';
 
 export default function FeedScreen() {
   const theme = useTheme();
@@ -48,45 +68,34 @@ export default function FeedScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const feedId = Number(id);
 
-  const [filter, setFilter] = useState<FeedFilterKey>('all');
-  const [sort, setSort] = useState<EpisodeSortKey>('date_desc');
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [limit, setLimit] = useState(PAGE_SIZE);
   const [loadingOlder, setLoadingOlder] = useState(false);
+  const [search, setSearch] = useState<string | null>(null);
+  const [sheet, setSheet] = useState<'filter' | 'sort' | null>(null);
+  const [subscribing, setSubscribing] = useState(false);
 
-  const hasActiveFilters = filter !== 'all';
+  const { data: feed } = useQuery<FeedWithCounts | null>(() => getFeed(feedId), ['feeds', 'episodes'], [feedId]);
+  const { data: inboxIds = [] } = useQuery<number[]>(() => listInboxIds(feedId), ['episodes'], [feedId]);
 
-  const clearFilters = useCallback(() => {
-    triggerHaptic('selection');
-    setFilter('all');
-  }, []);
-
-  const { data: feed } = useQuery<FeedWithCounts | null>(
-    () => getFeed(feedId),
-    ['feeds', 'episodes'],
-    [feedId]
-  );
+  const preview = feed?.state === 'preview';
+  const sort = parseSort(feed?.episode_sort);
+  const filterRaw = feed?.episode_filter ?? null;
+  const filter = useMemo(() => parseEpisodeFilter(filterRaw), [filterRaw]);
+  const filtered = isFiltered(filter);
+  const term = search?.trim() ?? '';
 
   const { data: episodes = [], loading: episodesLoading } = useQuery<EpisodeWithFeed[]>(
-    () =>
-      listEpisodesForFeed(feedId, {
-        sort,
-        filters: {
-          unplayedOnly: filter === 'unplayed',
-          downloadedOnly: filter === 'downloaded',
-          favoritesOnly: filter === 'favorites',
-        },
-        limit,
-      }),
-    ['episodes'],
-    [feedId, sort, filter, limit]
+    () => listEpisodesForFeed(feedId, { sort, episodeFilter: filter, search: term, limit }),
+    ['episodes', 'queue'],
+    [feedId, sort, filter, term, limit]
   );
 
-  // A different podcast, filter or sort is a new list: start from one page.
+  // A different podcast, filter, sort or search is a new list: start from one page.
   useEffect(() => {
     setLimit(PAGE_SIZE);
-  }, [feedId, sort, filter]);
+  }, [feedId, sort, filterRaw, term]);
 
   // A full page means there may be more stored episodes; a short one means the
   // database is exhausted and only the feed's older pages (if any) remain.
@@ -118,17 +127,48 @@ export default function FeedScreen() {
     else void player.playEpisode(episode);
   }, []);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(
+    async (complete = false) => {
+      if (!feed) return;
+      setRefreshing(true);
+      try {
+        if (complete) {
+          const added = await refreshFeedCompletely(feed);
+          showToast(added > 0 ? `${added} episodes added` : 'No missing episodes found');
+        } else {
+          await refreshFeed(feed);
+        }
+      } catch {
+        // The "Last refresh failed" banner shows the reason.
+      } finally {
+        setRefreshing(false);
+      }
+    },
+    [feed]
+  );
+
+  const subscribeNow = useCallback(async () => {
     if (!feed) return;
-    setRefreshing(true);
+    setSubscribing(true);
     try {
-      await refreshFeed(feed);
+      await subscribe(feed.feed_url);
+      showToast(`Subscribed to ${feed.title}`);
     } catch (error) {
-      Alert.alert('Refresh failed', error instanceof Error ? error.message : String(error));
+      Alert.alert('Could not subscribe', error instanceof Error ? error.message : String(error));
     } finally {
-      setRefreshing(false);
+      setSubscribing(false);
     }
   }, [feed]);
+
+  const removeAllFromInbox = useCallback(async () => {
+    if (inboxIds.length === 0) return;
+    const saved = await getPlaybackSnapshots(inboxIds);
+    await dismissManyFromInbox(inboxIds);
+    showToast(
+      inboxIds.length === 1 ? 'Removed from inbox' : `${inboxIds.length} episodes removed from inbox`,
+      () => restorePlaybackSnapshots(saved, ['is_new'])
+    );
+  }, [inboxIds]);
 
   const confirmUnsubscribe = useCallback(() => {
     if (!feed) return;
@@ -154,6 +194,58 @@ export default function FeedScreen() {
   }
 
   const description = excerpt(feed.description, descriptionExpanded ? 4000 : 180);
+  const share = () =>
+    void Share.share({ message: `${feed.title}\n${feed.link ?? feed.feed_url}\nFeed: ${feed.feed_url}` });
+
+  const menu = [
+    ...(preview
+      ? []
+      : [
+          { key: 'sort', label: 'Sort…', icon: 'swap-vertical' as IconName, onPress: () => setSheet('sort') },
+          { key: 'refresh', label: 'Refresh', icon: 'refresh' as IconName, onPress: () => void refresh() },
+          {
+            key: 'refreshAll',
+            label: 'Refresh complete podcast',
+            icon: 'cloud-download-outline' as IconName,
+            onPress: () => void refresh(true),
+          },
+        ]),
+    ...(feed.link
+      ? [{ key: 'website', label: 'Visit website', icon: 'globe-outline' as IconName, onPress: () => void Linking.openURL(feed.link!) }]
+      : []),
+    { key: 'share', label: 'Share podcast', icon: 'share-outline' as IconName, onPress: share },
+    ...(preview
+      ? []
+      : [
+          ...(inboxIds.length > 0
+            ? [
+                {
+                  key: 'inbox',
+                  label: 'Remove all from inbox',
+                  icon: 'checkmark-done-outline' as IconName,
+                  onPress: () => void removeAllFromInbox(),
+                },
+              ]
+            : []),
+          {
+            key: 'played',
+            label: 'Mark all as played',
+            icon: 'checkmark-done-circle-outline' as IconName,
+            onPress: () =>
+              Alert.alert('Mark all as played?', `All ${feed.episode_count} episodes.`, [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Mark all', onPress: () => void markFeedPlayed(feed.id) },
+              ]),
+          },
+          {
+            key: 'unsubscribe',
+            label: 'Unsubscribe',
+            icon: 'trash-outline' as IconName,
+            destructive: true,
+            onPress: confirmUnsubscribe,
+          },
+        ]),
+  ];
 
   return (
     <>
@@ -161,55 +253,16 @@ export default function FeedScreen() {
         options={{
           title: feed.title,
           headerRight: () => (
-            <View style={{ flexDirection: 'row', gap: space.md, alignItems: 'center' }}>
+            <View style={styles.headerButtons}>
               <Pressable
-                onPress={() => router.push(`/feed/settings/${feed.id}`)}
+                onPress={() => setSearch((value) => (value === null ? '' : null))}
                 hitSlop={10}
                 accessibilityRole="button"
-                accessibilityLabel="Settings"
+                accessibilityLabel={search === null ? 'Search this podcast' : 'Close search'}
               >
-                <Ionicons name="settings-outline" size={22} color={theme.text} />
+                <Ionicons name={search === null ? 'search' : 'close'} size={22} color={theme.text} />
               </Pressable>
-              {/* AntennaPod-style overflow menu; Unsubscribe is no longer one tap away. */}
-              <OverflowMenu
-                title={feed.title}
-                items={[
-                  { key: 'refresh', label: 'Refresh', icon: 'refresh', onPress: () => void refresh() },
-                  {
-                    key: 'played',
-                    label: 'Mark all as played',
-                    icon: 'checkmark-done-outline',
-                    onPress: () =>
-                      Alert.alert('Mark all as played?', `All ${feed.episode_count} episodes.`, [
-                        { text: 'Cancel', style: 'cancel' },
-                        { text: 'Mark all', onPress: () => void markFeedPlayed(feed.id) },
-                      ]),
-                  },
-                  ...(feed.link
-                    ? [
-                        {
-                          key: 'website',
-                          label: 'Visit website',
-                          icon: 'globe-outline' as const,
-                          onPress: () => void Linking.openURL(feed.link!),
-                        },
-                      ]
-                    : []),
-                  {
-                    key: 'settings',
-                    label: 'Podcast settings',
-                    icon: 'settings-outline',
-                    onPress: () => router.push(`/feed/settings/${feed.id}`),
-                  },
-                  {
-                    key: 'unsubscribe',
-                    label: 'Unsubscribe',
-                    icon: 'trash-outline',
-                    destructive: true,
-                    onPress: confirmUnsubscribe,
-                  },
-                ]}
-              />
+              <OverflowMenu title={feed.title} items={menu} />
             </View>
           ),
         }}
@@ -219,10 +272,8 @@ export default function FeedScreen() {
         data={episodes}
         keyExtractor={(episode) => String(episode.id)}
         extraData={selection.selected}
-        contentContainerStyle={[
-          styles.content,
-          { paddingBottom: selection.active ? SELECTION_BAR_HEIGHT + space.xl : dockPadding },
-        ]}
+        contentContainerStyle={{ paddingBottom: selection.active ? SELECTION_BAR_HEIGHT + space.xl : dockPadding }}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void refresh()} tintColor={theme.accent} />}
         ListHeaderComponent={
           <View style={styles.header}>
             <View style={styles.headerTop}>
@@ -237,7 +288,7 @@ export default function FeedScreen() {
                   </Text>
                 ) : null}
                 <Text style={[styles.counts, { color: theme.textFaint }]}>
-                  {feed.episode_count} episodes · {feed.unplayed_count} unplayed
+                  {feed.episode_count} episodes{preview ? '' : ` · ${feed.unplayed_count} unplayed`}
                 </Text>
               </View>
             </View>
@@ -251,53 +302,80 @@ export default function FeedScreen() {
               </Pressable>
             ) : null}
 
-            <View style={styles.actions}>
-              <ActionChip
-                icon="refresh"
-                label={refreshing ? 'Refreshing…' : 'Refresh'}
-                onPress={() => void refresh()}
-                disabled={refreshing}
-              />
-              <ActionChip
-                icon={feed.auto_download ? 'arrow-down-circle' : 'arrow-down-circle-outline'}
-                label="Auto-download"
-                active={feed.auto_download === 1}
-                onPress={() =>
-                  void setFeedFlags(feed.id, { autoDownload: feed.auto_download !== 1 })
-                }
-              />
-              <ActionChip
-                icon="checkmark-done"
-                label="Mark all played"
-                onPress={() =>
-                  Alert.alert('Mark all as played?', `All ${feed.episode_count} episodes.`, [
-                    { text: 'Cancel', style: 'cancel' },
-                    { text: 'Mark all', onPress: () => void markFeedPlayed(feed.id) },
-                  ])
-                }
-              />
-            </View>
+            {preview ? (
+              <View style={styles.previewBlock}>
+                <Pressable
+                  onPress={() => void subscribeNow()}
+                  disabled={subscribing}
+                  style={[styles.subscribe, { backgroundColor: theme.accent, opacity: subscribing ? 0.6 : 1 }]}
+                  accessibilityRole="button"
+                >
+                  <Ionicons name="add" size={20} color={theme.onAccent} />
+                  <Text style={[styles.subscribeLabel, { color: theme.onAccent }]}>
+                    {subscribing ? 'Subscribing…' : 'Subscribe'}
+                  </Text>
+                </Pressable>
+                <Text style={[styles.previewNote, { color: theme.textFaint }]}>
+                  Previewing. You can play episodes now; the podcast joins your library when you subscribe.
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.actions}>
+                <ActionChip icon="information-circle-outline" label="Info" onPress={() => router.push(`/feed/info/${feed.id}`)} />
+                <ActionChip
+                  icon={filtered ? 'funnel' : 'funnel-outline'}
+                  label="Filter"
+                  active={filtered}
+                  onPress={() => setSheet('filter')}
+                />
+                <ActionChip icon="settings-outline" label="Settings" onPress={() => router.push(`/feed/settings/${feed.id}`)} />
+              </View>
+            )}
 
-            <View style={styles.segmentedControls}>
-              <GlassSegmentedControl<FeedFilterKey>
-                segments={FILTER_SEGMENTS}
-                selectedKey={filter}
-                onSelect={setFilter}
-                accessibilityLabel="Filter episodes"
+            {!preview && feed.last_refresh_error ? (
+              <Banner
+                icon="warning-outline"
+                tone="danger"
+                text={`Last refresh failed: ${feed.last_refresh_error}`}
+                action={{ label: 'Retry', onPress: () => void refresh() }}
               />
-              <GlassSegmentedControl<EpisodeSortKey>
-                segments={SORT_SEGMENTS}
-                selectedKey={sort}
-                onSelect={setSort}
-                accessibilityLabel="Sort episodes"
+            ) : null}
+            {!preview && feed.keep_updated === 0 ? (
+              <Banner
+                icon="pause-circle-outline"
+                text="Automatic updates are off for this podcast."
+                action={{ label: 'Turn on', onPress: () => void setFeedFlags(feed.id, { keepUpdated: true }) }}
               />
-            </View>
+            ) : null}
+            {filtered ? (
+              <Banner
+                icon="funnel-outline"
+                text={`Filtered: ${describeFilter(filter)}`}
+                action={{ label: 'Clear', onPress: () => void setFeedViewPrefs(feed.id, { episodeFilter: null }) }}
+              />
+            ) : null}
+
+            {search !== null ? (
+              <View style={[styles.search, { backgroundColor: theme.surfaceAlt }]}>
+                <Ionicons name="search" size={16} color={theme.textMuted} />
+                <TextInput
+                  value={search}
+                  onChangeText={setSearch}
+                  autoFocus
+                  placeholder="Search this podcast"
+                  placeholderTextColor={theme.textFaint}
+                  style={[styles.searchInput, { color: theme.text }]}
+                  returnKeyType="search"
+                  accessibilityLabel="Search this podcast"
+                />
+              </View>
+            ) : null}
           </View>
         }
         onEndReached={showMoreStored}
         onEndReachedThreshold={0.5}
         ListFooterComponent={
-          !episodesLoading && !moreStored && feed.next_page_url ? (
+          !episodesLoading && !moreStored && !term && !filtered && feed.next_page_url ? (
             // Paged feeds (RFC 5005) only ship their newest page; older
             // episodes are fetched on request, like AntennaPod's load-more footer.
             <Pressable
@@ -314,12 +392,16 @@ export default function FeedScreen() {
           ) : null
         }
         ListEmptyComponent={
-          hasActiveFilters ? (
+          episodesLoading ? null : filtered || term ? (
             <EmptyState
               icon="filter-outline"
               title="No matching episodes"
-              message="None of the episodes match your active filters."
-              action={{ label: 'Clear filters', onPress: clearFilters }}
+              message={term ? `No episodes match “${term}”.` : 'None of the episodes match the filter.'}
+              action={
+                filtered
+                  ? { label: 'Clear filter', onPress: () => void setFeedViewPrefs(feed.id, { episodeFilter: null }) }
+                  : undefined
+              }
             />
           ) : null
         }
@@ -348,6 +430,21 @@ export default function FeedScreen() {
       />
       <SelectionBar selection={selection} />
       <MiniPlayerDock hidden={selection.active} />
+
+      <FeedFilterSheet visible={sheet === 'filter'} feedId={feed.id} value={filterRaw} onClose={() => setSheet(null)} />
+      <ActionSheet
+        visible={sheet === 'sort'}
+        title="Sort episodes"
+        subtitle="Saved for this podcast"
+        items={EPISODE_SORT_KEYS.map((key) => ({
+          key,
+          label: SORT_LABELS[key],
+          icon: key.startsWith('date') ? 'calendar-outline' : key.startsWith('duration') ? 'time-outline' : 'text-outline',
+          selected: key === sort,
+          onPress: () => void setFeedViewPrefs(feed.id, { episodeSort: key }),
+        }))}
+        onClose={() => setSheet(null)}
+      />
     </>
   );
 }
@@ -357,34 +454,53 @@ function ActionChip({
   label,
   onPress,
   active = false,
-  disabled = false,
 }: {
-  icon: React.ComponentProps<typeof Ionicons>['name'];
+  icon: IconName;
   label: string;
   onPress: () => void;
   active?: boolean;
-  disabled?: boolean;
 }) {
   const theme = useTheme();
-
   return (
     <Pressable
       onPress={onPress}
-      disabled={disabled}
       style={({ pressed }) => [
         styles.chip,
-        {
-          backgroundColor: active ? theme.accent : theme.surfaceAlt,
-          opacity: disabled ? 0.5 : pressed ? 0.8 : 1,
-        },
+        { backgroundColor: active ? theme.accent : theme.surfaceAlt, opacity: pressed ? 0.8 : 1 },
       ]}
       accessibilityRole="button"
+      accessibilityState={{ selected: active }}
     >
-      <Ionicons name={icon} size={15} color={active ? theme.onAccent : theme.textMuted} />
-      <Text style={[styles.chipLabel, { color: active ? theme.onAccent : theme.textMuted }]}>
-        {label}
-      </Text>
+      <Ionicons name={icon} size={16} color={active ? theme.onAccent : theme.textMuted} />
+      <Text style={[styles.chipLabel, { color: active ? theme.onAccent : theme.textMuted }]}>{label}</Text>
     </Pressable>
+  );
+}
+
+/** AntennaPod's podcast-page status banners: refresh failed, updates off, filtered. */
+function Banner({
+  icon,
+  text,
+  action,
+  tone = 'muted',
+}: {
+  icon: IconName;
+  text: string;
+  action: { label: string; onPress: () => void };
+  tone?: 'muted' | 'danger';
+}) {
+  const theme = useTheme();
+  const color = tone === 'danger' ? theme.danger : theme.textMuted;
+  return (
+    <View style={[styles.banner, { backgroundColor: theme.surfaceAlt }]}>
+      <Ionicons name={icon} size={18} color={color} />
+      <Text style={[styles.bannerText, { color }]} numberOfLines={3}>
+        {text}
+      </Text>
+      <Pressable onPress={action.onPress} hitSlop={8} accessibilityRole="button">
+        <Text style={[styles.bannerAction, { color: theme.accent }]}>{action.label}</Text>
+      </Pressable>
+    </View>
   );
 }
 
@@ -392,8 +508,10 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
   },
-  content: {
-    paddingBottom: MINI_PLAYER_HEIGHT + space.xl,
+  headerButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.lg,
   },
   header: {
     padding: space.lg,
@@ -427,16 +545,34 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: space.xs,
   },
+  previewBlock: {
+    gap: space.sm,
+  },
+  subscribe: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: space.sm,
+    paddingVertical: space.md,
+    borderRadius: radius.pill,
+  },
+  subscribeLabel: {
+    ...typography.subheading,
+  },
+  previewNote: {
+    ...typography.caption,
+    textAlign: 'center',
+  },
   actions: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: space.sm,
   },
   chip: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: space.xs,
-    paddingHorizontal: space.md,
     paddingVertical: space.sm,
     borderRadius: radius.pill,
   },
@@ -444,18 +580,42 @@ const styles = StyleSheet.create({
     ...typography.caption,
     fontWeight: '600',
   },
+  banner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+    padding: space.md,
+    borderRadius: radius.md,
+  },
+  bannerText: {
+    ...typography.caption,
+    flex: 1,
+  },
+  bannerAction: {
+    ...typography.label,
+    fontWeight: '700',
+  },
+  search: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+    paddingHorizontal: space.md,
+    borderRadius: radius.pill,
+  },
+  searchInput: {
+    ...typography.body,
+    flex: 1,
+    paddingVertical: space.sm,
+  },
   loadOlder: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: space.sm,
+    marginHorizontal: space.lg,
     marginTop: space.md,
     paddingVertical: space.md,
     borderRadius: radius.lg,
     borderWidth: StyleSheet.hairlineWidth,
-  },
-  segmentedControls: {
-    gap: space.sm,
-    paddingTop: space.xs,
   },
 });

@@ -82,9 +82,12 @@ destructive.
 - [ ] On device: long-press on inline links (react-native-web doesn't route it, so no shot); pager swipe vs vertical scroll
 - [ ] Pager follows the list you came from (currently the podcast's episodes)
 
-## Phase 9 — Podcast page / info / preview
-- [ ] Icon row; real ⋯ menu (no more one-tap Unsubscribe); search; pull-to-refresh; saved filter + sort; banners
-- [ ] feed/info/[id] (stats, funding, URL copy); preview state + Subscribe CTA, Discover opens preview (D-003.4)
+## Phase 9 — Podcast page / info / preview ✅
+- [x] Icon row (Info / Filter / Settings); real ⋯ menu (sort, refresh, refresh complete, website, share, remove all from inbox, mark played, unsubscribe); search; pull-to-refresh; saved filter (include/exclude pairs) + sort; refresh-failed / updates-off / filtered banners
+- [x] feed/info/[id] (stats, funding via `podcast:funding`, description with links, feed URL copy); preview state + Subscribe CTA; Discover and Add-by-URL open a preview (D-003.4); previews kept out of Library, refresh, search and Home; startup cleanup after 24 h (D-016)
+- [x] Migration 4 (feeds.state, last_refresh_error, episode_filter, episode_sort, funding) + seed
+- [ ] Unsubscribe → Archive (needs Library to show archived podcasts: Phase 12)
+- [ ] Share with an app subscribe link (no deep links until Phase 17; shares the feed address for now)
 
 ## Phase 10 — Per-podcast settings
 - [ ] Display/Playback/Automation/Advanced groups with FeedOverride everywhere
