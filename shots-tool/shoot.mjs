@@ -123,11 +123,25 @@ const ROUTES = [
     await page.getByText(/^117\. What inflation really feels like$/).first().waitFor({ state: 'visible', timeout: 10000 });
     await page.waitForTimeout(800);
   }],
+  ['feed-filter', '/feed/1', async (page) => {
+    await page.getByRole('button', { name: 'Filter' }).first().click();
+    await page.getByText('Saved for this podcast').waitFor({ timeout: 10000 });
+  }],
+  ['feed-info', '/feed/info/1'],
+  ['feed-banner', '/feed/6'],
+  ['feed-preview', '/feed/7'],
   ['feed-menu', '/feed/1', async (page) => {
     await page.getByRole('button', { name: 'More options' }).first().click();
-    await page.getByText('Unsubscribe').first().waitFor({ timeout: 10000 });
+    await page.getByText('Refresh complete podcast').first().waitFor({ timeout: 10000 });
   }],
-  // These last two change the seeded data. Swiping left removes from the inbox, with Undo.
+  // These last ones change the seeded data (a saved filter, the inbox, the queue order).
+  ['feed-filtered', '/feed/1', async (page) => {
+    await page.getByRole('button', { name: 'Filter' }).first().click();
+    await page.getByText('Unplayed', { exact: true }).first().click();
+    await page.getByRole('button', { name: 'Close menu' }).first().click();
+    await page.getByText('Filtered: Unplayed').waitFor({ timeout: 10000 });
+  }],
+  // Swiping left removes from the inbox, with Undo.
   ['inbox-swipe', '/inbox', async (page) => {
     const row = page.getByText(/^120\. Inside the chip shortage/).first();
     const box = await row.boundingBox();
