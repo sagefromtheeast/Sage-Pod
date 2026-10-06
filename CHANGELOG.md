@@ -1,3 +1,17 @@
+## [0.7.0](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.6.0...v0.7.0) (2026-10-06)
+
+### 🚀 New Features
+
+* **inbox:** AntennaPod's swipes with undo, search, sort, remove all, multi-select and paging ([8ae7c65](https://github.com/sagefromtheeast/Sage-Pod/commit/8ae7c652e53caa17fa2fd25d53fe0ba226f46df3))
+
+### 📚 Documentation
+
+* mark Phase 6 done; index D-012 and D-013; harness tips for swipes ([3799a44](https://github.com/sagefromtheeast/Sage-Pod/commit/3799a4486a5289aa43f03d0e5189ad9849b07355))
+
+### ✅ Tests
+
+* **shots:** inbox menu, sort, selection and a real touch swipe; keep a picture of failing routes ([30cb57f](https://github.com/sagefromtheeast/Sage-Pod/commit/30cb57fae15210be3f04acdbaaea227d05994911))
+
 ## [0.6.0](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.5.0...v0.6.0) (2026-10-06)
 
 ### 🚀 New Features
