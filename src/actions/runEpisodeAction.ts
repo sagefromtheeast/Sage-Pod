@@ -134,10 +134,17 @@ export async function runEpisodeAction(
       return;
     }
 
-    case 'addToQueue':
+    case 'addToQueue': {
+      // Queueing also takes episodes out of the inbox; Undo puts both back.
+      // (Targets are only episodes that weren't queued.)
+      const saved = await getPlaybackSnapshots(ids(targets));
       await enqueueMany(ids(targets));
-      showToast(count(n, 'Added to queue', 'added to queue'));
+      showToast(count(n, 'Added to queue', 'added to queue'), async () => {
+        for (const episode of targets) await dequeue(episode.id);
+        await undoSnapshots(saved, ['is_new'])();
+      });
       return;
+    }
 
     case 'removeFromQueue': {
       const slots = await getQueueSlots(ids(targets));

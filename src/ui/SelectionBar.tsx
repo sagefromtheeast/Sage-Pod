@@ -1,8 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { episodeActionsFor, subjectFor } from '@/actions/episodeActions';
+import { episodeActionsFor, needsBulkConfirm, subjectFor } from '@/actions/episodeActions';
 import { ACTION_META, runEpisodeAction } from '@/actions/runEpisodeAction';
 import { isQueuedNow } from '@/db/queueMembership';
 import { player } from '@/player';
@@ -68,8 +68,15 @@ export function SelectionBar({ selection, inQueue = false }: Props) {
                 key={action}
                 onPress={() => {
                   const episodes = selection.selectedEpisodes;
-                  selection.clear();
-                  void runEpisodeAction(action, episodes);
+                  const run = () => {
+                    selection.clear();
+                    void runEpisodeAction(action, episodes);
+                  };
+                  if (!needsBulkConfirm(action, episodes.length)) return run();
+                  Alert.alert(`${meta.label}?`, `This applies to ${episodes.length} episodes.`, [
+                    { text: 'Cancel', style: 'cancel' },
+                    { text: meta.label, style: meta.destructive ? 'destructive' : 'default', onPress: run },
+                  ]);
                 }}
                 style={({ pressed }) => [
                   styles.action,

@@ -1,7 +1,14 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
-import { appliesTo, episodeActionsFor, rowButtonFor, type ActionSubject } from '../episodeActions';
+import {
+  appliesTo,
+  BULK_CONFIRM_THRESHOLD,
+  episodeActionsFor,
+  needsBulkConfirm,
+  rowButtonFor,
+  type ActionSubject,
+} from '../episodeActions';
 
 const base: ActionSubject = {
   hasMedia: true,
@@ -106,5 +113,17 @@ describe('row button', () => {
     assert.equal(rowButtonFor(ep({ downloading: true }), true), 'cancel');
     assert.equal(rowButtonFor(ep({}), true), 'stream');
     assert.equal(rowButtonFor(ep({}), false), 'download');
+  });
+});
+
+describe('bulk confirmation', () => {
+  it('asks from 25 selected episodes, except where nothing changes or delete already asks', () => {
+    assert.equal(needsBulkConfirm('markPlayed', 24), false);
+    assert.equal(needsBulkConfirm('markPlayed', 25), true);
+    assert.equal(needsBulkConfirm('removeFromInbox', 100), true);
+    assert.equal(needsBulkConfirm('download', 25), true);
+    assert.equal(needsBulkConfirm('delete', 100), false);
+    assert.equal(needsBulkConfirm('share', 100), false);
+    assert.equal(BULK_CONFIRM_THRESHOLD, 25);
   });
 });

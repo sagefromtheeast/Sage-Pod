@@ -349,30 +349,57 @@ export type InboxFeedInfo = {
   unplayed_count: number;
 };
 
-export async function listInboxEpisodes(
-  options: { feedId?: number | null; limit?: number } | number = 100
-): Promise<EpisodeWithFeed[]> {
-  const limit = typeof options === 'number' ? options : options.limit ?? 100;
-  const feedId = typeof options === 'number' ? undefined : options.feedId;
+/** Inbox orders (AntennaPod's inbox sort), saved in the `inboxSort` setting. */
+export type InboxSort = 'date:desc' | 'date:asc' | 'duration:asc' | 'duration:desc';
 
-  if (feedId != null) {
-    return getDb().getAllAsync<EpisodeWithFeed>(
-      `${EPISODE_WITH_FEED}
-        WHERE e.is_new = 1 AND e.is_played = 0 AND e.feed_id = ?
-        ORDER BY e.published_at DESC, e.id DESC
-        LIMIT ?`,
-      feedId,
-      limit
-    );
+const INBOX_ORDER: Record<InboxSort, string> = {
+  'date:desc': 'e.published_at DESC, e.id DESC',
+  'date:asc': 'e.published_at ASC, e.id ASC',
+  'duration:asc': 'COALESCE(e.duration, 0) ASC, e.published_at DESC',
+  'duration:desc': 'COALESCE(e.duration, 0) DESC, e.published_at DESC',
+};
+
+export async function listInboxEpisodes(
+  options: { feedId?: number | null; limit?: number; sort?: InboxSort; search?: string } | number = 100
+): Promise<EpisodeWithFeed[]> {
+  const opts = typeof options === 'number' ? { limit: options } : options;
+  const limit = opts.limit ?? 100;
+  // Whitelisted: the ORDER BY can't take a bound parameter.
+  const order = INBOX_ORDER[opts.sort ?? 'date:desc'] ?? INBOX_ORDER['date:desc'];
+
+  const where = ['e.is_new = 1', 'e.is_played = 0'];
+  const params: (string | number)[] = [];
+  if (opts.feedId != null) {
+    where.push('e.feed_id = ?');
+    params.push(opts.feedId);
+  }
+  const term = opts.search?.trim();
+  if (term) {
+    // Match the episode or podcast title; % and _ in the term are literal.
+    const like = `%${term.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+    where.push("(e.title LIKE ? ESCAPE '\\' OR f.title LIKE ? ESCAPE '\\')");
+    params.push(like, like);
   }
 
   return getDb().getAllAsync<EpisodeWithFeed>(
     `${EPISODE_WITH_FEED}
-      WHERE e.is_new = 1 AND e.is_played = 0
-      ORDER BY e.published_at DESC, e.id DESC
+      WHERE ${where.join(' AND ')}
+      ORDER BY ${order}
       LIMIT ?`,
+    ...params,
     limit
   );
+}
+
+/** Every inbox episode's id (optionally one podcast's), for "Remove all" and its undo. */
+export async function listInboxIds(feedId: number | null = null): Promise<number[]> {
+  const rows = await getDb().getAllAsync<{ id: number }>(
+    feedId === null
+      ? 'SELECT id FROM episodes WHERE is_new = 1 AND is_played = 0'
+      : 'SELECT id FROM episodes WHERE is_new = 1 AND is_played = 0 AND feed_id = ?',
+    ...(feedId === null ? [] : [feedId])
+  );
+  return rows.map((row) => row.id);
 }
 
 export async function listInboxFeeds(): Promise<InboxFeedInfo[]> {
