@@ -1,3 +1,36 @@
+## [0.4.0](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.3.1...v0.4.0) (2026-10-06)
+
+### 🚀 New Features
+
+* **actions:** typed episode actions and row-button rules from AntennaPod ([fc5ec1d](https://github.com/sagefromtheeast/Sage-Pod/commit/fc5ec1dcd48754159f2b82a9021a1fb10d1e65e6))
+* **db:** undo-able episode and queue writes, shared queue membership ([901a66c](https://github.com/sagefromtheeast/Sage-Pod/commit/901a66c6a2260fb3d02298a51f8d3d5d3475a893))
+* **episodes:** long-press menu, smart row button and status markers ([e0c866b](https://github.com/sagefromtheeast/Sage-Pod/commit/e0c866b3eba3900ce32c39e8ffc3085a01e33e8f))
+* **feed:** multi-select and a real overflow menu on the podcast page ([df92b61](https://github.com/sagefromtheeast/Sage-Pod/commit/df92b61c6702a899e9709ebe9bb860b32031924c))
+* **ui:** action sheet, undo toast, overflow menu and multi-select bar ([2ab5a03](https://github.com/sagefromtheeast/Sage-Pod/commit/2ab5a0353d9a45d22d6aa3284e3045884355cc53))
+
+### 🐛 Bug Fixes
+
+* **actions:** act only on applicable episodes; batch writes; exact undo ([b85294f](https://github.com/sagefromtheeast/Sage-Pod/commit/b85294fa93c7255f4b9a41ead21c34770abbaab3))
+* **actions:** undo restores only what changed; delete re-reads state ([9f6acc8](https://github.com/sagefromtheeast/Sage-Pod/commit/9f6acc87644379e953454703d9b8a21c9cfa4aaa))
+* **selection:** stop a render loop when a list is still loading ([09a87e3](https://github.com/sagefromtheeast/Sage-Pod/commit/09a87e38f5ddbfb8a0b2c08757c9db2cc245b9fb))
+* **ui:** sheet actions after dismissal, live streaming setting, selection exit ([4a2da52](https://github.com/sagefromtheeast/Sage-Pod/commit/4a2da52ea2a3d0ef183d41bc8c5e0e0483a55396))
+
+### ♻️ Refactoring
+
+* **ui:** one createStore helper for app-wide state ([8415b03](https://github.com/sagefromtheeast/Sage-Pod/commit/8415b0352c7078f76b70fbade43ada2dbe7773fa))
+
+### 📚 Documentation
+
+* record merge delegation, streaming default and end-of-parity build ([bd7e9ab](https://github.com/sagefromtheeast/Sage-Pod/commit/bd7e9ab4256d17651bb080bea98240e8b8f1c574))
+
+### 📦 Build & Dependencies
+
+* **shots:** interaction shots and page errors on render failure ([7dcba9c](https://github.com/sagefromtheeast/Sage-Pod/commit/7dcba9cdc4b842d4ba703a691b57c921001347db))
+
+### 🤖 CI/CD
+
+* run typecheck, tests, expo-doctor and an Android bundle on every PR ([72279c1](https://github.com/sagefromtheeast/Sage-Pod/commit/72279c157dc392c85b37c282249893134c5d1dbc))
+
 ## [0.3.1](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.3.0...v0.3.1) (2026-10-06)
 
 ### 🐛 Bug Fixes
