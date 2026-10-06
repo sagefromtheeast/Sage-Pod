@@ -18,8 +18,8 @@ const VIEWPORTS = [
   { name: 'tablet-land', width: 1280, height: 800, deviceScaleFactor: 1, isMobile: true, hasTouch: true },
 ];
 // Long-press the first episode row of a list (RN-web Pressable needs a held pointer).
-async function longPressFirstEpisode(page) {
-  const row = page.getByText(/^120\. /).first();
+async function longPressFirstEpisode(page, title = /^120\. /) {
+  const row = page.getByText(title).first();
   const box = await row.boundingBox();
   await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
   await page.mouse.down();
@@ -52,9 +52,47 @@ const ROUTES = [
     await page.getByRole('button', { name: /Show all chapters/ }).first().click();
     await page.getByText('5 chapters').waitFor({ timeout: 10000 });
   }],
+  ['queue-menu', '/queue', async (page) => {
+    await page.getByRole('button', { name: 'More options' }).first().click();
+    await page.getByText('Lock queue').first().waitFor({ timeout: 10000 });
+  }],
+  ['queue-sort', '/queue', async (page) => {
+    await page.getByRole('button', { name: 'More options' }).first().click();
+    await page.getByText('Sort…').first().click();
+    await page.getByText('Keep sorted').waitFor({ timeout: 10000 });
+  }],
+  ['queue-select', '/queue', async (page) => {
+    await longPressFirstEpisode(page, /^118\. A billion years/);
+    await page.getByText('Select multiple').first().click();
+    await page.getByText(/^118\. The art of doing less/).first().click();
+    await page.getByText('2 selected').waitFor({ timeout: 10000 });
+  }],
+  ['queue-search', '/queue', async (page) => {
+    await page.getByRole('button', { name: 'Search the queue' }).first().click();
+    await page.getByPlaceholder('Search the queue').fill('river');
+    await page.getByText(/No queued episodes match|river/i).first().waitFor({ timeout: 10000 });
+  }],
   ['feed-menu', '/feed/1', async (page) => {
     await page.getByRole('button', { name: 'More options' }).first().click();
     await page.getByText('Unsubscribe').first().waitFor({ timeout: 10000 });
+  }],
+  // Last: it reorders the seeded queue. Drags row 1 to row 3 by its handle.
+  ['queue-drag', '/queue', async (page) => {
+    const handle = page.getByLabel('Reorder, position 1 of 5').first();
+    const box = await handle.boundingBox();
+    const x = box.x + box.width / 2, y = box.y + box.height / 2;
+    await page.mouse.move(x, y);
+    await page.mouse.down();
+    // Rows are ~102 px: 176 px passes row 3's midpoint but not row 4's.
+    for (let i = 1; i <= 8; i++) await page.mouse.move(x, y + i * 22);
+    await page.mouse.up();
+    await page.waitForFunction(() => {
+      const t = document.body.innerText;
+      const at = (s) => t.indexOf(s);
+      return at('The art of doing less') < at('The comet that came back') &&
+        at('The comet that came back') < at('A billion years in a pebble') &&
+        at('A billion years in a pebble') < at('Why we stopped writing letters');
+    }, null, { timeout: 10000 });
   }],
 ].filter(([n]) => !only || only.includes(n));
 
