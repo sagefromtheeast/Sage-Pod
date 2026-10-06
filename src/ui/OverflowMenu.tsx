@@ -10,10 +10,12 @@ type Props = {
   /** Optional sheet heading, e.g. the podcast title. */
   title?: string;
   accessibilityLabel?: string;
+  /** Icon colour; defaults to the text colour. */
+  color?: string;
 };
 
 /** A header ⋯ button that opens a sheet of screen actions (AntennaPod's overflow menu). */
-export function OverflowMenu({ items, title, accessibilityLabel = 'More options' }: Props) {
+export function OverflowMenu({ items, title, accessibilityLabel = 'More options', color }: Props) {
   const theme = useTheme();
   const [open, setOpen] = useState(false);
 
@@ -25,7 +27,7 @@ export function OverflowMenu({ items, title, accessibilityLabel = 'More options'
         accessibilityRole="button"
         accessibilityLabel={accessibilityLabel}
       >
-        <Ionicons name="ellipsis-horizontal-circle" size={24} color={theme.text} />
+        <Ionicons name="ellipsis-horizontal-circle" size={24} color={color ?? theme.text} />
       </Pressable>
       <ActionSheet visible={open} title={title} items={items} onClose={() => setOpen(false)} />
     </>

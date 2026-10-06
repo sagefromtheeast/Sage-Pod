@@ -38,6 +38,10 @@ export type Settings = {
   refreshIntervalMinutes: number;
   /** UI appearance mode: system, light, dark, or OLED true black. */
   themePreference: 'system' | 'light' | 'dark' | 'oled';
+  /** Speed preset chips in the speed sheet, comma-separated (see src/player/speed.ts). */
+  speedPresets: string;
+  /** Player's right-hand time shows time remaining (true) or total length (false). */
+  showRemainingTime: boolean;
   /** Last minutes chosen for the sleep timer, offered again (AntennaPod default 15). */
   sleepMinutes: number;
   /** Shake the phone in the timer's last 10 s to restart it. */
@@ -50,6 +54,9 @@ export type Settings = {
   sleepAutoFrom: number;
   sleepAutoTo: number;
 };
+
+/** Skip amounts offered by long-pressing the player's rewind / forward buttons (AntennaPod's list). */
+export const SKIP_AMOUNTS = [5, 10, 15, 20, 30, 45, 60] as const;
 
 export const DEFAULT_SETTINGS: Settings = {
   skipForward: 30,
@@ -66,6 +73,8 @@ export const DEFAULT_SETTINGS: Settings = {
   deleteAfterFinished: false,
   refreshIntervalMinutes: 60,
   themePreference: 'system',
+  speedPresets: '0.8,1,1.2,1.5,1.75,2,2.5,3',
+  showRemainingTime: true,
   sleepMinutes: 15,
   sleepShakeToReset: true,
   sleepVibrate: false,

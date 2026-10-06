@@ -14,11 +14,13 @@ import {
   markPlayed,
   savePosition,
 } from '@/db/episodes';
+import { setFeedFlags } from '@/db/feeds';
 import { dequeue, enqueueFront, nextInQueue } from '@/db/queue';
 import { deleteDownload, getLocalEpisodePath } from '@/player/downloads';
-import { getMeta, getSettings, setMeta } from '@/db/settings';
+import { getMeta, getSettings, setMeta, setSetting } from '@/db/settings';
 import type { EpisodeWithFeed } from '@/db/types';
 import { positionAfterPause } from '@/player/resumeRewind';
+import { clampSpeed } from '@/player/speed';
 import {
   afterEpisodeFinished,
   extendTimer,
@@ -33,7 +35,7 @@ import {
   type SleepTimer,
 } from '@/player/sleepTimer';
 
-/** Playback rates offered in the UI, and cycled through by the rate button. */
+/** Speed choices in Settings and podcast settings (the player sheet uses editable presets). */
 export const PLAYBACK_RATES = [0.8, 1, 1.2, 1.5, 1.75, 2, 2.5, 3] as const;
 
 export type PlayerState = {
@@ -411,12 +413,20 @@ class PlayerService {
     this.setState({ rate });
   }
 
-  /** Advances to the next rate in `PLAYBACK_RATES`, wrapping around. */
-  cycleRate(): number {
-    const index = PLAYBACK_RATES.findIndex((rate) => Math.abs(rate - this.state.rate) < 0.01);
-    const next = PLAYBACK_RATES[(index + 1) % PLAYBACK_RATES.length];
-    this.setRate(next);
-    return next;
+  /**
+   * The speed sheet's choice: applies it now and keeps it, on the podcast if
+   * that podcast has its own speed, otherwise as the global speed.
+   */
+  async setSpeed(rate: number): Promise<void> {
+    const value = clampSpeed(rate);
+    this.setRate(value);
+    const episode = this.state.episode;
+    if (episode && episode.feed_playback_speed !== null) {
+      this.setState({ episode: { ...episode, feed_playback_speed: value } });
+      await setFeedFlags(episode.feed_id, { playbackSpeed: value });
+    } else {
+      await setSetting('playbackRate', value);
+    }
   }
 
   // ------------------------------------------------------------------- queue
