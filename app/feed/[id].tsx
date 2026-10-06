@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
-import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Alert, FlatList, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { listEpisodesForFeed, markFeedPlayed, type EpisodeSortKey } from '@/db/episodes';
 import { deleteFeed, getFeed, setFeedFlags } from '@/db/feeds';
@@ -13,6 +13,9 @@ import { player } from '@/player';
 import { Artwork } from '@/ui/Artwork';
 import { EmptyState } from '@/ui/EmptyState';
 import { EpisodeRow } from '@/ui/EpisodeRow';
+import { OverflowMenu } from '@/ui/OverflowMenu';
+import { SELECTION_BAR_HEIGHT, SelectionBar } from '@/ui/SelectionBar';
+import { useEpisodeSelection } from '@/ui/useEpisodeSelection';
 import { GlassSegmentedControl, type SegmentOption } from '@/ui/glass';
 import { triggerHaptic } from '@/ui/haptics';
 import { MINI_PLAYER_HEIGHT, radius, space, type as typography } from '@/ui/theme';
@@ -104,6 +107,9 @@ export default function FeedScreen() {
     }
   }, [feedId]);
 
+  const selection = useEpisodeSelection(episodes);
+  const actionHooks = useMemo(() => ({ onMultiSelect: selection.start }), [selection.start]);
+
   const play = useCallback((episode: EpisodeWithFeed) => {
     const current = player.getState();
     if (current.episode?.id === episode.id) player.togglePlayPause();
@@ -162,14 +168,46 @@ export default function FeedScreen() {
               >
                 <Ionicons name="settings-outline" size={22} color={theme.text} />
               </Pressable>
-              <Pressable
-                onPress={confirmUnsubscribe}
-                hitSlop={10}
-                accessibilityRole="button"
-                accessibilityLabel="Unsubscribe"
-              >
-                <Ionicons name="ellipsis-horizontal" size={22} color={theme.text} />
-              </Pressable>
+              {/* AntennaPod-style overflow menu; Unsubscribe is no longer one tap away. */}
+              <OverflowMenu
+                title={feed.title}
+                items={[
+                  { key: 'refresh', label: 'Refresh', icon: 'refresh', onPress: () => void refresh() },
+                  {
+                    key: 'played',
+                    label: 'Mark all as played',
+                    icon: 'checkmark-done-outline',
+                    onPress: () =>
+                      Alert.alert('Mark all as played?', `All ${feed.episode_count} episodes.`, [
+                        { text: 'Cancel', style: 'cancel' },
+                        { text: 'Mark all', onPress: () => void markFeedPlayed(feed.id) },
+                      ]),
+                  },
+                  ...(feed.link
+                    ? [
+                        {
+                          key: 'website',
+                          label: 'Visit website',
+                          icon: 'globe-outline' as const,
+                          onPress: () => void Linking.openURL(feed.link!),
+                        },
+                      ]
+                    : []),
+                  {
+                    key: 'settings',
+                    label: 'Podcast settings',
+                    icon: 'settings-outline',
+                    onPress: () => router.push(`/feed/settings/${feed.id}`),
+                  },
+                  {
+                    key: 'unsubscribe',
+                    label: 'Unsubscribe',
+                    icon: 'trash-outline',
+                    destructive: true,
+                    onPress: confirmUnsubscribe,
+                  },
+                ]}
+              />
             </View>
           ),
         }}
@@ -178,7 +216,11 @@ export default function FeedScreen() {
       <FlatList
         data={episodes}
         keyExtractor={(episode) => String(episode.id)}
-        contentContainerStyle={styles.content}
+        extraData={selection.selected}
+        contentContainerStyle={[
+          styles.content,
+          selection.active ? { paddingBottom: SELECTION_BAR_HEIGHT + space.xl } : null,
+        ]}
         ListHeaderComponent={
           <View style={styles.header}>
             <View style={styles.headerTop}>
@@ -284,6 +326,11 @@ export default function FeedScreen() {
             episode={item}
             onPlay={play}
             hideFeedTitle
+            actionHooks={actionHooks}
+            selecting={selection.active}
+            selected={selection.selected.has(item.id)}
+            onToggleSelect={selection.toggle}
+            onSelectRange={selection.openRangeMenu}
             trailing={
               <Pressable
                 onPress={() => void enqueue(item.id)}
@@ -297,6 +344,7 @@ export default function FeedScreen() {
           />
         )}
       />
+      <SelectionBar selection={selection} />
     </>
   );
 }

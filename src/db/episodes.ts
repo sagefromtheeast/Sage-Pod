@@ -186,16 +186,32 @@ export async function savePosition(
   }
 }
 
-export async function markPlayed(episodeId: number, played = true): Promise<void> {
+/** `?, ?, …` for an `IN (…)` list of `n` values. */
+const placeholders = (n: number) => Array.from({ length: n }, () => '?').join(', ');
+
+/**
+ * Marks episodes played (or unplayed). Only marking played stamps
+ * `played_at`: History is ordered by it, and marking something unplayed isn't
+ * listening to it.
+ */
+export async function markPlayedMany(episodeIds: readonly number[], played = true): Promise<void> {
+  if (episodeIds.length === 0) return;
   await getDb().runAsync(
     `UPDATE episodes
-        SET is_played = ?, is_new = 0, played_at = ?, position = CASE WHEN ? THEN 0 ELSE position END
-      WHERE id = ?`,
+        SET is_played = ?, is_new = 0,
+            played_at = CASE WHEN ? THEN ? ELSE played_at END,
+            position = CASE WHEN ? THEN 0 ELSE position END
+      WHERE id IN (${placeholders(episodeIds.length)})`,
+    played ? 1 : 0,
     played ? 1 : 0,
     Date.now(),
     played ? 1 : 0,
-    episodeId
+    ...episodeIds
   );
+}
+
+export async function markPlayed(episodeId: number, played = true): Promise<void> {
+  await markPlayedMany([episodeId], played);
 }
 
 export async function markFeedPlayed(feedId: number): Promise<void> {
@@ -204,6 +220,69 @@ export async function markFeedPlayed(feedId: number): Promise<void> {
     Date.now(),
     feedId
   );
+}
+
+export async function setFavoriteMany(episodeIds: readonly number[], favorite: boolean): Promise<void> {
+  if (episodeIds.length === 0) return;
+  await getDb().runAsync(
+    `UPDATE episodes SET is_favorite = ? WHERE is_favorite != ? AND id IN (${placeholders(episodeIds.length)})`,
+    favorite ? 1 : 0,
+    favorite ? 1 : 0,
+    ...episodeIds
+  );
+}
+
+/** Starts episodes over from the beginning next time they play. */
+export async function resetPositionMany(episodeIds: readonly number[]): Promise<void> {
+  if (episodeIds.length === 0) return;
+  await getDb().runAsync(
+    `UPDATE episodes SET position = 0 WHERE position != 0 AND id IN (${placeholders(episodeIds.length)})`,
+    ...episodeIds
+  );
+}
+
+/** The playback fields an action can change, captured so Undo can put them back. */
+export type PlaybackSnapshot = {
+  is_played: number;
+  is_new: number;
+  position: number;
+  played_at: number | null;
+};
+
+export async function getPlaybackSnapshots(
+  episodeIds: readonly number[]
+): Promise<Map<number, PlaybackSnapshot>> {
+  if (episodeIds.length === 0) return new Map();
+  const rows = await getDb().getAllAsync<PlaybackSnapshot & { id: number }>(
+    `SELECT id, is_played, is_new, position, played_at FROM episodes
+      WHERE id IN (${placeholders(episodeIds.length)})`,
+    ...episodeIds
+  );
+  return new Map(rows.map(({ id, ...snapshot }) => [id, snapshot]));
+}
+
+/**
+ * Puts back the given fields of what `getPlaybackSnapshots` captured, in one
+ * transaction. Restore only what the undone action changed: restoring
+ * `position` for an inbox undo would rewind an episode that kept playing.
+ */
+export async function restorePlaybackSnapshots(
+  snapshots: Map<number, PlaybackSnapshot>,
+  fields: readonly (keyof PlaybackSnapshot)[]
+): Promise<void> {
+  if (fields.length === 0 || snapshots.size === 0) return;
+  // Column names come from the PlaybackSnapshot keys, never from input.
+  const assignments = fields.map((field) => `${field} = ?`).join(', ');
+  const db = getDb();
+  await db.withTransactionAsync(async () => {
+    for (const [id, snapshot] of snapshots) {
+      await db.runAsync(
+        `UPDATE episodes SET ${assignments} WHERE id = ?`,
+        ...fields.map((field) => snapshot[field]),
+        id
+      );
+    }
+  });
 }
 
 export async function toggleFavorite(episodeId: number): Promise<void> {
@@ -306,11 +385,19 @@ export async function getInboxCount(): Promise<number> {
 }
 
 /**
- * Takes an episode out of the inbox. Only touches a row still marked new, so
- * it writes nothing (and wakes no screens) when the episode already left.
+ * Takes episodes out of the inbox. Only touches rows still marked new, so it
+ * writes nothing (and wakes no screens) when they already left.
  */
+export async function dismissManyFromInbox(episodeIds: readonly number[]): Promise<void> {
+  if (episodeIds.length === 0) return;
+  await getDb().runAsync(
+    `UPDATE episodes SET is_new = 0 WHERE is_new = 1 AND id IN (${placeholders(episodeIds.length)})`,
+    ...episodeIds
+  );
+}
+
 export async function dismissFromInbox(episodeId: number): Promise<void> {
-  await getDb().runAsync('UPDATE episodes SET is_new = 0 WHERE id = ? AND is_new = 1', episodeId);
+  await dismissManyFromInbox([episodeId]);
 }
 
 export async function dismissAllFromInbox(): Promise<void> {

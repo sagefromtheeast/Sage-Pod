@@ -1,0 +1,48 @@
+name: Checks
+
+# Runs the project's checks on every pull request, so problems surface before
+# a merge to main (which publishes a release).
+on:
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          # 22+: the test runner uses `node --experimental-strip-types`.
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+        env:
+          # The screenshot harness's Playwright is a dev dependency; CI doesn't
+          # take screenshots, so skip the browser download.
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Expo doctor
+        run: npx expo-doctor
+
+      - name: Bundle for Android
+        # Catches Metro resolution errors that typecheck can't see.
+        run: npx expo export --platform android --output-dir dist-android

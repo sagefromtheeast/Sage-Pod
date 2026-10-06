@@ -24,7 +24,7 @@ destructive.
 - [x] D4 skip-intro "Global" option removed (it meant Off)
 - [x] D5 every enqueue path clears the inbox flag
 - [x] D6 podcast page pages 150 at a time + "Load older episodes" for paged feeds
-- [ ] Device check of D1–D3 on an EAS preview build (owner)
+- [ ] Device check of D1–D3 on the end-of-parity EAS build (D-011)
 
 ## Phase 2 — screenshot harness ✅
 - [x] `npm run shots -- <name>`, `npm run shots:diff`, `shots-tool/README.md`
@@ -32,12 +32,17 @@ destructive.
 - [x] Before (v0.3.0) vs after (Phase 1) diff shows only the intended changes
 - [ ] Extend routes (+add-feed, feed settings, downloads, history), light and empty-state sets
 
-## Phase 3 — shared building blocks
-- [ ] Types: FeedOverride, EnqueuePosition, FeedState, EpisodeAction, ListScreen, HomeSectionId
-- [ ] Pure + tested: actionsFor, secondaryActionFor, canMove
-- [ ] ActionSheet, UndoToast, OverflowMenu, SelectionBar, EpisodeRow long-press, state button + progress ring, status glyphs, playing highlight
-- [ ] Fix nested-Pressable button-in-button on Home cards
-- [ ] Migration (only if needed) + seed update + upgrade check
+## Phase 3 — shared building blocks ✅
+- [x] Typed `EpisodeAction` + pure, tested `episodeActionsFor` / `rowButtonFor` / selection helpers (`src/actions/`)
+- [x] ActionSheet, UndoToast, OverflowMenu, SelectionBar, EpisodeRow long-press, state button + progress ring, status glyphs, playing highlight
+- [x] Undo for remove from inbox / queue, mark played/unplayed, reset position; confirmed delete
+- [x] Multi-select on the podcast page and Favourites / Downloads / History
+- [x] Podcast page ⋯ menu replaces the one-tap Unsubscribe; Downloads trash icon confirms
+- [x] "Prefer streaming" setting (D-010)
+- [x] PR Checks workflow (typecheck, test, expo-doctor, android bundle)
+- [x] Screenshot harness: interaction shots (long-press sheet, selection, ⋯ menu)
+- [x] No migration needed (types per phase instead: FeedOverride/FeedState → Phase 10, EnqueuePosition → Phase 5, HomeSectionId → Phase 7)
+- [ ] Fix nested-Pressable button-in-button on Home cards (moved to Phase 7, Home)
 
 ## Phase 4 — Now Playing & mini player
 - [ ] Mini player on every screen
@@ -56,6 +61,7 @@ destructive.
 - [x] Drop the now-redundant dismiss after enqueue in `inbox.tsx` (done in Phase 1 review)
 
 ## Phase 7 — Home
+- [ ] Fix nested-Pressable button-in-button on Home cards (web a11y warning)
 - [ ] Section chrome + empty texts; queue section; See what's new; Classics; Manage downloads; keep in-progress shelf (D-003.6)
 - [ ] Header Search + ⋯ Refresh / Configure home
 

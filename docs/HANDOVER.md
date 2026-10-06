@@ -45,8 +45,9 @@ sections, the Queue toolbar, the Now Playing layout); the look stays Sage Pod's
 **Stop and ask the owner first:**
 - **Spending money**: EAS builds and sandboxes are metered. Always ask for a
   usage budget, and show the cost preview, before triggering one.
-- **Merging to `main`.** Every merge publishes a release. Open the PR, get CI
-  green, and let the owner merge unless they have explicitly told you to merge.
+- **Merging to `main` is delegated to you** (D-002): merge each phase PR once
+  the Checks workflow is green and every review thread is addressed, with a
+  merge commit (never squash), then confirm the release tag appeared.
 - A **new native dependency** (anything that needs a new EAS build), or a
   change to the audio engine (see decision D-004).
 - A **visible design change** beyond moving features into AntennaPod's places
@@ -205,12 +206,16 @@ releasing, so a red check on `main` blocks the release.
 
 ## 10. Where things stand
 
-- **Done**: Phases 0–2 of `TASKS.md` (six defects fixed, screenshot harness).
-  Earlier: EAS device builds, stable Surprise Me, tablet layouts (v0.3.0).
-- **Next**: Phase 3, the shared building blocks (action sheet, undo toast,
-  overflow menu, multi-select bar, long-press on episode rows), then the
-  screen-by-screen phases.
+- **Done**: Phases 0–3 of `TASKS.md`: six defects fixed (v0.3.1), the
+  screenshot harness, and the shared building blocks (long-press action sheet,
+  undo toast, overflow menu, multi-select bar, smart row button, status
+  markers). Earlier: EAS device builds, stable Surprise Me, tablet layouts.
+- **Next**: Phase 4, Now Playing and the mini player, then the remaining
+  screen-by-screen phases. Building blocks to reuse: `openEpisodeActions`,
+  `runEpisodeAction`, `showToast`, `OverflowMenu`, `useEpisodeSelection` +
+  `SelectionBar` (see `src/actions/` and `src/ui/`).
+- **Device build**: one EAS build at the end (D-011).
 - **The owner's preferences** (learned): keep the existing design; match
-  AntennaPod's placement; release per phase; show before/after screenshots;
+  AntennaPod's placement; release per phase, merged by you; show before/after screenshots;
   explain results in plain language with clear next steps; ask before spending
   money; the six AntennaPod behaviour changes in `DECISIONS.md` are approved.

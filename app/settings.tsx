@@ -188,6 +188,12 @@ export default function SettingsScreen() {
         onValueChange={(value) => void update('continuousPlayback', value)}
       />
       <SettingsSwitch
+        label="Prefer streaming"
+        description="The button on each episode plays it straight away. Turn off to make it a Download button instead."
+        value={settings.streamOverDownload}
+        onValueChange={(value) => void update('streamOverDownload', value)}
+      />
+      <SettingsSwitch
         label="Remove finished episodes"
         description="Take an episode out of the queue once it has played."
         value={settings.removeFromQueueWhenFinished}

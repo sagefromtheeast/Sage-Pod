@@ -15,6 +15,8 @@ Format: context → decision → consequences → when to revisit.
 | D-007 | Discovery providers: keyless only (iTunes, then fyyd) | Accepted |
 | D-008 | Surprise Me: seeded order, round-robin per podcast | Accepted |
 | D-009 | Tablet layout: window classes at 600 / 840 dp | Accepted |
+| D-010 | Row button streams by default ("Prefer streaming" on) | Accepted |
+| D-011 | Device builds: one EAS build at the end of the parity work | Accepted |
 
 ---
 
@@ -38,9 +40,13 @@ orders) unless there's a reason not to.
 wants a release per phase.
 
 **Decision.** Each phase in `TASKS.md` is developed on the working branch,
-opened as a single PR to `main`, and released when merged. The owner merges
-unless they explicitly delegate it. When a phase PR is merged, the next phase
-starts from the latest `main`.
+opened as a single PR to `main`, and released when merged. When a phase PR is
+merged, the next phase starts from the latest `main`.
+
+**Merging is delegated to the lead developer** (owner, 2026-10-06): merge each
+phase PR yourself once the Checks workflow is green and every review thread
+(including the Codex bot's) is addressed. Always use a **merge commit**, never
+squash (see HANDOVER §5), then confirm the release tag appeared.
 
 ## D-003 — Approved behaviour changes
 
@@ -137,3 +143,22 @@ ones except those started within the last hour. *(Shipped in v0.3.0.)*
 switches. Grid columns are computed from width (3 to 8, minimum tile 150 dp);
 content is capped at 1040 dp and centred. No side navigation rail for now
 (owner's choice). *(Shipped in v0.3.0.)*
+
+## D-010 — The row button streams by default
+
+**Context.** AntennaPod's episode-row button downloads episodes that aren't on
+the device unless "Prefer streaming" is on. Sage Pod's row button has always
+played (streamed) immediately, and its owner listens on a phone.
+
+**Decision.** Adopt AntennaPod's context-sensitive button (pause / play /
+cancel with progress ring / stream or download / mark played) but default
+"Prefer streaming" **on**, so the button still plays straight away. The setting
+(Settings → Playback) switches it to AntennaPod's Download button.
+
+## D-011 — One device build at the end
+
+**Decision.** The owner will make a single EAS preview build once the parity
+phases are done, rather than one per phase. Until then, verification is unit
+tests, the CI checks and the web screenshot harness; the "On device" checklists
+in each phase PR accumulate for that build. Native-only items (Phase 17) still
+need that build and the owner's budget approval.
