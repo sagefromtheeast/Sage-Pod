@@ -1,10 +1,9 @@
-import { useSyncExternalStore } from 'react';
-
 import { episodeActionsFor, subjectFor } from '@/actions/episodeActions';
 import { ACTION_META, runEpisodeAction, type ActionHooks } from '@/actions/runEpisodeAction';
 import { isQueuedNow } from '@/db/queueMembership';
 import type { EpisodeWithFeed } from '@/db/types';
 import { player } from '@/player';
+import { createStore, useStore } from '@/util/store';
 
 import { ActionSheet, type SheetItem } from './ActionSheet';
 
@@ -14,27 +13,14 @@ import { ActionSheet, type SheetItem } from './ActionSheet';
  */
 type Request = { episode: EpisodeWithFeed; hooks: ActionHooks };
 
-let current: Request | null = null;
-const listeners = new Set<() => void>();
-
-function set(request: Request | null): void {
-  current = request;
-  for (const listener of listeners) listener();
-}
+const store = createStore<Request | null>(null);
 
 export function openEpisodeActions(episode: EpisodeWithFeed, hooks: ActionHooks = {}): void {
-  set({ episode, hooks });
-}
-
-function subscribe(listener: () => void): () => void {
-  listeners.add(listener);
-  return () => {
-    listeners.delete(listener);
-  };
+  store.set({ episode, hooks });
 }
 
 export function EpisodeActionsHost() {
-  const request = useSyncExternalStore(subscribe, () => current);
+  const request = useStore(store);
 
   let items: SheetItem[] = [];
   if (request) {
@@ -59,7 +45,7 @@ export function EpisodeActionsHost() {
       title={request?.episode.title}
       subtitle={request?.episode.feed_title}
       items={items}
-      onClose={() => set(null)}
+      onClose={() => store.set(null)}
     />
   );
 }

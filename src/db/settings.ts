@@ -1,3 +1,5 @@
+import { createStore, useStore } from '@/util/store';
+
 import { getDb } from './index';
 
 /** User preferences, mirrored in memory so the player can read them synchronously. */
@@ -55,7 +57,7 @@ export const DEFAULT_SETTINGS: Settings = {
   themePreference: 'system',
 };
 
-let cache: Settings = { ...DEFAULT_SETTINGS };
+const store = createStore<Settings>({ ...DEFAULT_SETTINGS });
 let loaded = false;
 
 /**
@@ -66,7 +68,12 @@ let loaded = false;
  * at startup.
  */
 export function getSettings(): Settings {
-  return cache;
+  return store.get();
+}
+
+/** One setting, re-rendering the component when it changes. */
+export function useSetting<K extends keyof Settings>(key: K): Settings[K] {
+  return useStore(store, (settings) => settings[key]);
 }
 
 function coerce<K extends keyof Settings>(key: K, raw: string): Settings[K] {
@@ -98,9 +105,9 @@ export async function loadSettings(): Promise<Settings> {
     }
   }
 
-  cache = next;
+  store.set(next);
   loaded = true;
-  return cache;
+  return next;
 }
 
 export function settingsLoaded(): boolean {
@@ -111,7 +118,7 @@ export async function setSetting<K extends keyof Settings>(
   key: K,
   value: Settings[K]
 ): Promise<void> {
-  cache = { ...cache, [key]: value };
+  store.set({ ...store.get(), [key]: value });
   const serialised = typeof value === 'boolean' ? (value ? '1' : '0') : String(value);
   await getDb().runAsync(
     'INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value',

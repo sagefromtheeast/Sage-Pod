@@ -1,6 +1,8 @@
-import { useEffect, useSyncExternalStore } from 'react';
+import { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+import { createStore, useStore } from '@/util/store';
 
 import { MINI_PLAYER_HEIGHT, radius, space, type as typography } from './theme';
 import { useTheme } from './useTheme';
@@ -15,36 +17,23 @@ const DURATION_MS = 5000;
 /** Clears the tab bar and mini player so the toast never covers controls. */
 const BOTTOM_CHROME = MINI_PLAYER_HEIGHT + 76;
 
-let current: Toast | null = null;
+const store = createStore<Toast | null>(null);
 let nextId = 1;
-const listeners = new Set<() => void>();
-
-function set(toast: Toast | null): void {
-  current = toast;
-  for (const listener of listeners) listener();
-}
 
 /** Shows a toast, optionally with an Undo button. */
 export function showToast(message: string, onUndo?: Toast['onUndo']): void {
-  set({ id: nextId++, message, onUndo });
+  store.set({ id: nextId++, message, onUndo });
 }
 
 function dismiss(id: number): void {
-  if (current?.id === id) set(null);
-}
-
-function subscribe(listener: () => void): () => void {
-  listeners.add(listener);
-  return () => {
-    listeners.delete(listener);
-  };
+  if (store.get()?.id === id) store.set(null);
 }
 
 /** Mounted once, at the root. */
 export function UndoToastHost() {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
-  const toast = useSyncExternalStore(subscribe, () => current);
+  const toast = useStore(store);
 
   useEffect(() => {
     if (!toast) return;
