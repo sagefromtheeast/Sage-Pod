@@ -27,6 +27,8 @@ export type Palette = {
   accent: string;
   /** Text/icon colour that sits legibly on `accent`. */
   onAccent: string;
+  /** A faint wash of `accent` behind the row that is playing. */
+  accentSoft: string;
   /** Destructive actions. */
   danger: string;
   /** Track behind a progress fill. */
@@ -46,6 +48,7 @@ const dark: Palette = {
   textFaint: '#6B7A72',
   accent: '#4ADE80',
   onAccent: '#06291A',
+  accentSoft: 'rgba(74, 222, 128, 0.10)',
   danger: '#F87171',
   track: '#2A3830',
   scrim: 'rgba(14, 21, 18, 0.72)',
@@ -62,6 +65,7 @@ const light: Palette = {
   textFaint: '#8A9992',
   accent: '#16A34A',
   onAccent: '#FFFFFF',
+  accentSoft: 'rgba(22, 163, 74, 0.10)',
   danger: '#DC2626',
   track: '#DFE9E3',
   scrim: 'rgba(247, 250, 248, 0.78)',
@@ -78,6 +82,7 @@ const oled: Palette = {
   textFaint: '#666666',
   accent: '#4ADE80',
   onAccent: '#000000',
+  accentSoft: 'rgba(74, 222, 128, 0.10)',
   danger: '#F87171',
   track: '#1C1C1C',
   scrim: 'rgba(0, 0, 0, 0.85)',

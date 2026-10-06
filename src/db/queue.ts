@@ -113,6 +113,40 @@ export async function enqueueFront(episodeId: number): Promise<void> {
   notifyEpisodeQueued(episodeId);
 }
 
+/** Moves an episode to the end of the queue (adding it if needed). */
+export async function moveToBottom(episodeId: number): Promise<void> {
+  const db = getDb();
+  await dismissFromInbox(episodeId);
+  await db.runAsync('DELETE FROM queue WHERE episode_id = ?', episodeId);
+  const { max } = await bounds();
+  await db.runAsync(
+    'INSERT INTO queue (episode_id, sort_order, added_at) VALUES (?, ?, ?)',
+    episodeId,
+    max + 1,
+    Date.now()
+  );
+  notifyEpisodeQueued(episodeId);
+}
+
+/** Where an episode sits in the queue, or null if it isn't queued. Saved for Undo. */
+export async function getQueueSlot(episodeId: number): Promise<number | null> {
+  const row = await getDb().getFirstAsync<{ sort_order: number }>(
+    'SELECT sort_order FROM queue WHERE episode_id = ?',
+    episodeId
+  );
+  return row?.sort_order ?? null;
+}
+
+/** Puts an episode back exactly where it was (Undo for "remove from queue"). */
+export async function restoreQueueSlot(episodeId: number, sortOrder: number): Promise<void> {
+  await getDb().runAsync(
+    'INSERT OR REPLACE INTO queue (episode_id, sort_order, added_at) VALUES (?, ?, ?)',
+    episodeId,
+    sortOrder,
+    Date.now()
+  );
+}
+
 export async function dequeue(episodeId: number): Promise<void> {
   await getDb().runAsync('DELETE FROM queue WHERE episode_id = ?', episodeId);
 }

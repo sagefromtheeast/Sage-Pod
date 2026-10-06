@@ -17,6 +17,11 @@ export type Settings = {
   removeFromQueueWhenFinished: boolean;
   /** Start the next queue item automatically when one ends. */
   continuousPlayback: boolean;
+  /**
+   * The button on an episode row streams episodes that aren't downloaded.
+   * Off makes it a Download button (AntennaPod's default). See D-010.
+   */
+  streamOverDownload: boolean;
   /** Only download episode audio over un-metered networks. */
   downloadOnWifiOnly: boolean;
   /** Episodes auto-downloaded per feed that has auto-download enabled. */
@@ -40,6 +45,7 @@ export const DEFAULT_SETTINGS: Settings = {
   rewindOnResume: true,
   removeFromQueueWhenFinished: true,
   continuousPlayback: true,
+  streamOverDownload: true,
   downloadOnWifiOnly: true,
   autoDownloadLimit: 3,
   autoDownloadQueue: false,

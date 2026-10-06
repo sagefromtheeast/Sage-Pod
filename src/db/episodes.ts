@@ -206,6 +206,49 @@ export async function markFeedPlayed(feedId: number): Promise<void> {
   );
 }
 
+export async function setFavorite(episodeId: number, favorite: boolean): Promise<void> {
+  await getDb().runAsync(
+    'UPDATE episodes SET is_favorite = ? WHERE id = ? AND is_favorite != ?',
+    favorite ? 1 : 0,
+    episodeId,
+    favorite ? 1 : 0
+  );
+}
+
+/** Starts an episode over from the beginning next time it plays. */
+export async function resetPosition(episodeId: number): Promise<void> {
+  await getDb().runAsync('UPDATE episodes SET position = 0 WHERE id = ? AND position != 0', episodeId);
+}
+
+/** The playback fields an action can change, captured so Undo can put them back. */
+export type PlaybackSnapshot = {
+  is_played: number;
+  is_new: number;
+  position: number;
+  played_at: number | null;
+};
+
+export async function getPlaybackSnapshot(episodeId: number): Promise<PlaybackSnapshot | null> {
+  return getDb().getFirstAsync<PlaybackSnapshot>(
+    'SELECT is_played, is_new, position, played_at FROM episodes WHERE id = ?',
+    episodeId
+  );
+}
+
+export async function restorePlaybackSnapshot(
+  episodeId: number,
+  snapshot: PlaybackSnapshot
+): Promise<void> {
+  await getDb().runAsync(
+    'UPDATE episodes SET is_played = ?, is_new = ?, position = ?, played_at = ? WHERE id = ?',
+    snapshot.is_played,
+    snapshot.is_new,
+    snapshot.position,
+    snapshot.played_at,
+    episodeId
+  );
+}
+
 export async function toggleFavorite(episodeId: number): Promise<void> {
   await getDb().runAsync(
     'UPDATE episodes SET is_favorite = CASE is_favorite WHEN 1 THEN 0 ELSE 1 END WHERE id = ?',
