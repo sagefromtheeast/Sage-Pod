@@ -17,10 +17,33 @@ const VIEWPORTS = [
   { name: 'tablet', width: 800, height: 1280, deviceScaleFactor: 1, isMobile: true, hasTouch: true },
   { name: 'tablet-land', width: 1280, height: 800, deviceScaleFactor: 1, isMobile: true, hasTouch: true },
 ];
+// Long-press the first episode row of a list (RN-web Pressable needs a held pointer).
+async function longPressFirstEpisode(page) {
+  const row = page.getByText(/^120\. /).first();
+  const box = await row.boundingBox();
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.waitForTimeout(700);
+  await page.mouse.up();
+  await page.getByText('Share…').first().waitFor({ timeout: 10000 });
+}
+
+// [name, route, optional interaction run after the screen settles]
 const ROUTES = [
   ['home', '/'], ['queue', '/queue'], ['inbox', '/inbox'], ['discover', '/discover'], ['library', '/library'],
   ['player', '/player'], ['feed', '/feed/1'], ['episode', '/episode/3'], ['settings', '/settings'], ['stats', '/stats'],
   ['favorites', '/list/favorites'],
+  ['feed-actions', '/feed/1', longPressFirstEpisode],
+  ['feed-select', '/feed/1', async (page) => {
+    await longPressFirstEpisode(page);
+    await page.getByText('Select multiple').first().click();
+    await page.getByText(/^119\. /).first().click();
+    await page.getByText('2 selected').waitFor({ timeout: 10000 });
+  }],
+  ['feed-menu', '/feed/1', async (page) => {
+    await page.getByRole('button', { name: 'More options' }).first().click();
+    await page.getByText('Unsubscribe').first().waitFor({ timeout: 10000 });
+  }],
 ].filter(([n]) => !only || only.includes(n));
 
 const CHART = Array.from({ length: 12 }, (_, i) => ({
@@ -112,10 +135,21 @@ for (const vp of VIEWPORTS) {
   await page.getByText('Library', { exact: true }).first().waitFor({ timeout: 30000 });
   log(vpName, 'seeding'); await page.evaluate((sql) => globalThis.__SQLITE_DBS__['sagepod.db'].execAsync(sql), seedSql());
 
-  for (const [name, url] of ROUTES) {
-    log(vpName, name); await page.goto(base + url);
-    await page.waitForFunction(() => document.body.innerText.trim().length > 0, null, { timeout: 30000 });
-    await settle(page);
+  for (const [name, url, act] of ROUTES) {
+    log(vpName, name);
+    try {
+      await page.goto(base + url);
+      await page.waitForFunction(() => document.body.innerText.trim().length > 0, null, { timeout: 30000 });
+      await settle(page);
+      if (act) {
+        await act(page);
+        await settle(page);
+      }
+    } catch (error) {
+      // Say why a screen never rendered (usually a page error) before failing.
+      if (errors.length) console.error(`[${vpName}/${name}] page errors:`, [...new Set(errors)].join(' | '));
+      throw error;
+    }
     const file = path.join(outDir, `${name}--${vpName}.png`);
     await page.screenshot({ path: file });
     console.log('wrote', file);
