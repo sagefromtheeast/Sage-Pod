@@ -135,3 +135,28 @@ export function rowButtonFor(item: ActionSubject, preferStreaming: boolean): Row
   if (item.downloading) return 'cancel';
   return preferStreaming ? 'stream' : 'download';
 }
+
+/** The rules' view of a stored episode plus its live queue/player state. */
+export function subjectFor(
+  episode: {
+    media_url: string | null;
+    is_new: number;
+    is_played: number;
+    is_favorite: number;
+    position: number;
+    download_state: string;
+  },
+  live: { queued: boolean; playing: boolean }
+): ActionSubject {
+  return {
+    hasMedia: Boolean(episode.media_url),
+    isNew: episode.is_new === 1,
+    isPlayed: episode.is_played === 1,
+    isFavorite: episode.is_favorite === 1,
+    position: episode.position,
+    downloaded: episode.download_state === 'done',
+    downloading: episode.download_state === 'queued' || episode.download_state === 'downloading',
+    queued: live.queued,
+    playing: live.playing,
+  };
+}

@@ -11,8 +11,10 @@ import { getSettings, loadSettings } from '@/db/settings';
 import { refreshAllFeeds } from '@/feed/sync';
 import { player } from '@/player';
 import { manageAutoDownloads } from '@/player/downloads';
+import { EpisodeActionsHost } from '@/ui/EpisodeActionsHost';
 import { palettes, space, type as typography } from '@/ui/theme';
 import type { ThemePreference } from '@/ui/theme';
+import { UndoToastHost } from '@/ui/UndoToast';
 import { ThemeProvider, useTheme } from '@/ui/useTheme';
 
 // Hold the native splash until migrations have run and the player has restored
@@ -118,6 +120,9 @@ function AppShell() {
           <Stack.Screen name="settings" options={{ title: 'Settings', presentation: 'modal' }} />
           <Stack.Screen name="stats" options={{ title: 'Statistics', presentation: 'modal' }} />
         </Stack>
+        {/* App-wide overlays: the episode long-press menu and the undo toast. */}
+        <EpisodeActionsHost />
+        <UndoToastHost />
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
