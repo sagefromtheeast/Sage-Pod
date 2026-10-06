@@ -53,6 +53,14 @@ export type Settings = {
   /** Auto-enable window, hours 0–23; may wrap midnight (default 22 → 6). */
   sleepAutoFrom: number;
   sleepAutoTo: number;
+  /** Where "Add to queue" inserts: 'back' | 'front' | 'afterCurrent' | 'random' (see enqueueIndex). */
+  enqueueLocation: 'back' | 'front' | 'afterCurrent' | 'random';
+  /** The order the queue is kept in after every enqueue ('' = off, e.g. 'date:desc'). Disables dragging. */
+  queueKeepSorted: string;
+  /** Locked queue: no dragging or swiping, so a pocketed phone can't reorder it. */
+  queueLocked: boolean;
+  /** Whether the first-time "queue locked" explanation has been shown. */
+  queueLockExplained: boolean;
 };
 
 /** Skip amounts offered by long-pressing the player's rewind / forward buttons (AntennaPod's list). */
@@ -81,6 +89,10 @@ export const DEFAULT_SETTINGS: Settings = {
   sleepAutoEnable: false,
   sleepAutoFrom: 22,
   sleepAutoTo: 6,
+  enqueueLocation: 'back',
+  queueKeepSorted: '',
+  queueLocked: false,
+  queueLockExplained: false,
 };
 
 const store = createStore<Settings>({ ...DEFAULT_SETTINGS });

@@ -1,7 +1,15 @@
 import { EPISODE_WITH_FEED_COLUMNS } from './columns';
 import { dismissFromInbox } from './episodes';
 import { getDb } from './index';
+import { getMeta, getSettings } from './settings';
 import type { EpisodeWithFeed } from './types';
+import {
+  enqueueIndex,
+  parseQueueSort,
+  sortOrderAt,
+  sortQueue,
+  type QueueSort,
+} from '@/player/queueSorting';
 
 const QUEUE_JOIN = `
   SELECT ${EPISODE_WITH_FEED_COLUMNS}
@@ -56,19 +64,46 @@ function notifyEpisodeQueued(episodeId: number): void {
   }
 }
 
-/** Appends to the end of the queue. No-op if already queued. */
+/**
+ * "Add to queue": inserts where the Enqueue location setting says (the back,
+ * by default). No-op if already queued.
+ */
 export async function enqueue(episodeId: number): Promise<void> {
   // Queueing takes an episode out of the inbox, wherever it was queued from (as in AntennaPod).
   await dismissFromInbox(episodeId);
   if (await isQueued(episodeId)) return;
-  const { max } = await bounds();
-  await getDb().runAsync(
+  const db = getDb();
+  const rows = await db.getAllAsync<{ episode_id: number; sort_order: number }>(
+    'SELECT episode_id, sort_order FROM queue ORDER BY sort_order ASC'
+  );
+  const loaded = await getMeta('lastEpisodeId');
+  const index = enqueueIndex(
+    getSettings().enqueueLocation,
+    rows.map((row) => row.episode_id),
+    loaded ? Number(loaded) : null
+  );
+  await db.runAsync(
     'INSERT INTO queue (episode_id, sort_order, added_at) VALUES (?, ?, ?)',
     episodeId,
-    max + 1,
+    sortOrderAt(
+      rows.map((row) => row.sort_order),
+      index
+    ),
     Date.now()
   );
+  await applyKeptSort();
   notifyEpisodeQueued(episodeId);
+}
+
+/** Re-sorts the whole queue in this order. */
+export async function sortQueueBy(sort: QueueSort): Promise<void> {
+  await reorderQueue(sortQueue(await listQueue(), sort));
+}
+
+/** With "Keep sorted" on, every insertion puts the queue back in that order. */
+async function applyKeptSort(): Promise<void> {
+  const sort = parseQueueSort(getSettings().queueKeepSorted);
+  if (sort) await sortQueueBy(sort);
 }
 
 /** Puts an episode next without disturbing what is currently playing. */
@@ -95,6 +130,7 @@ export async function enqueueNext(episodeId: number): Promise<void> {
     order,
     Date.now()
   );
+  await applyKeptSort();
   notifyEpisodeQueued(episodeId);
 }
 
@@ -110,6 +146,7 @@ export async function enqueueFront(episodeId: number): Promise<void> {
     min - 1,
     Date.now()
   );
+  await applyKeptSort();
   notifyEpisodeQueued(episodeId);
 }
 
@@ -125,6 +162,7 @@ export async function moveToBottom(episodeId: number): Promise<void> {
     max + 1,
     Date.now()
   );
+  await applyKeptSort();
   notifyEpisodeQueued(episodeId);
 }
 
@@ -170,6 +208,7 @@ export async function restoreQueueSlots(slots: readonly QueueSlot[]): Promise<vo
       );
     }
   });
+  await applyKeptSort();
 }
 
 export async function dequeue(episodeId: number): Promise<void> {
@@ -221,4 +260,3 @@ export async function reorderQueue(episodeIds: number[]): Promise<void> {
   });
 }
 
-export { sortQueueEpisodes, type QueueSortCriterion } from '@/player/queueSorting';

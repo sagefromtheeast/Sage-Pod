@@ -201,13 +201,20 @@ export async function runEpisodeAction(
     }
 
     case 'moveToTop':
-      // Front-insert in reverse so the selection keeps its relative order.
-      for (const episode of [...targets].reverse()) await enqueueFront(episode.id);
+    case 'moveToBottom': {
+      const slots = await getQueueSlots(ids(targets));
+      if (action === 'moveToTop') {
+        // Front-insert in reverse so the selection keeps its relative order.
+        for (const episode of [...targets].reverse()) await enqueueFront(episode.id);
+      } else {
+        for (const episode of targets) await moveToBottom(episode.id);
+      }
+      showToast(
+        action === 'moveToTop' ? count(n, 'Moved to top', 'moved to top') : count(n, 'Moved to bottom', 'moved to bottom'),
+        () => restoreQueueSlots(slots)
+      );
       return;
-
-    case 'moveToBottom':
-      for (const episode of targets) await moveToBottom(episode.id);
-      return;
+    }
 
     case 'multiSelect':
       hooks.onMultiSelect?.(targets[0]);
