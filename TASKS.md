@@ -44,12 +44,14 @@ destructive.
 - [x] No migration needed (types per phase instead: FeedOverride/FeedState → Phase 10, EnqueuePosition → Phase 5, HomeSectionId → Phase 7)
 - [ ] Fix nested-Pressable button-in-button on Home cards (moved to Phase 7, Home)
 
-## Phase 4 — Now Playing & mini player
-- [ ] Mini player on every screen
-- [ ] 5-button transport; speed sheet replaces the chip row (slider, presets, saved) — D-003.3
-- [ ] Long-press skip amounts; total/remaining toggle
-- [ ] Chapter row, seek ticks + bubble, chapter art, cover tap
-- [ ] Header favourite/sleep + ⋯; sleep sheet (episodes, extend, fade, vibrate, auto-enable)
+## Phase 4 — Now Playing & mini player ✅
+- [x] Mini player on podcast, episode and list screens (hidden while selecting)
+- [x] 5-button transport; speed sheet replaces the chip row (slider 0.5–4×, editable presets, saved to the podcast's speed if set, else global) — D-003.3
+- [x] Long-press skip amounts; total/remaining toggle
+- [x] Chapter row + chapters sheet, seek-bar chapter gaps + scrub bubble, chapter art, cover tap, chapters cached
+- [x] Header favourite/sleep + ⋯; sleep sheet (minutes, episodes, extend, fade, shake, vibrate, auto-enable)
+- [x] Show notes button (D-012); shots: player, speed / sleep / chapters sheets, mini player on stack screens
+- [ ] On device: shake-to-reset threshold, fade volume, seek-bar drag inside the scroll view, chapter art from real feeds
 
 ## Phase 5 — Queue
 - [ ] Pinned speed-aware info line; ⋯ Sort/Lock/Clear; Search icon
@@ -104,6 +106,6 @@ destructive.
 
 ## Discovered (not yet scheduled)
 - [ ] `flushPosition` marks an episode played inside the 20 s tail but doesn't dequeue or delete it like `onFinished` does
-- [ ] A speed chosen in the player isn't saved (folded into Phase 4's speed sheet)
+- [x] A speed chosen in the player isn't saved (fixed by Phase 4's speed sheet)
 - [ ] Refresh interval is only checked when the app opens (Phase 17 background refresh)
 - [ ] `fetchOlderFeedEpisodes`: a later refresh restores the first page's `next_page_url` (COALESCE), so older pages can be re-fetched; harmless (upserts dedupe) but wasteful
