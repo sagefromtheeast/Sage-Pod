@@ -217,8 +217,9 @@ releasing, so a red check on `main` blocks the release.
   seek bar, mini player on pushed screens; v0.5.0), the Queue (drag,
   sort / keep sorted, lock, search, enqueue location; v0.6.0), and the
   Inbox (AntennaPod swipes with undo, search, sort, remove all, paging;
-  v0.7.0). Earlier: EAS device builds, stable Surprise Me, tablet layouts.
-- **Next**: Phase 7, Home, then the remaining screen-by-screen phases.
+  v0.7.0), and Home (configurable sections, library search; v0.8.0).
+  Earlier: EAS device builds, stable Surprise Me, tablet layouts.
+- **Next**: Phase 8, Episode details, then the remaining screen-by-screen phases.
   Building blocks to reuse: `openEpisodeActions`, `runEpisodeAction`,
   `showToast`, `OverflowMenu`, `BottomSheet` / `ActionSheet`,
   `useEpisodeSelection` + `SelectionBar`, `MiniPlayerDock`, `DraggableList` (see
