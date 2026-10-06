@@ -279,9 +279,10 @@ export default function HomeScreen() {
   const inboxSort = useSetting('inboxSort');
 
   const { data: queue = [] } = useQuery<EpisodeWithFeed[]>(() => listQueue(), ['queue', 'episodes', 'feeds']);
-  const { data: inProgressAll = [] } = useQuery<EpisodeWithFeed[]>(
-    () => listInProgressEpisodes(SHELF_COUNT * 3),
-    ['episodes']
+  const { data: inProgress = [] } = useQuery<EpisodeWithFeed[]>(
+    // Started episodes that aren't queued: Continue listening already shows those.
+    () => listInProgressEpisodes(SHELF_COUNT, { excludeQueued: true }),
+    ['episodes', 'queue']
   );
   const { data: inboxCount = 0 } = useQuery(() => getInboxCount(), ['episodes']);
   const { data: newEpisodes = [] } = useQuery<EpisodeWithFeed[]>(
@@ -304,11 +305,6 @@ export default function HomeScreen() {
   );
 
   const continuing = useMemo(() => continueListening(queue, SHELF_COUNT), [queue]);
-  // Started episodes that aren't queued: the queue section already shows the rest.
-  const inProgress = useMemo(() => {
-    const queued = new Set(queue.map((episode) => episode.id));
-    return inProgressAll.filter((episode) => !queued.has(episode.id)).slice(0, SHELF_COUNT);
-  }, [queue, inProgressAll]);
   const downloadedBytes = downloads.reduce((sum, episode) => sum + (episode.downloaded_bytes ?? episode.media_size ?? 0), 0);
 
   const shuffle = useCallback(() => {

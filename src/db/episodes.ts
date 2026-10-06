@@ -99,10 +99,16 @@ export async function listRecentEpisodes(limit = 100): Promise<EpisodeWithFeed[]
 }
 
 /** Started but unfinished — "Continue listening". */
-export async function listInProgressEpisodes(limit = 20): Promise<EpisodeWithFeed[]> {
+export async function listInProgressEpisodes(
+  limit = 20,
+  options: { excludeQueued?: boolean } = {}
+): Promise<EpisodeWithFeed[]> {
+  // Excluding in SQL (not after the LIMIT) so a long queue can't crowd out
+  // older unqueued episodes.
+  const notQueued = options.excludeQueued ? 'AND e.id NOT IN (SELECT episode_id FROM queue)' : '';
   return getDb().getAllAsync<EpisodeWithFeed>(
     `${EPISODE_WITH_FEED}
-      WHERE e.position > 30 AND e.is_played = 0
+      WHERE e.position > 30 AND e.is_played = 0 ${notQueued}
       ORDER BY e.played_at DESC
       LIMIT ?`,
     limit
