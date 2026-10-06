@@ -201,6 +201,10 @@ releasing, so a red check on `main` blocks the release.
 - Don't kill processes with `pkill -f <pattern>` that also matches your own
   shell command; kill by PID.
 - Don't wait for `networkidle` in Playwright: the audio element keeps fetching.
+- Swipe rows only answer touch: drive them with `touchDrag` (CDP touch events)
+  in `shots-tool/shoot.mjs`. RN spring animations step by `Date.now()`, which
+  the harness freezes; call `page.clock.setSystemTime(NOW)` first. A failing
+  route leaves `FAILED-<route>--<viewport>.png` in the output folder.
 - The owner usually works from a phone. Prefer EAS builds and links over
   "run this on your laptop".
 
@@ -210,10 +214,11 @@ releasing, so a red check on `main` blocks the release.
   screenshot harness, the shared building blocks (long-press action sheet,
   undo toast, overflow menu, multi-select bar, smart row button, status
   markers; v0.4.0), Now Playing (speed / sleep / chapters sheets, chapter
-  seek bar, mini player on pushed screens; v0.5.0), and the Queue (drag,
-  sort / keep sorted, lock, search, enqueue location; v0.6.0). Earlier: EAS
-  device builds, stable Surprise Me, tablet layouts.
-- **Next**: Phase 6, the Inbox, then the remaining screen-by-screen phases.
+  seek bar, mini player on pushed screens; v0.5.0), the Queue (drag,
+  sort / keep sorted, lock, search, enqueue location; v0.6.0), and the
+  Inbox (AntennaPod swipes with undo, search, sort, remove all, paging;
+  v0.7.0). Earlier: EAS device builds, stable Surprise Me, tablet layouts.
+- **Next**: Phase 7, Home, then the remaining screen-by-screen phases.
   Building blocks to reuse: `openEpisodeActions`, `runEpisodeAction`,
   `showToast`, `OverflowMenu`, `BottomSheet` / `ActionSheet`,
   `useEpisodeSelection` + `SelectionBar`, `MiniPlayerDock`, `DraggableList` (see

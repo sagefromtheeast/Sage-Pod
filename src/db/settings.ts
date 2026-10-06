@@ -61,6 +61,10 @@ export type Settings = {
   queueLocked: boolean;
   /** Whether the first-time "queue locked" explanation has been shown. */
   queueLockExplained: boolean;
+  /** Inbox order: 'date:desc' | 'date:asc' | 'duration:asc' | 'duration:desc' (see InboxSort). */
+  inboxSort: 'date:desc' | 'date:asc' | 'duration:asc' | 'duration:desc';
+  /** Ask before "Remove all" empties the inbox (until "Don't ask again"). */
+  confirmInboxRemoveAll: boolean;
 };
 
 /** Skip amounts offered by long-pressing the player's rewind / forward buttons (AntennaPod's list). */
@@ -93,6 +97,8 @@ export const DEFAULT_SETTINGS: Settings = {
   queueKeepSorted: '',
   queueLocked: false,
   queueLockExplained: false,
+  inboxSort: 'date:desc',
+  confirmInboxRemoveAll: true,
 };
 
 const store = createStore<Settings>({ ...DEFAULT_SETTINGS });

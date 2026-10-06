@@ -201,3 +201,15 @@ export function subjectFor(
     playing: live.playing,
   };
 }
+
+/** Acting on this many selected episodes at once asks first (AntennaPod's threshold). */
+export const BULK_CONFIRM_THRESHOLD = 25;
+
+/**
+ * Whether a multi-select action on `count` episodes should ask before running.
+ * Deleting already always asks; sharing and entering selection don't change anything.
+ */
+export function needsBulkConfirm(action: EpisodeAction, count: number): boolean {
+  if (count < BULK_CONFIRM_THRESHOLD) return false;
+  return action !== 'delete' && action !== 'share' && action !== 'multiSelect' && action !== 'skip';
+}

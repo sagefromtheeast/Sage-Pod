@@ -1,7 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { memo } from 'react';
 import { Animated, StyleSheet, View } from 'react-native';
-import { RectButton } from 'react-native-gesture-handler';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 
 import type { EpisodeWithFeed } from '@/db/types';
@@ -15,42 +14,53 @@ type Props = {
   onDismiss: (episode: EpisodeWithFeed) => void;
   onQueue: (episode: EpisodeWithFeed) => void;
   trailing?: React.ReactNode;
-};
+  /** Off while episodes are being selected. */
+  swipeEnabled?: boolean;
+} & Pick<
+  React.ComponentProps<typeof EpisodeRow>,
+  'actionHooks' | 'selecting' | 'selected' | 'onToggleSelect' | 'onSelectRange'
+>;
 
+/**
+ * An inbox row with AntennaPod's default swipes: right adds to the queue,
+ * left removes from the inbox (D-003.2). The screen offers Undo for both.
+ */
 export const SwipeableEpisodeRow = memo(function SwipeableEpisodeRow({
   episode,
   onPlay,
   onDismiss,
   onQueue,
   trailing,
+  swipeEnabled = true,
+  ...rowProps
 }: Props) {
   const theme = useTheme();
 
-  const renderLeftActions = (progress: Animated.AnimatedInterpolation<number>, dragX: Animated.AnimatedInterpolation<number>) => {
-    const scale = dragX.interpolate({
-      inputRange: [0, 80],
-      outputRange: [0, 1],
-      extrapolate: 'clamp',
-    });
+  // Revealed by swiping right.
+  const renderLeftActions = (
+    _progress: Animated.AnimatedInterpolation<number>,
+    dragX: Animated.AnimatedInterpolation<number>
+  ) => {
+    const scale = dragX.interpolate({ inputRange: [0, 80], outputRange: [0, 1], extrapolate: 'clamp' });
     return (
-      <View style={[styles.actionContainer, { backgroundColor: theme.danger, justifyContent: 'flex-start' }]}>
+      <View style={[styles.actionContainer, { backgroundColor: theme.accent, justifyContent: 'flex-start' }]}>
         <Animated.View style={[styles.actionIcon, { transform: [{ scale }] }]}>
-          <Ionicons name="trash-outline" size={24} color="#fff" />
+          <Ionicons name="add-circle-outline" size={24} color={theme.onAccent} />
         </Animated.View>
       </View>
     );
   };
 
-  const renderRightActions = (progress: Animated.AnimatedInterpolation<number>, dragX: Animated.AnimatedInterpolation<number>) => {
-    const scale = dragX.interpolate({
-      inputRange: [-80, 0],
-      outputRange: [1, 0],
-      extrapolate: 'clamp',
-    });
+  // Revealed by swiping left.
+  const renderRightActions = (
+    _progress: Animated.AnimatedInterpolation<number>,
+    dragX: Animated.AnimatedInterpolation<number>
+  ) => {
+    const scale = dragX.interpolate({ inputRange: [-80, 0], outputRange: [1, 0], extrapolate: 'clamp' });
     return (
-      <View style={[styles.actionContainer, { backgroundColor: theme.accent, justifyContent: 'flex-end' }]}>
+      <View style={[styles.actionContainer, { backgroundColor: theme.surfaceAlt, justifyContent: 'flex-end' }]}>
         <Animated.View style={[styles.actionIcon, { transform: [{ scale }] }]}>
-          <Ionicons name="list-outline" size={24} color="#fff" />
+          <Ionicons name="checkmark-done-outline" size={24} color={theme.text} />
         </Animated.View>
       </View>
     );
@@ -58,21 +68,22 @@ export const SwipeableEpisodeRow = memo(function SwipeableEpisodeRow({
 
   return (
     <Swipeable
+      enabled={swipeEnabled}
       renderLeftActions={renderLeftActions}
       renderRightActions={renderRightActions}
       onSwipeableLeftOpen={() => {
         triggerHaptic('medium');
-        onDismiss(episode);
+        onQueue(episode);
       }}
       onSwipeableRightOpen={() => {
         triggerHaptic('medium');
-        onQueue(episode);
+        onDismiss(episode);
       }}
       leftThreshold={50}
       rightThreshold={50}
     >
       <View style={{ backgroundColor: theme.bg }}>
-        <EpisodeRow episode={episode} onPlay={onPlay} trailing={trailing} />
+        <EpisodeRow episode={episode} onPlay={onPlay} trailing={trailing} {...rowProps} />
       </View>
     </Swipeable>
   );

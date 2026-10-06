@@ -28,6 +28,19 @@ async function longPressFirstEpisode(page, title = /^120\. /) {
   await page.getByText('Share…').first().waitFor({ timeout: 10000 });
 }
 
+// A finger drag (real touch events via CDP): swipe rows only respond to touch, not the mouse.
+async function touchDrag(page, x, y, dx, dy, steps = 15) {
+  const cdp = await page.context().newCDPSession(page);
+  const point = (i) => [{ x: x + (dx * i) / steps, y: y + (dy * i) / steps }];
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: point(0) });
+  for (let i = 1; i <= steps; i++) {
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: point(i) });
+    await page.waitForTimeout(16);
+  }
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await cdp.detach();
+}
+
 // [name, route, optional interaction run after the screen settles]
 const ROUTES = [
   ['home', '/'], ['queue', '/queue'], ['inbox', '/inbox'], ['discover', '/discover'], ['library', '/library'],
@@ -72,11 +85,37 @@ const ROUTES = [
     await page.getByPlaceholder('Search the queue').fill('river');
     await page.getByText(/No queued episodes match|river/i).first().waitFor({ timeout: 10000 });
   }],
+  ['inbox-menu', '/inbox', async (page) => {
+    await page.getByRole('button', { name: 'More options' }).first().click();
+    await page.getByText('Remove all from inbox').first().waitFor({ timeout: 10000 });
+  }],
+  ['inbox-sort', '/inbox', async (page) => {
+    await page.getByRole('button', { name: 'More options' }).first().click();
+    await page.getByText('Sort…').first().click();
+    await page.getByText('Shortest first').waitFor({ timeout: 10000 });
+  }],
+  ['inbox-select', '/inbox', async (page) => {
+    await longPressFirstEpisode(page);
+    await page.getByText('Select multiple').first().click();
+    await page.getByText('1 selected').waitFor({ timeout: 10000 });
+  }],
   ['feed-menu', '/feed/1', async (page) => {
     await page.getByRole('button', { name: 'More options' }).first().click();
     await page.getByText('Unsubscribe').first().waitFor({ timeout: 10000 });
   }],
-  // Last: it reorders the seeded queue. Drags row 1 to row 3 by its handle.
+  // These last two change the seeded data. Swiping left removes from the inbox, with Undo.
+  ['inbox-swipe', '/inbox', async (page) => {
+    const row = page.getByText(/^120\. Inside the chip shortage/).first();
+    const box = await row.boundingBox();
+    const x = box.x + box.width / 2, y = box.y + box.height / 2;
+    // RN's spring animations step by Date.now(), which setFixedTime freezes, so
+    // the swipe would never finish opening. Let time flow from here on.
+    await page.clock.setSystemTime(NOW);
+    await touchDrag(page, x, y, -240, 0);
+    await page.getByText('Removed from inbox').waitFor({ timeout: 10000 });
+    await page.getByText('Undo').first().waitFor({ timeout: 10000 });
+  }],
+  // Reorders the seeded queue. Drags row 1 to row 3 by its handle.
   ['queue-drag', '/queue', async (page) => {
     const handle = page.getByLabel('Reorder, position 1 of 5').first();
     const box = await handle.boundingBox();
@@ -199,6 +238,10 @@ for (const vp of VIEWPORTS) {
     } catch (error) {
       // Say why a screen never rendered (usually a page error) before failing.
       if (errors.length) console.error(`[${vpName}/${name}] page errors:`, [...new Set(errors)].join(' | '));
+      // Keep a picture of the failing state, so a timeout can be diagnosed.
+      const failed = path.join(outDir, `FAILED-${name}--${vpName}.png`);
+      await page.screenshot({ path: failed }).catch(() => {});
+      console.error(`[${vpName}/${name}] failure screenshot: ${failed}`);
       throw error;
     }
     const file = path.join(outDir, `${name}--${vpName}.png`);
