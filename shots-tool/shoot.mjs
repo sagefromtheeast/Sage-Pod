@@ -112,6 +112,17 @@ const ROUTES = [
     await page.getByPlaceholder('Search podcasts and episodes').fill('quiet');
     await page.getByText('PODCASTS').waitFor({ timeout: 10000 });
   }],
+  ['episode-menu', '/episode/3', async (page) => {
+    await page.getByRole('button', { name: 'More options' }).first().click();
+    await page.getByText('Share audio file link').first().waitFor({ timeout: 10000 });
+  }],
+  ['episode-swipe', '/episode/3', async (page) => {
+    const title = page.getByText(/^118\. A billion years in a pebble$/).first();
+    const box = await title.boundingBox();
+    await touchDrag(page, box.x + box.width * 0.8, box.y + box.height / 2, -box.width * 0.7, 0);
+    await page.getByText(/^117\. What inflation really feels like$/).first().waitFor({ state: 'visible', timeout: 10000 });
+    await page.waitForTimeout(800);
+  }],
   ['feed-menu', '/feed/1', async (page) => {
     await page.getByRole('button', { name: 'More options' }).first().click();
     await page.getByText('Unsubscribe').first().waitFor({ timeout: 10000 });
