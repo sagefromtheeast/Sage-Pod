@@ -89,6 +89,15 @@ export async function listEpisodesForFeed(
 }
 
 /** Newest episodes across every subscription — the "Inbox" screen. */
+/** A podcast's episode ids, newest first (the podcast page's default order), for swiping between episodes. */
+export async function listFeedEpisodeIds(feedId: number): Promise<number[]> {
+  const rows = await getDb().getAllAsync<{ id: number }>(
+    'SELECT id FROM episodes WHERE feed_id = ? ORDER BY published_at DESC, id DESC',
+    feedId
+  );
+  return rows.map((row) => row.id);
+}
+
 export async function listRecentEpisodes(limit = 100): Promise<EpisodeWithFeed[]> {
   return getDb().getAllAsync<EpisodeWithFeed>(
     `${EPISODE_WITH_FEED}

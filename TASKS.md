@@ -76,9 +76,11 @@ destructive.
 - [x] AGENTS.md: PRs merge with a merge commit, so PR titles need no Conventional prefix
 - [ ] Search: Queue/feed chips and "Search online" (search phase)
 
-## Phase 8 — Episode details
-- [ ] ⋯ menu (skip, inbox, reset, website, open podcast, share options)
-- [ ] Inline links + long-press, Links list removed (D-003.5); timecode disambiguation; copy; swipe between episodes
+## Phase 8 — Episode details ✅
+- [x] ⋯ menu (skip, inbox, reset, website, open podcast, share link / from position / audio file)
+- [x] Inline links (anchors + bare URLs) with long-press Open / Copy / Share; Links list removed (D-003.5); timecode disambiguation by duration, out-of-range times plain (`parseShowNotes`, tested); long-press copy title / podcast; swipe between the podcast's episodes
+- [ ] On device: long-press on inline links (react-native-web doesn't route it, so no shot); pager swipe vs vertical scroll
+- [ ] Pager follows the list you came from (currently the podcast's episodes)
 
 ## Phase 9 — Podcast page / info / preview
 - [ ] Icon row; real ⋯ menu (no more one-tap Unsubscribe); search; pull-to-refresh; saved filter + sort; banners
