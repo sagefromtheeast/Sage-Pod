@@ -123,6 +123,11 @@ Conventional Commits are **load-bearing**: they decide the version.
 - `docs:`, `chore:`, `build:`, `ci:`, `refactor:`, `test:`, `style:` → no release.
 - A phase PR containing at least one `feat:` or `fix:` produces exactly one
   release when merged; that's the intended "release per phase".
+- **Merge phase PRs with a merge commit, never squash.** semantic-release
+  reads every commit since the last tag, so the `feat:`/`fix:` commits inside
+  the PR decide the version and the plain "Merge pull request" commit is
+  ignored. A squash would collapse them into the PR title, which isn't a
+  Conventional Commit, and no release would be cut.
 - Never hand-edit versions. `tool/set_app_version.sh` stamps them on release.
 - Don't put bare `#123`-style or `#hex` tokens in commit bodies; the changelog
   turns them into bogus issue links.
