@@ -94,6 +94,7 @@ async function settle(page) {
 const log = (...a) => console.error(new Date().toISOString().slice(11, 19), ...a);
 const browser = await chromium.launch();
 fs.mkdirSync(outDir, { recursive: true });
+let failed = false;
 for (const vp of VIEWPORTS) {
   const { name: vpName, ...ctxOpts } = vp;
   const context = await browser.newContext({ ...ctxOpts, viewport: { width: vp.width, height: vp.height }, colorScheme: scheme, reducedMotion: 'reduce', locale: 'en-US', timezoneId: 'UTC' });
@@ -119,7 +120,16 @@ for (const vp of VIEWPORTS) {
     await page.screenshot({ path: file });
     console.log('wrote', file);
   }
-  if (errors.length) console.log(`[${vpName}] page errors:`, [...new Set(errors)].join(' | '));
+  // A screen that throws may still render a shell, so a page error fails the
+  // run instead of quietly producing a screenshot of a broken screen.
+  if (errors.length) {
+    failed = true;
+    console.error(`[${vpName}] page errors:`, [...new Set(errors)].join(' | '));
+  }
   await context.close();
 }
 await browser.close();
+if (failed) {
+  console.error('Screenshot run failed: page errors above.');
+  process.exit(1);
+}

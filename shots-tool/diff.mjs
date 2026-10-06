@@ -4,9 +4,15 @@ import path from 'node:path';
 import { PNG } from 'pngjs';
 import pixelmatch from 'pixelmatch';
 const [a, b, out] = process.argv.slice(2);
+// Start from an empty diff dir: compare.mjs treats an existing diff PNG as
+// "changed", so a stale one from an earlier run would report a false change.
+fs.rmSync(out, { recursive: true, force: true });
 fs.mkdirSync(out, { recursive: true });
 const rows = [];
-for (const f of fs.readdirSync(a).filter((f) => f.endsWith('.png')).sort()) {
+const pngs = (dir) => (fs.existsSync(dir) ? fs.readdirSync(dir).filter((f) => f.endsWith('.png')) : []);
+// The union of both sets, so a screen added (or removed) by the change is reported too.
+for (const f of [...new Set([...pngs(a), ...pngs(b)])].sort()) {
+  if (!fs.existsSync(path.join(a, f))) { rows.push([f, 'new in after']); continue; }
   if (!fs.existsSync(path.join(b, f))) { rows.push([f, 'missing in after']); continue; }
   const A = PNG.sync.read(fs.readFileSync(path.join(a, f))), B = PNG.sync.read(fs.readFileSync(path.join(b, f)));
   if (A.width !== B.width || A.height !== B.height) { rows.push([f, `size ${A.width}x${A.height} vs ${B.width}x${B.height}`]); continue; }
