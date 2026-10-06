@@ -1,3 +1,25 @@
+## [0.8.0](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.7.0...v0.8.0) (2026-10-06)
+
+### 🚀 New Features
+
+* **home:** AntennaPod's configurable Home sections and a search of your library ([f6a9d4a](https://github.com/sagefromtheeast/Sage-Pod/commit/f6a9d4aaca83ba5810d5dc85eaf46258f5fb09ef))
+
+### 🐛 Bug Fixes
+
+* **home:** leave queued episodes out of In progress before limiting, not after ([bc6a1be](https://github.com/sagefromtheeast/Sage-Pod/commit/bc6a1be975dc87a3340425e0606e48df94b6d866))
+
+### ♻️ Refactoring
+
+* **tabs:** set Home and Inbox header options through expo-router/js-tabs ([3d61901](https://github.com/sagefromtheeast/Sage-Pod/commit/3d619018265898c1dc6688ef8668f2c11e05a96d))
+
+### 📚 Documentation
+
+* mark Phase 7 done, record D-014, and note that PRs merge with a merge commit ([f2115e2](https://github.com/sagefromtheeast/Sage-Pod/commit/f2115e22e1ba418bd7cf569de00eebca0a2e41a5))
+
+### ✅ Tests
+
+* **shots:** Home menu, Configure home screen and library search ([42f49e4](https://github.com/sagefromtheeast/Sage-Pod/commit/42f49e4f48120944faa35b147436e92ecf865627))
+
 ## [0.7.0](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.6.0...v0.7.0) (2026-10-06)
 
 ### 🚀 New Features

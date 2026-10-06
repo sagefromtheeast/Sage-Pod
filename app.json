@@ -3,7 +3,7 @@
     "name": "Sage Pod",
     "slug": "sage-pod",
     "owner": "sag3-technologies",
-    "version": "0.7.0",
+    "version": "0.8.0",
     "orientation": "default",
     "scheme": "sagepod",
     "icon": "./assets/icon.png",
@@ -19,7 +19,7 @@
           "NSAllowsArbitraryLoads": true
         }
       },
-      "buildNumber": "700"
+      "buildNumber": "800"
     },
     "android": {
       "package": "app.sagepod.player",
@@ -37,7 +37,7 @@
         "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK",
         "android.permission.POST_NOTIFICATIONS"
       ],
-      "versionCode": 700
+      "versionCode": 800
     },
     "web": {
       "bundler": "metro",
