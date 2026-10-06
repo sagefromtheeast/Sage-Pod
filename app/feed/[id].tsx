@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { listEpisodesForFeed, markFeedPlayed, type EpisodeSortKey } from '@/db/episodes';
@@ -63,7 +63,7 @@ export default function FeedScreen() {
     [feedId]
   );
 
-  const { data: episodes = [] } = useQuery<EpisodeWithFeed[]>(
+  const { data: episodes = [], loading: episodesLoading } = useQuery<EpisodeWithFeed[]>(
     () =>
       listEpisodesForFeed(feedId, {
         sort,
@@ -77,6 +77,11 @@ export default function FeedScreen() {
     ['episodes'],
     [feedId, sort, filter, limit]
   );
+
+  // A different podcast, filter or sort is a new list: start from one page.
+  useEffect(() => {
+    setLimit(PAGE_SIZE);
+  }, [feedId, sort, filter]);
 
   // A full page means there may be more stored episodes; a short one means the
   // database is exhausted and only the feed's older pages (if any) remain.
@@ -248,7 +253,7 @@ export default function FeedScreen() {
         onEndReached={showMoreStored}
         onEndReachedThreshold={0.5}
         ListFooterComponent={
-          !moreStored && feed.next_page_url ? (
+          !episodesLoading && !moreStored && feed.next_page_url ? (
             // Paged feeds (RFC 5005) only ship their newest page; older
             // episodes are fetched on request, like AntennaPod's load-more footer.
             <Pressable
