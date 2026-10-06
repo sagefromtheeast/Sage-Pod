@@ -205,6 +205,8 @@ releasing, so a red check on `main` blocks the release.
   in `shots-tool/shoot.mjs`. RN spring animations step by `Date.now()`, which
   the harness freezes; call `page.clock.setSystemTime(NOW)` first. A failing
   route leaves `FAILED-<route>--<viewport>.png` in the output folder.
+- react-native-web doesn't deliver long-press to nested `<Text>` (inline
+  links), with mouse or touch. Check those on a device instead.
 - The owner usually works from a phone. Prefer EAS builds and links over
   "run this on your laptop".
 
@@ -217,9 +219,11 @@ releasing, so a red check on `main` blocks the release.
   seek bar, mini player on pushed screens; v0.5.0), the Queue (drag,
   sort / keep sorted, lock, search, enqueue location; v0.6.0), and the
   Inbox (AntennaPod swipes with undo, search, sort, remove all, paging;
-  v0.7.0), and Home (configurable sections, library search; v0.8.0).
+  v0.7.0), Home (configurable sections, library search; v0.8.0), and
+  Episode details (menu, inline links, timestamps, pager; v0.9.0).
   Earlier: EAS device builds, stable Surprise Me, tablet layouts.
-- **Next**: Phase 8, Episode details, then the remaining screen-by-screen phases.
+- **Next**: Phase 9, the podcast page, info and preview, then the remaining
+  screen-by-screen phases.
   Building blocks to reuse: `openEpisodeActions`, `runEpisodeAction`,
   `showToast`, `OverflowMenu`, `BottomSheet` / `ActionSheet`,
   `useEpisodeSelection` + `SelectionBar`, `MiniPlayerDock`, `DraggableList` (see

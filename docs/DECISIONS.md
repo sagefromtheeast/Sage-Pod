@@ -20,6 +20,7 @@ Format: context → decision → consequences → when to revisit.
 | D-012 | Now Playing: sheets instead of inline lists; Show notes button | Accepted |
 | D-013 | Queue: in-house drag list; Keep sorted and Lock turn dragging off | Accepted |
 | D-014 | Home: configurable sections; In progress shows only unqueued episodes | Accepted |
+| D-015 | Episode pager swipes through the podcast's episodes | Accepted |
 
 ---
 
@@ -64,7 +65,7 @@ Approved by the owner (2026-10-06) to match AntennaPod:
 4. **A Discover tap opens a preview** (feed page in preview state with a
    Subscribe button) instead of subscribing immediately.
 5. **The episode page's separate Links list is dropped** in favour of inline,
-   long-pressable links in the show notes.
+   long-pressable links in the show notes. *(Shipped in Phase 8, v0.9.0.)*
 6. **The in-progress "Continue Listening" shelf stays** as an extra Home
    section alongside AntennaPod's queue-based section.
 
@@ -206,4 +207,16 @@ already shows queued ones. Sections added later appear at the end, visible, for
 existing users. The header Search opens a local library search. It is
 deliberately small for now; the search phase adds chips and online search.
 *(Shipped in v0.8.0.)*
+
+## D-015 — Episode pager: the podcast's episodes, newest first
+
+**Context.** AntennaPod swipes between the episodes of the list you opened an
+episode from. Sage Pod opens episodes from many lists, and `EpisodeRow` doesn't
+know which list it is in.
+
+**Decision.** The episode page swipes through the same podcast's episodes in
+the podcast page's default order (newest first). That needs no wiring through
+every list. The page list is frozen once loaded, so a refresh doesn't move the
+page under the reader. Following the originating list is a later refinement.
+*(Shipped in v0.9.0.)*
 
