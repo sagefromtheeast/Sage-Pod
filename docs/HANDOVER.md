@@ -239,15 +239,18 @@ releasing, so a red check on `main` blocks the release.
   autodiscovery, OPML file import with a checklist; v0.12.0), and the
   Library (display, sort, filter, tags, archive, multi-select, Episodes
   screen; v0.13.0), and Downloads (in progress, sort, search, delete
-  played, a stored download log; v0.14.0).
+  played, a stored download log; v0.14.0), and Settings (sub-pages, swipe
+  actions per list, smart mark as played, cleanup, mobile data; v0.15.0).
   Earlier: EAS device builds, stable Surprise Me, tablet layouts.
-- **Next**: Phase 14, Settings, then the remaining screen-by-screen
+- **Next**: Phase 15, Statistics, then the remaining screen-by-screen
   phases. Schema is at version 6; feeds.state can be 'subscribed',
   'preview' or 'archived'.
   Building blocks to reuse: `openEpisodeActions`, `runEpisodeAction`,
   `showToast`, `OverflowMenu`, `BottomSheet` / `ActionSheet`,
-  `useEpisodeSelection` + `SelectionBar`, `MiniPlayerDock`, `DraggableList`, `NoMatches`, `TextPromptSheet`, `askToUnsubscribe` (see
-  `src/actions/` and `src/ui/`).
+  `useEpisodeSelection` + `SelectionBar`, `MiniPlayerDock`, `DraggableList`, `NoMatches`, `TextPromptSheet`, `askToUnsubscribe`,
+  `SwipeableEpisodeRow` (pass a `screen`), `SettingsLink` / `SettingsChoice` (see
+  `src/actions/` and `src/ui/`). New settings go in `src/db/settingsSchema.ts`;
+  multiple-choice ones also list their choices in `src/settings/options.ts`.
 - **Device build**: one EAS build at the end (D-011).
 - **The owner's preferences** (learned): keep the existing design; match
   AntennaPod's placement; release per phase, merged by you; show before/after screenshots;
