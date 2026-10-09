@@ -242,10 +242,11 @@ releasing, so a red check on `main` blocks the release.
   played, a stored download log; v0.14.0), and Settings (sub-pages, swipe
   actions per list, smart mark as played, cleanup, mobile data; v0.15.0),
   and Statistics (Subscriptions / Years / Downloads tabs, filter, reset,
-  per-podcast numbers, release schedule guess; v0.16.0).
+  per-podcast numbers, release schedule guess; v0.16.0), and Backup
+  (database export and restore, OPML / HTML / favourites exports to a
+  picked folder; v0.17.0).
   Earlier: EAS device builds, stable Surprise Me, tablet layouts.
-- **Next**: Phase 16, Backup and import/export, then Phase 17 (native,
-  needs an EAS build). Schema is at version 6; feeds.state can be 'subscribed',
+- **Next**: Phase 17 (native, needs an EAS build; ask before each). Schema is at version 6; feeds.state can be 'subscribed',
   'preview' or 'archived'.
   Building blocks to reuse: `openEpisodeActions`, `runEpisodeAction`,
   `showToast`, `OverflowMenu`, `BottomSheet` / `ActionSheet`,

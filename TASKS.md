@@ -144,8 +144,14 @@ destructive.
 - [x] Shots: stats, stats-years, stats-downloads, stats-range, stats-marked, stats-feed
 - [ ] On device: listen for a while and check the totals; reset and check they read zero
 
-## Phase 16 — Backup
-- [ ] OPML/DB/HTML/favourites export + DB import; OPML import progress
+## Phase 16 — Backup ✅
+- [x] Import and export page in AntennaPod's order (D-023): Database (export, import), OPML export, Copy OPML, HTML export, favourites export, OPML import
+- [x] Exports saved to a folder the listener picks (no expo-sharing); dated file names
+- [x] Database export via SQLite's backup API; import staged, checked (Sage Pod database, intact, not newer), confirmed, then replaced in one step, migrated and restarted
+- [x] OPML import progress (already in the Phase 11 checklist)
+- [x] Tests: file names, HTML escaping and grouping, non-web links stay text, backup check
+- [x] Shots: settings, settings-import-export
+- [ ] On device: export each file to Downloads and a cloud drive; export, change something, import, and check feeds, queue and positions come back; import an AntennaPod .db and a random file (both refused)
 
 ## Phase 17 — Native (EAS build; ask before each)
 - [ ] Download only when charging (expo-battery, from Phase 14)
