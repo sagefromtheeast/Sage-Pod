@@ -6,10 +6,12 @@ import { useMemo } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { getFeed, getFeedStats, type FeedStats } from '@/db/feeds';
+import { getPublishDates } from '@/db/stats';
 import type { FeedWithCounts } from '@/db/types';
 import { useQuery } from '@/db/useQuery';
 import type { FundingLink } from '@/feed/parser';
 import { formatBytes } from '@/player/downloads';
+import { formatReleaseSchedule, guessReleaseSchedule } from '@/stats/releaseSchedule';
 import { Artwork } from '@/ui/Artwork';
 import type { IconName } from '@/ui/ActionSheet';
 import { MiniPlayerDock, useMiniPlayerDockPadding } from '@/ui/MiniPlayerDock';
@@ -50,6 +52,7 @@ export default function FeedInfoScreen() {
 
   const { data: feed } = useQuery<FeedWithCounts | null>(() => getFeed(feedId), ['feeds'], [feedId]);
   const { data: stats } = useQuery<FeedStats>(() => getFeedStats(feedId), ['episodes', 'playback_history'], [feedId]);
+  const { data: publishDates } = useQuery<number[]>(() => getPublishDates(feedId), ['episodes'], [feedId]);
   const about = useMemo(() => parseShowNotes(feed?.description, null), [feed?.description]);
 
   if (!feed) return <View style={[styles.root, { backgroundColor: theme.bg }]} />;
@@ -126,6 +129,13 @@ export default function FeedInfoScreen() {
             }}
             hint="Tap to copy"
           />
+          {publishDates ? (
+            <Row
+              icon="calendar-outline"
+              label="Release schedule"
+              detail={formatReleaseSchedule(guessReleaseSchedule(publishDates))}
+            />
+          ) : null}
           {feed.language ? <Row icon="language-outline" label="Language" detail={feed.language} /> : null}
           <Row
             icon="refresh-outline"
