@@ -16,6 +16,7 @@ import {
   type NewEpisodesAction,
 } from '@/feed/feedPrefs';
 import { refreshFeed } from '@/feed/sync';
+import { askForNotifications } from '@/notify';
 import { PLAYBACK_RATES, player } from '@/player';
 import { SettingsOptions, SettingsSection, SettingsSwitch, SettingsTextInput } from '@/ui/SettingsRow';
 import { space, type as typography } from '@/ui/theme';
@@ -80,6 +81,13 @@ export default function FeedSettingsScreen() {
     [feed, feedId]
   );
 
+  const setNotify = async (value: boolean) => {
+    await update({ notify: value });
+    if (value && !(await askForNotifications())) {
+      showToast('Notifications are off for Sage Pod in the system settings');
+    }
+  };
+
   if (!feed) {
     return <View style={[styles.root, { backgroundColor: theme.bg }]} />;
   }
@@ -139,6 +147,14 @@ export default function FeedSettingsScreen() {
         options={VOLUME_OPTIONS}
         format={(volume) => VOLUME_LABELS[volume]}
         onChange={(value) => void update({ volumeReduction: value === 1 ? null : value })}
+      />
+
+      <SettingsSection title="Notifications" />
+      <SettingsSwitch
+        label="Episode notifications"
+        description="A notification when a refresh finds new episodes."
+        value={feed.notify === 1}
+        onValueChange={(value) => void setNotify(value)}
       />
 
       <SettingsSection title="Automation" />

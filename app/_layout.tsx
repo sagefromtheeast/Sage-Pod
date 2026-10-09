@@ -11,6 +11,7 @@ import { removeStalePreviews } from '@/db/feeds';
 import { getMeta, getSettings, loadSettings } from '@/db/settings';
 import { refreshAllFeeds } from '@/feed/sync';
 import { player } from '@/player';
+import { useNotificationTaps } from '@/notify';
 import { manageAutoDownloads } from '@/player/downloads';
 import { EpisodeActionsHost } from '@/ui/EpisodeActionsHost';
 import { palettes, space, type as typography } from '@/ui/theme';
@@ -95,6 +96,7 @@ export default function RootLayout() {
 
 function AppShell() {
   const theme = useTheme();
+  useNotificationTaps();
 
   return (
     <GestureHandlerRootView style={styles.root}>

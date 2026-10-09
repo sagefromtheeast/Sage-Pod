@@ -117,6 +117,14 @@ export type Settings = {
   statsRange: string;
   /** Statistics count episodes marked played as listened to in full. */
   statsIncludeMarkedPlayed: boolean;
+  /** Notify when an automatic refresh can't reach a podcast. */
+  notifyRefreshErrors: boolean;
+  /** Notify when a download fails. */
+  notifyDownloadErrors: boolean;
+  /** Automatic downloads wait until the phone is charging. */
+  autoDownloadOnlyCharging: boolean;
+  /** AntennaPod's automatic database backup: every 3 days, keeping the newest 5. */
+  autoBackup: boolean;
 };
 
 /** Skip amounts offered by long-pressing the player's rewind / forward buttons (AntennaPod's list). */
@@ -178,4 +186,8 @@ export const DEFAULT_SETTINGS: Settings = {
   mobileStreaming: true,
   statsRange: 'all',
   statsIncludeMarkedPlayed: false,
+  notifyRefreshErrors: true,
+  notifyDownloadErrors: true,
+  autoDownloadOnlyCharging: false,
+  autoBackup: false,
 };

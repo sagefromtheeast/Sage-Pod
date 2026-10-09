@@ -2,6 +2,7 @@ import { getDb } from '@/db';
 import { listAutoDownloadCandidates } from '@/db/episodes';
 import { getFeedByUrl, listFeedsToRefresh, subscribeFeed } from '@/db/feeds';
 import { getSettings } from '@/db/settings';
+import { notifyNewEpisodes, notifyRefreshFailed } from '@/notify';
 import type { FeedRow } from '@/db/types';
 import { enqueueMany } from '@/db/queue';
 import { onCellular, queueDownload } from '@/player/downloads';
@@ -304,14 +305,21 @@ async function refreshFeedNow(feed: FeedRow, options: { full?: boolean; quiet?: 
   );
   await updateFeedRow(feed.id, parsed, etag, lastModified);
 
-  if (subscribed && action === 'queue' && guids.length > 0) {
-    const rows = await getDb().getAllAsync<{ id: number }>(
-      `SELECT id FROM episodes WHERE feed_id = ? AND guid IN (${guids.map(() => '?').join(', ')})
+  const addToQueue = subscribed && action === 'queue';
+  // AntennaPod's per-podcast "Episode notifications".
+  const notify = subscribed && feed.notify === 1;
+  if ((addToQueue || notify) && guids.length > 0) {
+    const rows = await getDb().getAllAsync<{ id: number; title: string }>(
+      `SELECT id, title FROM episodes WHERE feed_id = ? AND guid IN (${guids.map(() => '?').join(', ')})
         ORDER BY published_at ASC, id ASC`,
       feed.id,
       ...guids
     );
-    await enqueueMany(rows.map((row) => row.id));
+    if (addToQueue) await enqueueMany(rows.map((row) => row.id));
+    if (notify) {
+      const newestFirst = rows.map((row) => row.title).reverse();
+      void notifyNewEpisodes(feed.id, feed.custom_title ?? (parsed.title || feed.title), newestFirst);
+    }
   }
 
   const autoDownload = resolveOverride(boolOverride(feed.auto_download_override), settings.autoDownloadNew).value;
@@ -366,7 +374,7 @@ export async function refreshAllFeeds(
         // One unreachable feed must not abort the whole refresh.
         result.failures.push({
           feedId: feed.id,
-          title: feed.title,
+          title: feed.custom_title ?? feed.title,
           message: error instanceof Error ? error.message : String(error),
         });
       } finally {
@@ -378,6 +386,12 @@ export async function refreshAllFeeds(
   await Promise.all(
     Array.from({ length: Math.min(concurrency, feeds.length) }, () => worker())
   );
+
+  // An automatic refresh has no one watching it, so failures become a
+  // notification; one the listener started shows its own result.
+  if (!force && result.failures.length > 0 && getSettings().notifyRefreshErrors) {
+    void notifyRefreshFailed(result.failures);
+  }
 
   return result;
 }

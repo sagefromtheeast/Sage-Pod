@@ -15,7 +15,7 @@ const FEED_COLUMNS = `
   f.state, f.last_refresh_error, f.episode_filter, f.episode_sort, f.funding,
   f.custom_title, f.tags, f.skip_ending_seconds, f.volume_reduction, f.auto_delete,
   f.new_episodes_action, f.auto_download_override, f.download_include, f.download_exclude,
-  f.download_min_minutes
+  f.download_min_minutes, f.notify
 `;
 
 export async function listFeeds(): Promise<FeedWithCounts[]> {
@@ -362,6 +362,7 @@ const PREF_COLUMNS = {
   downloadExclude: 'download_exclude',
   downloadMinMinutes: 'download_min_minutes',
   autoDelete: 'auto_delete',
+  notify: 'notify',
 } as const;
 
 export type FeedPrefs = {
@@ -378,6 +379,7 @@ export type FeedPrefs = {
   downloadExclude: string | null;
   downloadMinMinutes: number | null;
   autoDelete: boolean | null;
+  notify: boolean;
 };
 
 /** Saves any of a podcast's settings (or several podcasts') in one statement, only the keys given. */

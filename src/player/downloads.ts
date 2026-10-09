@@ -9,6 +9,7 @@ import { addDownloadLog, type NewDownloadLogEntry } from '@/db/downloadLog';
 import { getEpisode, listDownloaded, listPendingDownloads, setDownloadState } from '@/db/episodes';
 import { listQueue, onEpisodeQueued } from '@/db/queue';
 import { getSettings } from '@/db/settings';
+import { notifyDownloadFailed } from '@/notify';
 import { boolOverride, resolveOverride } from '@/feed/feedPrefs';
 import type { EpisodeWithFeed } from '@/db/types';
 import { USER_AGENT } from '@/feed/fetch';
@@ -360,6 +361,7 @@ async function run(episodeId: number, isAuto: boolean, attempt = 0): Promise<voi
       error_code: failure.code,
       error_message: failure.message,
     });
+    if (getSettings().notifyDownloadErrors) void notifyDownloadFailed(episodeId, episode.title, failure.message);
     await setDownloadState(episodeId, 'error');
   } finally {
     subscription.remove();
