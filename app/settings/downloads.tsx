@@ -22,6 +22,7 @@ export default function DownloadSettings() {
   const autoQueue = useSetting('autoDownloadQueue');
   const autoNew = useSetting('autoDownloadNew');
   const autoLimit = useSetting('autoDownloadLimit');
+  const onlyCharging = useSetting('autoDownloadOnlyCharging');
   const maxEpisodes = useSetting('maxDownloadedEpisodes');
   const cleanup = useSetting('episodeCleanup');
   const deleteFinished = useSetting('deleteAfterFinished');
@@ -112,6 +113,12 @@ export default function DownloadSettings() {
         options={SETTING_OPTIONS.autoDownloadLimit}
         format={(count) => (count === 0 ? 'Off' : String(count))}
         onChange={(value) => void update('autoDownloadLimit', value)}
+      />
+      <SettingsSwitch
+        label="Only while charging"
+        description="Automatic downloads wait until the phone is plugged in. Downloads you start aren't affected."
+        value={onlyCharging}
+        onValueChange={(value) => void update('autoDownloadOnlyCharging', value)}
       />
 
       <SettingsSection title="Storage" />

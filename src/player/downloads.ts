@@ -1,3 +1,4 @@
+import * as Battery from 'expo-battery';
 import Constants from 'expo-constants';
 import { Directory, File, Paths } from 'expo-file-system';
 import * as Network from 'expo-network';
@@ -174,11 +175,22 @@ async function networkAllowsDownload(isAuto = false): Promise<boolean> {
     return true;
   }
 
+  // AntennaPod's "Only while charging": automatic downloads wait for power.
+  if (getSettings().autoDownloadOnlyCharging && (await onBattery())) return false;
   if (!getSettings().downloadOnWifiOnly) return true;
   try {
     const state = await Network.getNetworkStateAsync();
     if (state.isConnected === false) return false;
     return state.type !== Network.NetworkStateType.CELLULAR;
+  } catch {
+    return false;
+  }
+}
+
+/** Unplugged, as far as the system says; an unknown state never holds downloads back. */
+async function onBattery(): Promise<boolean> {
+  try {
+    return (await Battery.getBatteryStateAsync()) === Battery.BatteryState.UNPLUGGED;
   } catch {
     return false;
   }
