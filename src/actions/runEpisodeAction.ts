@@ -14,11 +14,12 @@ import { dequeue, enqueueFront, enqueueMany, getQueueSlots, moveToBottom, restor
 import { isQueuedNow } from '@/db/queueMembership';
 import type { EpisodeWithFeed } from '@/db/types';
 import { player } from '@/player';
-import { cancelDownload, deleteDownload } from '@/player/downloads';
+import { cancelDownload } from '@/player/downloads';
 import type { IconName } from '@/ui/ActionSheet';
 import { showToast } from '@/ui/UndoToast';
 import { shareEpisode } from '@/util/share';
 
+import { deleteDownloadByUser } from './deleteDownloads';
 import { appliesTo, subjectFor, type EpisodeAction } from './episodeActions';
 import { startDownloads } from './startDownloads';
 
@@ -173,7 +174,7 @@ export async function runEpisodeAction(
                   // Re-read: a download may have finished while the dialog was
                   // open, and cancelling a finished one would orphan its file.
                   const fresh = await getEpisode(id);
-                  if (fresh?.download_state === 'done') await deleteDownload(id);
+                  if (fresh?.download_state === 'done') await deleteDownloadByUser(id);
                   else if (fresh?.download_state === 'queued' || fresh?.download_state === 'downloading') {
                     await cancelDownload(id);
                   }
@@ -185,9 +186,15 @@ export async function runEpisodeAction(
       return;
 
     case 'addToFavorites':
-    case 'removeFromFavorites':
-      await setFavoriteMany(ids(targets), action === 'addToFavorites');
+    case 'removeFromFavorites': {
+      const adding = action === 'addToFavorites';
+      await setFavoriteMany(ids(targets), adding);
+      showToast(
+        adding ? count(n, 'Added to favourites', 'added to favourites') : count(n, 'Removed from favourites', 'removed from favourites'),
+        () => setFavoriteMany(ids(targets), !adding)
+      );
       return;
+    }
 
     case 'resetPosition': {
       const saved = await getPlaybackSnapshots(ids(targets));

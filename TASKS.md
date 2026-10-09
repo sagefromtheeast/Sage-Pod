@@ -123,8 +123,17 @@ destructive.
 - [x] Shots: downloads, downloads-search, downloads-log, downloads-log-entry
 - [ ] On device: progress while downloading; the mobile-data prompt; retry from the log
 
-## Phase 14 — Settings
-- [ ] UI, Playback, Downloads, About sections; swipe-action config per screen
+## Phase 14 — Settings ✅
+- [x] Settings split into pages (D-021): User interface, Playback, Downloads, Import and export, About; Reset on the first page
+- [x] User interface: theme, show remaining time, adjust times to speed, prefer streaming, default episode order, swipe actions
+- [x] Swipe actions per list (Inbox and Home's inbox, Queue, Episodes, Downloads); Episodes and Downloads gain swipes
+- [x] Playback: skip amounts, default speed, editable speed presets, rewind on resume, enqueue location, play next, remove finished, smart mark as played (default 30 s), keep skipped episodes
+- [x] Downloads: refresh interval, new episodes, refresh now; mobile data for downloads, refresh and streaming (asks first); automatic download; limit, episode cleanup, delete when finished, delete removes from queue
+- [x] About: version from expo-constants, privacy, licences
+- [x] Settings schema test (every default is an offered choice); swipe, played-rule and cleanup tests
+- [x] Shots: settings, settings-interface, settings-swipes, settings-swipe-choice, settings-playback, settings-downloads, settings-import-export, settings-about
+- [ ] Download only when charging: needs expo-battery (native), moved to Phase 17
+- [ ] On device: swipe each list's pairs; the streaming prompt on mobile data; skipping near the end marks played
 
 ## Phase 15 — Statistics
 - [ ] Subscriptions / Years / Downloads tabs; filter; reset; per-feed detail + release guess
@@ -133,6 +142,7 @@ destructive.
 - [ ] OPML/DB/HTML/favourites export + DB import; OPML import progress
 
 ## Phase 17 — Native (EAS build; ask before each)
+- [ ] Download only when charging (expo-battery, from Phase 14)
 - [ ] Notifications; background refresh + auto backup; deep links; sharing; secure store (+ feed username/password, from Phase 10)
 - [ ] expo-audio gaps via local Expo modules (D-004): lock-screen amounts/buttons, skip silence, volume boost, headset unplug
 
@@ -140,7 +150,7 @@ destructive.
 - [ ] Sync, Cast, Auto/Wear, widget/tile, video, Echo, binary chapters, nav customisation, parental control
 
 ## Discovered (not yet scheduled)
-- [ ] `flushPosition` marks an episode played inside the 20 s tail but doesn't dequeue or delete it like `onFinished` does
+- [ ] `flushPosition` marks an episode played inside the smart-mark tail but doesn't dequeue or delete it like `onFinished` does
 - [x] A speed chosen in the player isn't saved (fixed by Phase 4's speed sheet)
 - [ ] Refresh interval is only checked when the app opens (Phase 17 background refresh)
 - [ ] `fetchOlderFeedEpisodes`: a later refresh restores the first page's `next_page_url` (COALESCE), so older pages can be re-fetched; harmless (upserts dedupe) but wasteful

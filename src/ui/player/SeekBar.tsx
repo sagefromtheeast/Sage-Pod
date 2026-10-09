@@ -4,6 +4,7 @@ import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 
 import { setSetting, useSetting } from '@/db/settings';
 import { chapterTicks, currentChapterIndex, type Chapter } from '@/player/chapters';
+import { adjustForSpeed } from '@/player/speed';
 import { triggerHaptic } from '@/ui/haptics';
 import { radius, space, type as typography } from '@/ui/theme';
 import { useTheme } from '@/ui/useTheme';
@@ -18,6 +19,8 @@ const A11Y_STEP_SECONDS = 30;
 type Props = {
   position: number;
   duration: number;
+  /** Playback speed, for "Adjust times to speed". */
+  rate?: number;
   chapters: readonly Chapter[];
   onSeek: (seconds: number) => void;
   /** Reports the finger position while dragging (null when released), so the screen can follow it. */
@@ -30,9 +33,12 @@ type Props = {
  * under the finger while scrubbing, and the elapsed / remaining-or-total
  * labels. Tapping the right-hand label switches between remaining and total.
  */
-export function SeekBar({ position, duration, chapters, onSeek, onScrub }: Props) {
+export function SeekBar({ position, duration, rate = 1, chapters, onSeek, onScrub }: Props) {
   const theme = useTheme();
   const showRemaining = useSetting('showRemainingTime');
+  // Settings › User interface › "Adjust times to speed": labels show listening time.
+  const adjust = useSetting('adjustTimesToSpeed');
+  const listening = (seconds: number) => formatDuration(adjustForSpeed(seconds, rate, adjust));
   const [width, setWidth] = useState(0);
   const [scrub, setScrub] = useState<number | null>(null);
 
@@ -127,7 +133,7 @@ export function SeekBar({ position, duration, chapters, onSeek, onScrub }: Props
       </GestureDetector>
 
       <View style={styles.times}>
-        <Text style={[styles.time, { color: theme.textFaint }]}>{formatDuration(shown)}</Text>
+        <Text style={[styles.time, { color: theme.textFaint }]}>{listening(shown)}</Text>
         <Pressable
           onPress={() => void setSetting('showRemainingTime', !showRemaining)}
           hitSlop={10}
@@ -135,7 +141,7 @@ export function SeekBar({ position, duration, chapters, onSeek, onScrub }: Props
           accessibilityLabel={showRemaining ? 'Time remaining. Show total length.' : 'Total length. Show time remaining.'}
         >
           <Text style={[styles.time, { color: theme.textFaint }]}>
-            {showRemaining ? `−${formatDuration(Math.max(0, duration - shown))}` : formatDuration(duration)}
+            {showRemaining ? `−${listening(Math.max(0, duration - shown))}` : listening(duration)}
           </Text>
         </Pressable>
       </View>

@@ -14,7 +14,6 @@ import {
   View,
 } from 'react-native';
 
-import { runEpisodeAction } from '@/actions/runEpisodeAction';
 import {
   dismissManyFromInbox,
   getPlaybackSnapshots,
@@ -92,10 +91,6 @@ export default function InboxScreen() {
       setRefreshing(false);
     }
   }, []);
-
-  // Both offer Undo (runEpisodeAction shows the toast).
-  const dismiss = useCallback((episode: EpisodeWithFeed) => void runEpisodeAction('removeFromInbox', [episode]), []);
-  const queue = useCallback((episode: EpisodeWithFeed) => void runEpisodeAction('addToQueue', [episode]), []);
 
   const removeAll = useCallback(async () => {
     const ids = await listInboxIds(selectedFeedId);
@@ -288,8 +283,7 @@ export default function InboxScreen() {
           <SwipeableEpisodeRow
             episode={item}
             onPlay={play}
-            onDismiss={dismiss}
-            onQueue={queue}
+            screen="inbox"
             swipeEnabled={!selection.active}
             actionHooks={actionHooks}
             selecting={selection.active}

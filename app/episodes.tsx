@@ -11,7 +11,7 @@ import { describeFilter, isFiltered, parseEpisodeFilter } from '@/feed/episodeFi
 import { player } from '@/player';
 import { ActionSheet } from '@/ui/ActionSheet';
 import { EmptyState } from '@/ui/EmptyState';
-import { EpisodeRow } from '@/ui/EpisodeRow';
+import { SwipeableEpisodeRow } from '@/ui/SwipeableEpisodeRow';
 import { FeedFilterSheet } from '@/ui/feed/FeedFilterSheet';
 import { MiniPlayerDock, useMiniPlayerDockPadding } from '@/ui/MiniPlayerDock';
 import { OverflowMenu } from '@/ui/OverflowMenu';
@@ -119,9 +119,11 @@ export default function EpisodesScreen() {
           )
         }
         renderItem={({ item }) => (
-          <EpisodeRow
+          <SwipeableEpisodeRow
             episode={item}
+            screen="episodes"
             onPlay={play}
+            swipeEnabled={!selection.active}
             actionHooks={actionHooks}
             selecting={selection.active}
             selected={selection.selected.has(item.id)}

@@ -9,7 +9,6 @@ import * as Haptics from 'expo-haptics';
 import { Accelerometer } from 'expo-sensors';
 
 import {
-  COMPLETION_TAIL_SECONDS,
   getEpisode,
   markPlayed,
   savePosition,
@@ -19,6 +18,8 @@ import { dequeue, enqueueFront, nextInQueue } from '@/db/queue';
 import { deleteDownload, getLocalEpisodePath } from '@/player/downloads';
 import { getMeta, getSettings, setMeta, setSetting } from '@/db/settings';
 import type { EpisodeWithFeed } from '@/db/types';
+import { confirmMeteredStreaming } from '@/player/meteredGuard';
+import { afterSkip, almostEnded } from '@/player/playedRules';
 import { positionAfterPause } from '@/player/resumeRewind';
 import { clampSpeed } from '@/player/speed';
 import { boolOverride, resolveOverride, shouldSkipEnding, volumeFor } from '@/feed/feedPrefs';
@@ -98,6 +99,12 @@ class PlayerService {
 
   /** Guards against the double-advance a repeated `didJustFinish` would cause. */
   private finishing = false;
+  /**
+   * The loaded episode was just marked played (finished or skipped). Marking
+   * played resets its stored position, so the flush in the next load() must
+   * not write the old one back.
+   */
+  private markedPlayedId: number | null = null;
   /** Set once the current episode's "skip ending" has fired, so it fires once. */
   private skippedEnding = false;
   /** The podcast's volume reduction (1 = none); the sleep fade scales from it. */
@@ -166,17 +173,31 @@ class PlayerService {
    */
   async load(
     episode: EpisodeWithFeed,
-    options: { autoPlay?: boolean; startAt?: number } = {}
+    options: {
+      autoPlay?: boolean;
+      startAt?: number;
+      /** False when no one tapped anything (the queue advancing): don't ask, just don't stream. */
+      interactive?: boolean;
+    } = {}
   ): Promise<void> {
-    const { autoPlay = true } = options;
+    let { autoPlay = true } = options;
+    const interactive = options.interactive ?? true;
 
     if (this.state.episode?.id === episode.id && this.player) {
       if (autoPlay) this.play();
       return;
     }
 
+    // Settings › Downloads › Mobile data › Streaming: ask before streaming
+    // over mobile data, or load paused when the queue advances on its own.
+    if (autoPlay && !(await confirmMeteredStreaming(episode, { ask: interactive }))) {
+      if (interactive) return;
+      autoPlay = false;
+    }
+
     await this.ensureAudioMode();
     await this.flushPosition();
+    this.markedPlayedId = null;
     this.teardownPlayer();
 
     const settings = getSettings();
@@ -345,6 +366,8 @@ class PlayerService {
 
   play(): void {
     if (!this.player) return;
+    // Listening again to an episode that just finished: save its position again.
+    this.markedPlayedId = null;
 
     this.applyResumeRewind();
     this.maybeAutoEnableSleepTimer();
@@ -485,6 +508,7 @@ class PlayerService {
 
       const settings = getSettings();
       await markPlayed(finished.id, true);
+      this.markedPlayedId = finished.id;
       // Find what follows before removing the finished episode: once it is
       // gone, "the episode after it" can't be looked up and the head would
       // play instead, jumping back if it was played from mid-queue (or
@@ -516,17 +540,36 @@ class PlayerService {
         return;
       }
 
-      if (next) await this.load(next, { autoPlay: true });
+      if (next) await this.load(next, { autoPlay: true, interactive: false });
       else this.setState({ playing: false, position: 0 });
     } finally {
       this.finishing = false;
     }
   }
 
-  /** Skips the current episode without marking it played. */
+  /**
+   * Skips to the next queued episode. The skipped one stays unplayed and
+   * queued, unless it was nearly over ("Smart mark as played") or "Keep
+   * skipped episodes" is off — then it is marked played and may leave the queue.
+   */
   async skipToNext(): Promise<void> {
     const current = this.state.episode;
     const next = await nextInQueue(current?.id ?? null);
+    if (current) {
+      const settings = getSettings();
+      const outcome = afterSkip({
+        position: this.state.position,
+        duration: this.state.duration,
+        smartMarkSeconds: settings.smartMarkSeconds,
+        keepSkipped: settings.keepSkippedEpisodes,
+        removeFinishedFromQueue: settings.removeFromQueueWhenFinished,
+      });
+      if (outcome.markPlayed) {
+        await markPlayed(current.id, true);
+        this.markedPlayedId = current.id;
+      }
+      if (outcome.dequeue) await dequeue(current.id);
+    }
     if (next) {
       await this.load(next, { autoPlay: true });
     } else {
@@ -565,7 +608,7 @@ class PlayerService {
    */
   async flushPosition(listenedSeconds: number = 0): Promise<void> {
     const { episode, position, duration } = this.state;
-    if (!episode || position <= 0) return;
+    if (!episode || position <= 0 || episode.id === this.markedPlayedId) return;
 
     if (listenedSeconds > 0) {
       // Lazy-import to avoid cyclic dependencies if any
@@ -573,9 +616,11 @@ class PlayerService {
       await addListenedSeconds(episode.feed_id, episode.id, listenedSeconds);
     }
 
-    // Treat "almost the end" as finished so the episode does not linger in
-    // Continue Listening with 8 seconds of outro left.
-    if (duration > 0 && position >= duration - COMPLETION_TAIL_SECONDS) {
+    // "Smart mark as played": stopping in the last few seconds counts as
+    // finishing, so the episode doesn't linger in Continue Listening with only
+    // an outro left. Only when stopped — the periodic save while playing must
+    // keep the real position, or a long threshold would lose it mid-listen.
+    if (!this.state.playing && almostEnded(position, duration, getSettings().smartMarkSeconds)) {
       await markPlayed(episode.id, true);
       return;
     }

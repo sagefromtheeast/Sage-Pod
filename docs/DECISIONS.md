@@ -26,6 +26,7 @@ Format: context → decision → consequences → when to revisit.
 | D-018 | Search: screens keep their own search, with a way out to the library search; online search merges Apple and fyyd | Accepted |
 | D-019 | Library: options in ⋯, tags in the chip row, archive on unsubscribe, Statistics and Settings in the menu | Accepted |
 | D-020 | Downloads: own screen, log in SQLite, ask before mobile data, no download upkeep on web | Accepted |
+| D-021 | Settings: AntennaPod's sub-pages, swipe pairs per list, smart mark 30 s, no "only when charging" | Accepted |
 
 ---
 
@@ -309,3 +310,37 @@ Wi-Fi only" on asks first; automatic downloads keep waiting for Wi-Fi.
 Startup download upkeep (reconcile, resume, clean up) is skipped on web: the
 web build has no files, so it would only wipe the harness's seeded
 downloads. *(Shipped in v0.14.0.)*
+
+## D-021 — Settings: sub-pages, swipes per list, smart mark as played
+
+**Context.** Phase 14 adds about a dozen preferences to a Settings page that
+already ran to some forty rows. The plan said to stop and ask if the page grew
+past a usable length, with sub-pages as the fallback. It also asked for swipe
+actions per list, AntennaPod's "Smart mark as played" and "Keep skipped
+episodes", an episode cleanup choice, mobile-data rules, and "download only
+when charging".
+
+**Decision.**
+- Settings opens on a list of areas, as AntennaPod's does: User interface,
+  Playback, Downloads, Import and export, About. Each is its own page inside
+  the Settings modal. Settings stays reachable from the Library's ⋯ menu.
+- Swipes are a right/left pair per list (Inbox, which Home's inbox section
+  shares; Queue; Episodes; Downloads), stored as `'right|left'` settings and
+  limited to the actions that make sense on that list. They run through
+  `runEpisodeAction`, so they get the same Undo or confirmation as the menu.
+  Inbox and Queue keep their old defaults. Episodes and Downloads gain swipes:
+  queue / played and queue / delete.
+- Smart mark as played defaults to AntennaPod's 30 s (was a fixed 20 s).
+  Skipping an episode with "Keep skipped episodes" off marks it played and
+  removes it from the queue, as AntennaPod does.
+- Episode cleanup offers "when not in queue" (the old rule, still the
+  default), 12 h, 1, 3 or 7 days after played, and never. "Delete when
+  finished" stays a separate switch.
+- Mobile data: downloads (the existing Wi-Fi-only switch, shown the other
+  way round), automatic refresh, and streaming, which asks first when off.
+  Refresh and streaming default to allowed, so nothing changes until the
+  listener turns them off.
+- "Download only when charging" is left out: reading the charging state
+  needs `expo-battery`, a new native module, so it belongs with Phase 17.
+
+*(Shipped in v0.15.0.)*

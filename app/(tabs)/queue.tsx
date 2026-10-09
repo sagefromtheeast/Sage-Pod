@@ -12,7 +12,6 @@ import {
   type FlatList,
 } from 'react-native';
 
-import { runEpisodeAction } from '@/actions/runEpisodeAction';
 import { getInboxCount } from '@/db/episodes';
 import { clearQueue, getQueueSlots, listQueue, reorderQueue, restoreQueueSlots } from '@/db/queue';
 import { setSetting, useSetting } from '@/db/settings';
@@ -28,12 +27,15 @@ import { NoMatches } from '@/ui/NoMatches';
 import { OverflowMenu } from '@/ui/OverflowMenu';
 import { QueueSortSheet } from '@/ui/queue/QueueSortSheet';
 import { SELECTION_BAR_HEIGHT, SelectionBar } from '@/ui/SelectionBar';
-import { SwipeableQueueRow } from '@/ui/SwipeableQueueRow';
+import { SwipeableEpisodeRow } from '@/ui/SwipeableEpisodeRow';
 import { MINI_PLAYER_HEIGHT, radius, space, type as typography } from '@/ui/theme';
 import { showToast } from '@/ui/UndoToast';
 import { useEpisodeSelection } from '@/ui/useEpisodeSelection';
 import { useTheme } from '@/ui/useTheme';
 import { formatDuration } from '@/util/time';
+
+// A constant, so the memoised rows don't see a new array on every render.
+const NO_MOVE_TO_TOP = ['moveToTop'] as const;
 
 const matches = (episode: EpisodeWithFeed, term: string) =>
   episode.title.toLowerCase().includes(term) || episode.feed_title.toLowerCase().includes(term);
@@ -76,8 +78,6 @@ export default function QueueScreen() {
     else void player.load(episode, { autoPlay: true });
   }, []);
 
-  const remove = useCallback((episode: EpisodeWithFeed) => void runEpisodeAction('removeFromQueue', [episode]), []);
-  const moveToTop = useCallback((episode: EpisodeWithFeed) => void runEpisodeAction('moveToTop', [episode]), []);
 
   const refresh = useCallback(async () => {
     setRefreshing(true);
@@ -240,13 +240,13 @@ export default function QueueScreen() {
           ) : null
         }
         renderItem={(item, _index, handle) => (
-          <SwipeableQueueRow
+          <SwipeableEpisodeRow
             episode={item}
+            screen="queue"
             onPlay={play}
-            onRemove={remove}
-            onMoveToTop={moveToTop}
             swipeEnabled={!locked && !selection.active}
-            canMoveToTop={!keptSorted}
+            // Kept sorted: moving to the top would be undone at once.
+            unavailable={keptSorted ? NO_MOVE_TO_TOP : undefined}
             actionHooks={actionHooks}
             selecting={selection.active}
             selected={selection.selected.has(item.id)}
