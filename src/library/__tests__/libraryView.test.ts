@@ -77,6 +77,10 @@ describe('library filter', () => {
       [1, 2, 3, 4]
     );
     assert.deepEqual(filterFeeds(FEEDS, { counter: true }, context).map((f) => f.id), [3]);
+    assert.deepEqual(
+      filterFeeds(FEEDS, { counter: true }, { ...context, counter: 'none' }).map((f) => f.id),
+      [1, 2, 3]
+    );
     assert.deepEqual(filterFeeds(FEEDS, { error: true }, context).map((f) => f.id), [4]);
   });
 

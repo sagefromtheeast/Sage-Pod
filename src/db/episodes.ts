@@ -11,6 +11,9 @@ import type { DownloadState, EpisodeRow, EpisodeWithFeed } from './types';
  */
 export const COMPLETION_TAIL_SECONDS = 20;
 
+/** For queries on `episodes` alone: the episode's podcast is a subscription. */
+const SUBSCRIBED_FEED = "feed_id IN (SELECT id FROM feeds WHERE state = 'subscribed')";
+
 const EPISODE_WITH_FEED = `
   SELECT ${EPISODE_WITH_FEED_COLUMNS}
     FROM episodes e
@@ -438,7 +441,8 @@ export async function listInboxEpisodes(
   // Whitelisted: the ORDER BY can't take a bound parameter.
   const order = INBOX_ORDER[opts.sort ?? 'date:desc'] ?? INBOX_ORDER['date:desc'];
 
-  const where = ['e.is_new = 1', 'e.is_played = 0'];
+  // Only subscriptions feed the Inbox (D-016, D-019), whatever is_new says.
+  const where = ['e.is_new = 1', 'e.is_played = 0', "f.state = 'subscribed'"];
   const params: (string | number)[] = [];
   if (opts.feedId != null) {
     where.push('e.feed_id = ?');
@@ -466,8 +470,8 @@ export async function listInboxEpisodes(
 export async function listInboxIds(feedId: number | null = null): Promise<number[]> {
   const rows = await getDb().getAllAsync<{ id: number }>(
     feedId === null
-      ? 'SELECT id FROM episodes WHERE is_new = 1 AND is_played = 0'
-      : 'SELECT id FROM episodes WHERE is_new = 1 AND is_played = 0 AND feed_id = ?',
+      ? `SELECT id FROM episodes WHERE is_new = 1 AND is_played = 0 AND ${SUBSCRIBED_FEED}`
+      : `SELECT id FROM episodes WHERE is_new = 1 AND is_played = 0 AND ${SUBSCRIBED_FEED} AND feed_id = ?`,
     ...(feedId === null ? [] : [feedId])
   );
   return rows.map((row) => row.id);
@@ -478,7 +482,7 @@ export async function listInboxFeeds(): Promise<InboxFeedInfo[]> {
     `SELECT f.id, COALESCE(f.custom_title, f.title) AS title, f.image_url, COUNT(e.id) AS unplayed_count
        FROM feeds f
        JOIN episodes e ON e.feed_id = f.id
-      WHERE e.is_new = 1 AND e.is_played = 0
+      WHERE e.is_new = 1 AND e.is_played = 0 AND f.state = 'subscribed'
       GROUP BY f.id
       ORDER BY COALESCE(f.custom_title, f.title) COLLATE NOCASE ASC`
   );
@@ -486,7 +490,7 @@ export async function listInboxFeeds(): Promise<InboxFeedInfo[]> {
 
 export async function getInboxCount(): Promise<number> {
   const row = await getDb().getFirstAsync<{ count: number }>(
-    `SELECT COUNT(*) AS count FROM episodes WHERE is_new = 1 AND is_played = 0`
+    `SELECT COUNT(*) AS count FROM episodes WHERE is_new = 1 AND is_played = 0 AND ${SUBSCRIBED_FEED}`
   );
   return row?.count ?? 0;
 }

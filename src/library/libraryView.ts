@@ -133,7 +133,8 @@ function facetValue(feed: LibraryFeedCounts, facet: LibraryFacet, context: Filte
     case 'autoDownload':
       return feed.auto_download_override === null ? context.globalAutoDownload : feed.auto_download_override === 1;
     case 'counter':
-      return counterValue(feed, context.counter) > 0;
+      // With no number shown, "counter" means unplayed, so a saved filter keeps working.
+      return counterValue(feed, context.counter === 'none' ? 'unplayed' : context.counter) > 0;
     case 'error':
       return feed.last_refresh_error !== null;
   }

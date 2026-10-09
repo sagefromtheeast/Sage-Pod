@@ -42,13 +42,20 @@ export function FeedSelectionBar({ selected, total, onSelectAll, onClose }: Prop
   const insets = useSafeAreaInsets();
   const [sheet, setSheet] = useState<Sheet>(null);
   const n = selected.length;
+  const what = n === 1 ? '1 podcast' : `${n} podcasts`;
 
   const apply = async (prefs: Partial<FeedPrefs>, message: string) => {
-    for (const feed of selected) await setFeedPrefs(feed.id, prefs);
-    showToast(message);
     onClose();
+    try {
+      await setFeedPrefs(
+        selected.map((feed) => feed.id),
+        prefs
+      );
+      showToast(message);
+    } catch (error) {
+      showToast(`Couldn't change ${what}: ${error instanceof Error ? error.message : String(error)}`);
+    }
   };
-  const what = n === 1 ? '1 podcast' : `${n} podcasts`;
 
   const triState = (key: 'autoDownload' | 'autoDelete', label: string): SheetItem[] => [
     { key: 'global', label: 'Follow the global setting', icon: 'globe-outline', onPress: () => void apply({ [key]: null }, `${label}: global for ${what}`) },
@@ -171,13 +178,12 @@ export function FeedSelectionBar({ selected, total, onSelectAll, onClose }: Prop
         placeholder="e.g. News"
         confirmLabel="Add tag"
         onSubmit={(tag) => {
-          void addTagToFeeds(
-            selected.map((feed) => feed.id),
-            tag
-          ).then(() => {
-            showToast(`Tagged ${what} “${tag}”`);
-            onClose();
-          });
+          const ids = selected.map((feed) => feed.id);
+          onClose();
+          addTagToFeeds(ids, tag).then(
+            () => showToast(`Tagged ${what} “${tag}”`),
+            (error: unknown) => showToast(`Couldn't add the tag: ${error instanceof Error ? error.message : String(error)}`)
+          );
         }}
         onClose={() => setSheet(null)}
       />

@@ -1,13 +1,14 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, type Href } from 'expo-router';
 import { Tabs } from 'expo-router/js-tabs';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { listLibraryFeeds, renameTag } from '@/db/feeds';
+import { getTags, listLibraryFeeds, renameTag, restoreTags } from '@/db/feeds';
 import { setSetting, useSetting } from '@/db/settings';
 import type { LibraryFeed } from '@/db/types';
 import { useQuery } from '@/db/useQuery';
+import { parseTags } from '@/feed/feedPrefs';
 import { refreshAllFeeds } from '@/feed/sync';
 import {
   allTags,
@@ -20,20 +21,20 @@ import {
   parseLibraryFilter,
   parseSort,
   sortFeeds,
-  type LibraryCounter,
 } from '@/library/libraryView';
 import { ActionSheet } from '@/ui/ActionSheet';
-import { Artwork } from '@/ui/Artwork';
 import { EmptyState } from '@/ui/EmptyState';
 import { triggerHaptic } from '@/ui/haptics';
 import { gridTileSize } from '@/ui/layout';
 import { FEED_SELECTION_BAR_HEIGHT, FeedSelectionBar } from '@/ui/library/FeedSelectionBar';
+import { FeedListRow } from '@/ui/library/FeedListRow';
 import { LibraryDisplaySheet, LibraryFilterSheet } from '@/ui/library/LibrarySheets';
 import { OverflowMenu } from '@/ui/OverflowMenu';
 import { PodcastCard } from '@/ui/PodcastCard';
 import { TextPromptSheet } from '@/ui/TextPromptSheet';
 import { MINI_PLAYER_HEIGHT, radius, space, type as typography } from '@/ui/theme';
 import { useLayout } from '@/ui/useLayout';
+import { showToast } from '@/ui/UndoToast';
 import { useTheme } from '@/ui/useTheme';
 
 type Shortcut = {
@@ -86,10 +87,13 @@ export default function LibraryScreen() {
     () => sortFeeds(filterFeeds(feeds, filter, { counter, globalAutoDownload, tag: activeTag }), sort),
     [feeds, filter, counter, globalAutoDownload, activeTag, sort]
   );
+  // A changed filter or tag ends selecting, so actions never reach podcasts that are no longer shown.
+  useEffect(() => setSelected(null), [filterRaw, activeTag]);
 
   const columns = columnsFor(savedColumns, layout.columns);
   const tileSize = columns === layout.columns ? layout.tileSize : gridTileSize(layout.usableWidth, columns);
   const selecting = selected !== null;
+  const extraData = useMemo(() => [selected, counter, showTitles], [selected, counter, showTitles]);
 
   const refresh = useCallback(async () => {
     setRefreshing(true);
@@ -110,6 +114,13 @@ export default function LibraryScreen() {
   const startSelecting = (id: number) => {
     triggerHaptic('selection');
     setSelected(new Set([id]));
+  };
+  // Deleting a tag is one tap, so it can be undone.
+  const deleteTag = async (name: string) => {
+    const key = name.toLowerCase();
+    const before = await getTags(feeds.filter((feed) => parseTags(feed.tags).some((t) => t.toLowerCase() === key)).map((feed) => feed.id));
+    await renameTag(name, '');
+    showToast(`Tag “${name}” deleted`, () => restoreTags(before));
   };
   const openFeed = (feed: LibraryFeed) => (selecting ? toggle(feed.id) : router.push(`/feed/${feed.id}`));
 
@@ -153,7 +164,7 @@ export default function LibraryScreen() {
         data={shown}
         numColumns={view === 'grid' ? columns : 1}
         keyExtractor={(feed) => String(feed.id)}
-        extraData={[selected, counter, showTitles]}
+        extraData={extraData}
         contentContainerStyle={[
           styles.content,
           {
@@ -196,6 +207,8 @@ export default function LibraryScreen() {
                         onPress={() => {
                           triggerHaptic('selection');
                           setTag(option);
+                          // Selection only covers what is on screen.
+                          setSelected(null);
                         }}
                         onLongPress={option ? () => setTagMenu(option) : undefined}
                         style={[styles.tagChip, { backgroundColor: active ? theme.accent : theme.surfaceAlt }]}
@@ -295,7 +308,7 @@ export default function LibraryScreen() {
 
       {selecting ? (
         <FeedSelectionBar
-          selected={feeds.filter((feed) => selected.has(feed.id))}
+          selected={shown.filter((feed) => selected.has(feed.id))}
           total={shown.length}
           onSelectAll={() => setSelected(new Set(shown.map((feed) => feed.id)))}
           onClose={() => setSelected(null)}
@@ -329,7 +342,7 @@ export default function LibraryScreen() {
                   label: 'Delete tag',
                   icon: 'trash-outline',
                   destructive: true,
-                  onPress: () => void renameTag(tagMenu, ''),
+                  onPress: () => void deleteTag(tagMenu),
                 },
               ]
             : []
@@ -350,76 +363,6 @@ export default function LibraryScreen() {
         onClose={() => setRenaming(null)}
       />
     </>
-  );
-}
-
-function FeedListRow({
-  feed,
-  counter,
-  selecting,
-  selected,
-  onPress,
-  onLongPress,
-}: {
-  feed: LibraryFeed;
-  counter: LibraryCounter;
-  selecting: boolean;
-  selected: boolean;
-  onPress: () => void;
-  onLongPress: () => void;
-}) {
-  const theme = useTheme();
-  const count = counterValue(feed, counter);
-  const counted: Record<LibraryCounter, string> = {
-    unplayed: 'unplayed',
-    inbox: 'in the inbox',
-    downloaded: 'downloaded',
-    downloaded_unplayed: 'downloaded, unplayed',
-    none: '',
-  };
-  return (
-    <Pressable
-      onPress={onPress}
-      onLongPress={onLongPress}
-      delayLongPress={400}
-      style={({ pressed }) => [
-        styles.listRow,
-        {
-          backgroundColor: pressed || selected ? theme.surfaceAlt : 'transparent',
-          borderBottomColor: theme.border,
-        },
-      ]}
-      accessibilityRole={selecting ? 'checkbox' : 'button'}
-      accessibilityState={selecting ? { checked: selected } : undefined}
-    >
-      <Artwork uri={feed.image_url} size={52} borderRadius={radius.md} />
-      <View style={styles.listRowBody}>
-        <Text style={[styles.listRowTitle, { color: theme.text }]} numberOfLines={1}>
-          {feed.title}
-        </Text>
-        {feed.author ? (
-          <Text style={[styles.listRowSubtitle, { color: theme.textMuted }]} numberOfLines={1}>
-            {feed.author}
-          </Text>
-        ) : null}
-        <Text style={[styles.listRowMeta, { color: feed.last_refresh_error ? theme.danger : theme.textFaint }]}>
-          {feed.last_refresh_error
-            ? 'Last refresh failed'
-            : `${counter !== 'none' && count > 0 ? `${count} ${counted[counter]} · ` : ''}${feed.episode_count} episode${
-                feed.episode_count === 1 ? '' : 's'
-              }`}
-        </Text>
-      </View>
-      {selecting ? (
-        <Ionicons
-          name={selected ? 'checkmark-circle' : 'ellipse-outline'}
-          size={24}
-          color={selected ? theme.accent : theme.textMuted}
-        />
-      ) : (
-        <Ionicons name="chevron-forward" size={18} color={theme.textFaint} />
-      )}
-    </Pressable>
   );
 }
 
@@ -501,28 +444,5 @@ const styles = StyleSheet.create({
   filteredLink: {
     ...typography.caption,
     fontWeight: '700',
-  },
-  listRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: space.md,
-    paddingVertical: space.sm,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  listRowBody: {
-    flex: 1,
-    gap: 2,
-  },
-  listRowTitle: {
-    ...typography.body,
-    fontWeight: '600',
-  },
-  listRowSubtitle: {
-    ...typography.caption,
-  },
-  listRowMeta: {
-    ...typography.caption,
-    fontSize: 11,
-    marginTop: 2,
   },
 });

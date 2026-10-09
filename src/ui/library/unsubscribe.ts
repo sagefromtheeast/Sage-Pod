@@ -1,6 +1,6 @@
 import { Alert } from 'react-native';
 
-import { archiveFeed, deleteFeed } from '@/db/feeds';
+import { archiveFeeds, deleteFeed } from '@/db/feeds';
 import { showToast } from '@/ui/UndoToast';
 
 /**
@@ -19,17 +19,26 @@ export function askToUnsubscribe(feeds: readonly { id: number; title: string }[]
       {
         text: 'Archive',
         onPress: async () => {
-          for (const feed of feeds) await archiveFeed(feed.id);
-          showToast(feeds.length === 1 ? `${feeds[0].title} archived` : `${feeds.length} podcasts archived`);
           onDone?.();
+          try {
+            await archiveFeeds(feeds.map((feed) => feed.id));
+            showToast(feeds.length === 1 ? `${feeds[0].title} archived` : `${feeds.length} podcasts archived`);
+          } catch (error) {
+            showToast(`Couldn't archive ${what}: ${error instanceof Error ? error.message : String(error)}`);
+          }
         },
       },
       {
         text: 'Delete',
         style: 'destructive',
         onPress: async () => {
-          for (const feed of feeds) await deleteFeed(feed.id);
           onDone?.();
+          try {
+            // One at a time: each removes its own downloaded files first.
+            for (const feed of feeds) await deleteFeed(feed.id);
+          } catch (error) {
+            showToast(`Couldn't delete ${what}: ${error instanceof Error ? error.message : String(error)}`);
+          }
         },
       },
     ]
