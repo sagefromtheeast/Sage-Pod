@@ -385,6 +385,17 @@ class PlayerService {
     void this.flushPosition();
   }
 
+  /**
+   * Lets go of the episode before the database is replaced (Restore backup):
+   * its position is saved into the old data first, and nothing afterwards can
+   * write it into the restored one. The app restarts straight after.
+   */
+  async release(): Promise<void> {
+    if (this.state.playing) this.player?.pause();
+    await this.flushPosition();
+    this.teardownPlayer();
+  }
+
   togglePlayPause(): void {
     if (this.state.playing) this.pause();
     else this.play();
