@@ -50,6 +50,17 @@ export function seedSql() {
   // Listening history for the stats screen.
   for (let d = 0; d < 14; d++) s.push(`INSERT INTO playback_history (episode_id, feed_id, listened_seconds, date)
     VALUES (${(d % 6) * 8 + 6}, ${(d % 6) + 1}, ${600 + ((d * 1337) % 3000)}, '${new Date(NOW - d * DAY).toISOString().slice(0, 10)}');`);
+  // Phase 15: a year of older listening for Statistics › Years, in the same
+  // proportions per podcast as the fortnight above so Home's classics keep their order.
+  const recent = [0, 0, 0, 0, 0, 0];
+  for (let d = 0; d < 14; d++) recent[d % 6] += 600 + ((d * 1337) % 3000);
+  [0.3, 0.5, 0.8, 0.4, 0.6, 0.9, 0.7, 0.5, 0.3, 0.6, 0.8, 0.4, 0.5].forEach((weight, i) => {
+    const date = new Date(NOW);
+    date.setUTCDate(12);
+    date.setUTCMonth(date.getUTCMonth() - i - 1);
+    recent.forEach((total, f) => s.push(`INSERT INTO playback_history (episode_id, feed_id, listened_seconds, date)
+      VALUES (${f * 8 + 6}, ${f + 1}, ${Math.round(total * weight)}, '${date.toISOString().slice(0, 10)}');`));
+  });
   // Phase 9: funding links on The Quiet Hour, a failed refresh on Night Shift
   // Stories, and a podcast being previewed (not subscribed: kept out of Library).
   s.push(`UPDATE feeds SET funding = ${q(JSON.stringify([{ url: 'https://sagepod.test/support', label: 'Become a member' }]))} WHERE id = 1;`);

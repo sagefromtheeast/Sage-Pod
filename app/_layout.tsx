@@ -131,7 +131,7 @@ function AppShell() {
           {/* Has its own title and close button. */}
           <Stack.Screen name="add-feed" options={{ headerShown: false, presentation: 'modal' }} />
           <Stack.Screen name="settings" options={{ headerShown: false, presentation: 'modal' }} />
-          <Stack.Screen name="stats" options={{ title: 'Statistics', presentation: 'modal' }} />
+          <Stack.Screen name="stats" options={{ headerShown: false, presentation: 'modal' }} />
         </Stack>
         {/* App-wide overlays: the episode long-press menu and the undo toast. */}
         <EpisodeActionsHost />

@@ -36,6 +36,7 @@ import { fetchOlderFeedEpisodes, refreshFeed, refreshFeedCompletely, subscribe }
 import { player } from '@/player';
 import { ActionSheet, type IconName } from '@/ui/ActionSheet';
 import { Artwork } from '@/ui/Artwork';
+import { Chip } from '@/ui/Chip';
 import { EmptyState } from '@/ui/EmptyState';
 import { EpisodeRow } from '@/ui/EpisodeRow';
 import { FeedFilterSheet } from '@/ui/feed/FeedFilterSheet';
@@ -326,14 +327,15 @@ export default function FeedScreen() {
               </View>
             ) : (
               <View style={styles.actions}>
-                <ActionChip icon="information-circle-outline" label="Info" onPress={() => router.push(`/feed/info/${feed.id}`)} />
-                <ActionChip
+                <Chip style={styles.chip} icon="information-circle-outline" label="Info" onPress={() => router.push(`/feed/info/${feed.id}`)} />
+                <Chip
+                  style={styles.chip}
                   icon={filtered ? 'funnel' : 'funnel-outline'}
                   label="Filter"
                   active={filtered}
                   onPress={() => setSheet('filter')}
                 />
-                <ActionChip icon="settings-outline" label="Settings" onPress={() => router.push(`/feed/settings/${feed.id}`)} />
+                <Chip style={styles.chip} icon="settings-outline" label="Settings" onPress={() => router.push(`/feed/settings/${feed.id}`)} />
               </View>
             )}
 
@@ -460,34 +462,6 @@ export default function FeedScreen() {
   );
 }
 
-function ActionChip({
-  icon,
-  label,
-  onPress,
-  active = false,
-}: {
-  icon: IconName;
-  label: string;
-  onPress: () => void;
-  active?: boolean;
-}) {
-  const theme = useTheme();
-  return (
-    <Pressable
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.chip,
-        { backgroundColor: active ? theme.accent : theme.surfaceAlt, opacity: pressed ? 0.8 : 1 },
-      ]}
-      accessibilityRole="button"
-      accessibilityState={{ selected: active }}
-    >
-      <Ionicons name={icon} size={16} color={active ? theme.onAccent : theme.textMuted} />
-      <Text style={[styles.chipLabel, { color: active ? theme.onAccent : theme.textMuted }]}>{label}</Text>
-    </Pressable>
-  );
-}
-
 /** AntennaPod's podcast-page status banners: refresh failed, updates off, filtered. */
 function Banner({
   icon,
@@ -580,12 +554,8 @@ const styles = StyleSheet.create({
   },
   chip: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: space.xs,
+    paddingHorizontal: 0,
     paddingVertical: space.sm,
-    borderRadius: radius.pill,
   },
   chipLabel: {
     ...typography.caption,

@@ -344,3 +344,41 @@ when charging".
   needs `expo-battery`, a new native module, so it belongs with Phase 17.
 
 *(Shipped in v0.15.0.)*
+
+## D-022 — Statistics: three tabs, svg charts, a reset that keeps history
+
+**Context.** Phase 15 asks for AntennaPod's Statistics: Subscriptions,
+Years and Downloads tabs, a date filter with "include marked played",
+Reset statistics, and a per-podcast view with a release schedule guess. The
+plan said to stop and ask before adding a charting library.
+
+**Decision.**
+- No charting library. The donut and bar charts are a few `react-native-svg`
+  paths (already installed); the geometry and every total come from pure
+  helpers in `src/stats/` with tests. SQL returns per-podcast-per-month rows.
+- Slices use the accent at falling strengths, with "other" in the faint text
+  colour, so the charts stay in Sage Pod's palette. Six slices at most.
+- The date filter is a short list of ranges (all time, last 30 days, last 12
+  months, this year, last year) rather than AntennaPod's month pickers. It
+  and "include marked played" are saved as settings.
+- "Include marked played" adds the part of each played episode that was not
+  heard in the app, dated by when the episode was last played (`played_at`;
+  there is no separate "marked" time, and AntennaPod also uses the last
+  played time).
+- Reset statistics deletes nothing. It saves the time and the newest history
+  row, and statistics count only later rows and plays; a listen that carries
+  on past the reset starts a new row. History stays for Home's "Check your
+  classics" and the info page's lifetime "Listened".
+- Days, months and years are the device's local ones (history used to be
+  stored by UTC day; older rows keep their UTC dates).
+- The release guess treats episodes within 12 hours of each other as one
+  release, so two-part episodes and whole seasons dropped at once don't read
+  as a daily show.
+- Tabs use a new solid `SegmentedTabs`, not `GlassSegmentedControl`: off
+  iOS 26 the glass thumb drops the accent fill and the selected label loses
+  its contrast.
+- The release schedule (daily, weekdays, set days, weekly, fortnightly,
+  monthly, or none) is guessed from the latest 20 releases and shown
+  on the podcast's statistics and info pages.
+
+*(Shipped in v0.16.0.)*
