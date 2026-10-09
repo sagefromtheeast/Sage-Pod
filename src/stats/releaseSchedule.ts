@@ -15,8 +15,11 @@ export type ReleaseSchedule =
 
 const DAY = 24 * 60 * 60 * 1000;
 
-/** How many recent episodes the guess looks at; old habits don't count. */
-const WINDOW = 20;
+/** How many recent release days the guess looks at; old habits don't count. */
+export const RELEASE_WINDOW = 20;
+
+/** Episodes this close together are one release (a two-part episode, a season dropped at once). */
+const SAME_RELEASE = 12 * 60 * 60 * 1000;
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 const SHORT_DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -28,17 +31,22 @@ function median(values: number[]): number {
 }
 
 /**
- * `dates` are publish times in ms, in any order. `dayOf` gives a time's
+ * `dates` are publish times in ms, in any order; pass a few times
+ * RELEASE_WINDOW of them, since several episodes can make one release. `dayOf` gives a time's
  * weekday (0 = Sunday); it defaults to the device's local weekday.
  */
 export function guessReleaseSchedule(
   dates: readonly (number | null | undefined)[],
   dayOf: (ms: number) => number = (ms) => new Date(ms).getDay()
 ): ReleaseSchedule {
-  const recent = dates
-    .filter((d): d is number => typeof d === 'number' && Number.isFinite(d))
-    .sort((a, b) => b - a)
-    .slice(0, WINDOW);
+  const sorted = dates.filter((d): d is number => typeof d === 'number' && Number.isFinite(d)).sort((a, b) => b - a);
+  // Gaps are measured between releases, not episodes: same-day episodes would
+  // otherwise pull the typical gap towards zero.
+  const recent: number[] = [];
+  for (const d of sorted) {
+    if (recent.length === RELEASE_WINDOW) break;
+    if (recent.length === 0 || recent[recent.length - 1] - d >= SAME_RELEASE) recent.push(d);
+  }
   if (recent.length < 4) return { kind: 'unknown' };
 
   const gaps = recent.slice(1).map((d, i) => (recent[i] - d) / DAY);

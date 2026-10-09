@@ -6,6 +6,7 @@ import {
   donutArc,
   donutSlices,
   formatListenTime,
+  localDay,
   markedPlayedRows,
   parseStatsRange,
   rangeBounds,
@@ -91,9 +92,10 @@ describe('statistics grouping', () => {
 });
 
 describe('statistics date ranges', () => {
-  const now = Date.parse('2026-10-09T08:00:00Z');
+  // Local time, as the app uses: 9 October 2026, 8 am on this machine.
+  const now = new Date(2026, 9, 9, 8).getTime();
 
-  it('turns each range into inclusive day bounds', () => {
+  it('turns each range into inclusive local day bounds', () => {
     assert.deepEqual(rangeBounds('all', now), { from: null, to: null });
     assert.deepEqual(rangeBounds('last30', now), { from: '2026-09-10', to: null });
     assert.deepEqual(rangeBounds('last12m', now), { from: '2025-11-01', to: null });
@@ -101,10 +103,9 @@ describe('statistics date ranges', () => {
     assert.deepEqual(rangeBounds('lastYear', now), { from: '2025-01-01', to: '2025-12-31' });
   });
 
-  it('starts no earlier than the last reset', () => {
-    assert.deepEqual(rangeBounds('all', now, '2026-05-02'), { from: '2026-05-02', to: null });
-    assert.deepEqual(rangeBounds('last30', now, '2026-05-02'), { from: '2026-09-10', to: null });
-    assert.deepEqual(rangeBounds('lastYear', now, '2026-05-02'), { from: '2026-05-02', to: '2025-12-31' });
+  it('writes the local day, not the UTC one', () => {
+    assert.equal(localDay(new Date(2026, 11, 31, 23, 30).getTime()), '2026-12-31');
+    assert.equal(localDay(new Date(2027, 0, 1, 0, 15).getTime()), '2027-01-01');
   });
 
   it('falls back to all time for an unknown saved range', () => {
@@ -206,6 +207,18 @@ describe('release schedule', () => {
     const dates = series('2026-01-05', 7, 6).flatMap((monday) => [monday, monday + 3 * DAY]);
     assert.deepEqual(guess(dates), { kind: 'specificDays', days: [1, 4] });
     assert.equal(formatReleaseSchedule(guess(dates)), 'Mon, Thu');
+  });
+
+  it('counts several episodes on one day as one release', () => {
+    // Part 1 and Part 2 every Monday, an hour apart.
+    const dates = series('2026-01-05', 7, 8).flatMap((monday) => [monday, monday + 3600000]);
+    assert.deepEqual(guess(dates), { kind: 'weekly', day: 1 });
+  });
+
+  it('does not read a season dropped at once as a daily show', () => {
+    // Ten episodes on one Tuesday, and ten on a Tuesday a year earlier.
+    const drop = (iso: string) => Array.from({ length: 10 }, (_, i) => at(iso) + i * 60000);
+    assert.deepEqual(guess([...drop('2026-03-03'), ...drop('2025-03-04')]), { kind: 'unknown' });
   });
 
   it('calls a scattered feed irregular', () => {

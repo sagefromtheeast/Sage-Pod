@@ -3,11 +3,11 @@ import { ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { getFeed, getFeedStats, type FeedStats } from '@/db/feeds';
 import { useSetting } from '@/db/settings';
-import { getListenRows, getPublishDates, getStatsResetAt } from '@/db/stats';
+import { getListenRows, getPublishDates, getStatsReset } from '@/db/stats';
 import type { FeedWithCounts } from '@/db/types';
 import { useQuery } from '@/db/useQuery';
 import { formatBytes } from '@/player/downloads';
-import { formatListenTime, isoDay, monthInitial, rangeBounds, totalsByMonth, type ListenRow } from '@/stats/aggregate';
+import { formatListenTime, localDay, monthInitial, totalsByMonth, type ListenRow } from '@/stats/aggregate';
 import { formatReleaseSchedule, guessReleaseSchedule } from '@/stats/releaseSchedule';
 import { Artwork } from '@/ui/Artwork';
 import { BarChart } from '@/ui/stats/charts';
@@ -26,11 +26,10 @@ export default function FeedStatisticsScreen() {
   const { data: feed } = useQuery<FeedWithCounts | null>(() => getFeed(feedId), ['feeds'], [feedId]);
   const { data } = useQuery<Detail>(
     async () => {
-      const resetAt = await getStatsResetAt();
-      const since = resetAt === null ? null : isoDay(resetAt);
+      const reset = await getStatsReset();
       const [stats, rows, dates] = await Promise.all([
         getFeedStats(feedId),
-        getListenRows({ ...rangeBounds('all', Date.now(), since), includeMarkedPlayed, resetAt, feedId }),
+        getListenRows({ from: null, to: null, includeMarkedPlayed, reset, feedId }),
         getPublishDates(feedId),
       ]);
       return { stats, rows, dates };
@@ -42,7 +41,7 @@ export default function FeedStatisticsScreen() {
   if (!data) return <View style={[styles.root, { backgroundColor: theme.bg }]} />;
   const { stats, rows, dates } = data;
   const played = rows.reduce((sum, row) => sum + row.seconds, 0);
-  const months = totalsByMonth(rows, isoDay(Date.now()).slice(0, 7));
+  const months = totalsByMonth(rows, localDay(Date.now()).slice(0, 7));
 
   return (
     <ScrollView style={{ backgroundColor: theme.bg }} contentContainerStyle={styles.content}>

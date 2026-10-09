@@ -26,44 +26,30 @@ export function parseStatsRange(raw: string | null | undefined): StatsRange {
   return STATS_RANGES.includes(raw as StatsRange) ? (raw as StatsRange) : 'all';
 }
 
-/** 'YYYY-MM-DD' in UTC, the format `playback_history.date` is stored in. */
-export function isoDay(ms: number): string {
-  return new Date(ms).toISOString().slice(0, 10);
+const pad = (n: number) => String(n).padStart(2, '0');
+
+/** The device's local day as 'YYYY-MM-DD', the format `playback_history.date` is stored in. */
+export function localDay(ms: number): string {
+  const d = new Date(ms);
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-/**
- * Inclusive 'YYYY-MM-DD' bounds for a range, either end null when open. `since`
- * (the last Reset statistics) moves the start forward.
- */
-export function rangeBounds(
-  range: StatsRange,
-  now: number,
-  since: string | null = null
-): { from: string | null; to: string | null } {
-  const year = new Date(now).getUTCFullYear();
-  let from: string | null = null;
-  let to: string | null = null;
+/** Inclusive local 'YYYY-MM-DD' bounds for a range, either end null when open. */
+export function rangeBounds(range: StatsRange, now: number): { from: string | null; to: string | null } {
+  const d = new Date(now);
+  const year = d.getFullYear();
   switch (range) {
     case 'last30':
-      from = isoDay(now - 29 * DAY_MS);
-      break;
-    case 'last12m': {
-      const d = new Date(now);
-      from = isoDay(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - 11, 1));
-      break;
-    }
+      return { from: localDay(new Date(year, d.getMonth(), d.getDate() - 29).getTime()), to: null };
+    case 'last12m':
+      return { from: localDay(new Date(year, d.getMonth() - 11, 1).getTime()), to: null };
     case 'thisYear':
-      from = `${year}-01-01`;
-      break;
+      return { from: `${year}-01-01`, to: null };
     case 'lastYear':
-      from = `${year - 1}-01-01`;
-      to = `${year - 1}-12-31`;
-      break;
+      return { from: `${year - 1}-01-01`, to: `${year - 1}-12-31` };
+    default:
+      return { from: null, to: null };
   }
-  if (since && (!from || since > from)) from = since;
-  return { from, to };
 }
 
 /**
@@ -91,8 +77,9 @@ export function totalsByFeed(rows: readonly ListenRow[]): FeedTotal[] {
 /** 'YYYY-MM' for the month `offset` months after `month`. */
 export function addMonths(month: string, offset: number): string {
   const [y, m] = month.split('-').map(Number);
-  const d = new Date(Date.UTC(y, m - 1 + offset, 1));
-  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`;
+  // Plain arithmetic, so the device's time zone can't shift the month.
+  const index = y * 12 + (m - 1) + offset;
+  return `${Math.floor(index / 12)}-${pad((index % 12) + 1)}`;
 }
 
 export type MonthTotal = { month: string; seconds: number };

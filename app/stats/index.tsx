@@ -1,4 +1,3 @@
-import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
 import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
@@ -8,7 +7,7 @@ import {
   getDownloadStats,
   getListenRows,
   getStatsFeeds,
-  getStatsResetAt,
+  getStatsReset,
   resetStatistics,
   type StatsFeed,
 } from '@/db/stats';
@@ -17,7 +16,7 @@ import { formatBytes } from '@/player/downloads';
 import {
   donutSlices,
   formatListenTime,
-  isoDay,
+  localDay,
   monthInitial,
   parseStatsRange,
   rangeBounds,
@@ -31,6 +30,7 @@ import {
 } from '@/stats/aggregate';
 import { ActionSheet } from '@/ui/ActionSheet';
 import { Artwork } from '@/ui/Artwork';
+import { Chip } from '@/ui/Chip';
 import { EmptyState } from '@/ui/EmptyState';
 import { triggerHaptic } from '@/ui/haptics';
 import { OverflowMenu } from '@/ui/OverflowMenu';
@@ -72,15 +72,15 @@ export default function StatisticsScreen() {
 
   const { data } = useQuery<StatsData>(
     async () => {
-      const resetAt = await getStatsResetAt();
-      const since = resetAt === null ? null : isoDay(resetAt);
-      const now = Date.now();
-      const [feeds, ranged, allTime, downloads] = await Promise.all([
+      const reset = await getStatsReset();
+      const bounds = rangeBounds(range, Date.now());
+      const [feeds, allTime, downloads] = await Promise.all([
         getStatsFeeds(),
-        getListenRows({ ...rangeBounds(range, now, since), includeMarkedPlayed, resetAt }),
-        getListenRows({ ...rangeBounds('all', now, since), includeMarkedPlayed, resetAt }),
+        getListenRows({ from: null, to: null, includeMarkedPlayed, reset }),
         getDownloadStats(),
       ]);
+      // "All time" is the same query as the Years tab's; don't run it twice.
+      const ranged = range === 'all' ? allTime : await getListenRows({ ...bounds, includeMarkedPlayed, reset });
       return { feeds, ranged, allTime, downloads };
     },
     ['playback_history', 'episodes', 'feeds', 'settings'],
@@ -90,7 +90,7 @@ export default function StatisticsScreen() {
   const confirmReset = () => {
     Alert.alert(
       'Reset statistics?',
-      'Statistics start again from now. Your podcasts, episodes and played states are kept.',
+      'Statistics start again from now. Podcasts, episodes, played states and listening history are kept.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -156,13 +156,13 @@ function SubscriptionsTab({
   return (
     <>
       <View style={styles.filters}>
-        <FilterChip
+        <Chip
           icon="calendar-outline"
           label={STATS_RANGE_LABELS[range]}
           onPress={() => setChoosingRange(true)}
           accessibilityLabel={`Date range: ${STATS_RANGE_LABELS[range]}`}
         />
-        <FilterChip
+        <Chip
           icon={includeMarkedPlayed ? 'checkmark-circle' : 'ellipse-outline'}
           label="Include marked played"
           active={includeMarkedPlayed}
@@ -213,8 +213,7 @@ function SubscriptionsTab({
       )}
       {includeMarkedPlayed ? (
         <Text style={[styles.note, { color: theme.textFaint }]}>
-          Played episodes count in full: any part not heard in Sage Pod is added on the day the episode was marked
-          played.
+          Played episodes count in full: any part not heard in Sage Pod is added on the day the episode was last played.
         </Text>
       ) : null}
     </>
@@ -223,7 +222,7 @@ function SubscriptionsTab({
 
 function YearsTab({ data }: { data: StatsData }) {
   const theme = useTheme();
-  const months = totalsByMonth(data.allTime, isoDay(Date.now()).slice(0, 7));
+  const months = totalsByMonth(data.allTime, localDay(Date.now()).slice(0, 7));
   const years = totalsByYear(data.allTime);
   const best = Math.max(1, ...years.map((y) => y.seconds));
 
@@ -344,34 +343,6 @@ function FeedRow({
   );
 }
 
-function FilterChip({
-  icon,
-  label,
-  active = false,
-  onPress,
-  accessibilityLabel,
-}: {
-  icon: React.ComponentProps<typeof Ionicons>['name'];
-  label: string;
-  active?: boolean;
-  onPress: () => void;
-  accessibilityLabel?: string;
-}) {
-  const theme = useTheme();
-  return (
-    <Pressable
-      onPress={onPress}
-      style={[styles.chip, { backgroundColor: active ? theme.accent : theme.surfaceAlt }]}
-      accessibilityRole="button"
-      accessibilityState={{ selected: active }}
-      accessibilityLabel={accessibilityLabel ?? label}
-    >
-      <Ionicons name={icon} size={14} color={active ? theme.onAccent : theme.textMuted} />
-      <Text style={[styles.chipLabel, { color: active ? theme.onAccent : theme.textMuted }]}>{label}</Text>
-    </Pressable>
-  );
-}
-
 const styles = StyleSheet.create({
   root: {
     flex: 1,
@@ -389,18 +360,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: space.xs,
-  },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: space.md,
-    paddingVertical: space.xs,
-    borderRadius: radius.pill,
-  },
-  chipLabel: {
-    ...typography.caption,
-    fontWeight: '600',
   },
   chart: {
     alignItems: 'center',

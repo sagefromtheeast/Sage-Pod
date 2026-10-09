@@ -1,19 +1,48 @@
-import { isoDay, markedPlayedRows, type ListenRow, type PlayedEpisodeRow } from '@/stats/aggregate';
+import { RELEASE_WINDOW } from '@/stats/releaseSchedule';
+import { localDay, markedPlayedRows, type ListenRow, type PlayedEpisodeRow } from '@/stats/aggregate';
 
 import { getDb } from './index';
 import { getMeta, setMeta } from './settings';
 
-const STATS_RESET_KEY = 'statsResetAt';
+const STATS_RESET_KEY = 'statsReset';
+
+/**
+ * The last Reset statistics: when it happened and the newest history row at
+ * that moment. Statistics count only rows after it, so nothing is deleted.
+ */
+export type StatsReset = { at: number; rowId: number };
+
+/** Cached for `addListenedSeconds`, which runs every few seconds during playback. */
+let cachedReset: StatsReset | null | undefined;
+
+export async function getStatsReset(): Promise<StatsReset | null> {
+  if (cachedReset !== undefined) return cachedReset;
+  const raw = await getMeta(STATS_RESET_KEY);
+  let reset: StatsReset | null = null;
+  try {
+    const value = raw ? (JSON.parse(raw) as Partial<StatsReset>) : null;
+    if (value && Number.isFinite(value.at) && Number.isFinite(value.rowId)) {
+      reset = { at: value.at!, rowId: value.rowId! };
+    }
+  } catch {
+    // An unreadable value counts as never reset.
+  }
+  cachedReset = reset;
+  return reset;
+}
 
 export async function addListenedSeconds(feedId: number, episodeId: number, seconds: number): Promise<void> {
-  const date = new Date().toISOString().split('T')[0];
+  const date = localDay(Date.now());
   const db = getDb();
+  const reset = await getStatsReset();
 
-  // Try to update existing record for this episode today
+  // Add to today's row for this episode, unless that row is from before a
+  // reset: then start a new one, so the time after the reset is counted.
   const existing = await db.getFirstAsync<{ id: number; listened_seconds: number }>(
-    'SELECT id, listened_seconds FROM playback_history WHERE episode_id = ? AND date = ?',
+    'SELECT id, listened_seconds FROM playback_history WHERE episode_id = ? AND date = ? AND id > ?',
     episodeId,
-    date
+    date,
+    reset?.rowId ?? 0
   );
 
   if (existing) {
@@ -33,24 +62,17 @@ export async function addListenedSeconds(feedId: number, episodeId: number, seco
   }
 }
 
-/** When statistics were last reset (ms), or null. Set by `resetStatistics`. */
-export async function getStatsResetAt(): Promise<number | null> {
-  const raw = await getMeta(STATS_RESET_KEY);
-  const value = raw === null ? NaN : Number(raw);
-  return Number.isFinite(value) ? value : null;
-}
-
 /**
- * Reset statistics (AntennaPod's menu item). Statistics count from now on; the
- * history itself stays, because Home's "Check your classics" reads it. Today's
- * rows go, so the statistics read zero straight after a reset.
+ * Reset statistics (AntennaPod's menu item): they count from now on. The
+ * history itself stays, because Home's "Check your classics" and the podcast
+ * info page's "Listened" read it.
  */
 export async function resetStatistics(now = Date.now()): Promise<void> {
   const db = getDb();
-  await db.withTransactionAsync(async () => {
-    await db.runAsync('DELETE FROM playback_history WHERE date >= ?', isoDay(now));
-    await setMeta(STATS_RESET_KEY, String(now));
-  });
+  const row = await db.getFirstAsync<{ rowId: number | null }>('SELECT MAX(id) AS rowId FROM playback_history');
+  const reset = { at: now, rowId: row?.rowId ?? 0 };
+  await setMeta(STATS_RESET_KEY, JSON.stringify(reset));
+  cachedReset = reset;
 }
 
 /** The filter's date bounds and podcast as SQL conditions on the given columns. */
@@ -76,8 +98,8 @@ export type StatsFilter = {
   from: string | null;
   to: string | null;
   includeMarkedPlayed: boolean;
-  /** Only played_at at or after this counts as "marked played" (the last reset). */
-  resetAt: number | null;
+  /** The last reset: older history rows and plays don't count. */
+  reset: StatsReset | null;
   feedId?: number;
 };
 
@@ -92,22 +114,25 @@ export async function getListenRows(filter: StatsFilter): Promise<ListenRow[]> {
   const heard = await db.getAllAsync<ListenRow>(
     `SELECT feed_id AS feedId, substr(date, 1, 7) AS month, SUM(listened_seconds) AS seconds
        FROM playback_history
-      ${heardWhere.sql.length ? `WHERE ${heardWhere.sql.join(' AND ')}` : ''}
+      WHERE id > ? ${heardWhere.sql.map((c) => `AND ${c}`).join(' ')}
       GROUP BY feed_id, month`,
+    filter.reset?.rowId ?? 0,
     ...heardWhere.args
   );
   if (!filter.includeMarkedPlayed) return heard;
 
-  const playedWhere = conditions(filter, "date(e.played_at / 1000, 'unixepoch')", 'e.feed_id');
+  // played_at is when the episode was last played, which is also what
+  // AntennaPod's statistics date "marked played" time by.
+  const playedWhere = conditions(filter, "date(e.played_at / 1000, 'unixepoch', 'localtime')", 'e.feed_id');
   const played = await db.getAllAsync<PlayedEpisodeRow>(
-    `SELECT e.feed_id AS feedId, strftime('%Y-%m', e.played_at / 1000, 'unixepoch') AS month,
+    `SELECT e.feed_id AS feedId, strftime('%Y-%m', e.played_at / 1000, 'unixepoch', 'localtime') AS month,
             e.duration AS duration, COALESCE(h.seconds, 0) AS listened
        FROM episodes e
        LEFT JOIN (SELECT episode_id, SUM(listened_seconds) AS seconds
                     FROM playback_history GROUP BY episode_id) h ON h.episode_id = e.id
       WHERE e.is_played = 1 AND e.played_at IS NOT NULL AND e.duration > 0 AND e.played_at >= ?
         ${playedWhere.sql.map((c) => `AND ${c}`).join(' ')}`,
-    filter.resetAt ?? 0,
+    filter.reset?.at ?? 0,
     ...playedWhere.args
   );
   return [...heard, ...markedPlayedRows(played)];
@@ -137,7 +162,7 @@ export async function getDownloadStats(): Promise<DownloadStat[]> {
 }
 
 /** The podcast's recent publish dates, for `guessReleaseSchedule`. */
-export async function getPublishDates(feedId: number, limit = 20): Promise<number[]> {
+export async function getPublishDates(feedId: number, limit = RELEASE_WINDOW * 3): Promise<number[]> {
   const rows = await getDb().getAllAsync<{ published_at: number }>(
     `SELECT published_at FROM episodes
       WHERE feed_id = ? AND published_at IS NOT NULL
