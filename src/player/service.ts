@@ -22,6 +22,8 @@ import { confirmMeteredStreaming } from '@/player/meteredGuard';
 import { afterSkip, almostEnded } from '@/player/playedRules';
 import { positionAfterPause } from '@/player/resumeRewind';
 import { clampSpeed } from '@/player/speed';
+import { basicAuthHeader } from '@/feed/auth';
+import { feedCredentialsFor } from '@/feed/credentials';
 import { boolOverride, resolveOverride, shouldSkipEnding, volumeFor } from '@/feed/feedPrefs';
 import {
   afterEpisodeFinished,
@@ -203,6 +205,8 @@ class PlayerService {
     const settings = getSettings();
     const localUri = episode.download_state === 'done' ? getLocalEpisodePath(episode) : null;
     const source = localUri ?? episode.media_url;
+    // A password-protected podcast's stream, from the feed's own host.
+    const auth = localUri ? null : await feedCredentialsFor(episode.feed_id, source);
 
     const skipIntro = episode.feed_skip_intro_seconds ?? 0;
     let startAt = options.startAt ?? episode.position;
@@ -230,7 +234,7 @@ class PlayerService {
       error: null,
     });
 
-    const player = createAudioPlayer(source, {
+    const player = createAudioPlayer(auth ? { uri: source, headers: { Authorization: basicAuthHeader(auth) } } : source, {
       updateInterval: STATUS_INTERVAL_MS,
       keepAudioSessionActive: true,
     });

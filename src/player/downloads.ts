@@ -12,6 +12,8 @@ import { getSettings } from '@/db/settings';
 import { notifyDownloadFailed } from '@/notify';
 import { boolOverride, resolveOverride } from '@/feed/feedPrefs';
 import type { EpisodeWithFeed } from '@/db/types';
+import { basicAuthHeader } from '@/feed/auth';
+import { feedCredentialsFor } from '@/feed/credentials';
 import { USER_AGENT } from '@/feed/fetch';
 import {
   fileNameFor,
@@ -250,10 +252,13 @@ async function run(episodeId: number, isAuto: boolean, attempt = 0): Promise<voi
 
   const destination = new File(downloadDirectory(), fileNameFor(episode));
   const isExpoGo = Constants.appOwnership === 'expo';
+  // A password-protected podcast's file, sent the password only on the feed's own host.
+  const auth = await feedCredentialsFor(episode.feed_id, episode.media_url);
   const task = File.createDownloadTask(episode.media_url, destination, {
     sessionType: isExpoGo ? 'foreground' : 'background',
     headers: {
       'User-Agent': USER_AGENT,
+      ...(auth ? { Authorization: basicAuthHeader(auth) } : {}),
     },
   });
 

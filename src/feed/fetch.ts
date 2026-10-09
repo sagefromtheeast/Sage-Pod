@@ -1,3 +1,4 @@
+import { basicAuthHeader, splitCredentials, type FeedCredentials } from './auth';
 import { findFeedLinks, looksLikeHtml, type FeedLink } from './autodiscovery';
 import { parseFeed, type ParsedFeed } from './parser';
 
@@ -39,7 +40,10 @@ export function normalizeFeedUrl(input: string): string {
   if (!trimmed) throw new FeedError('Enter a feed URL.');
 
   const withScheme = trimmed
+    // "feed:https://…" wraps a whole address; "feed://…" and the others replace the scheme.
+    .replace(/^(?:feed|podcast):(?=https?:\/\/)/i, '')
     .replace(/^feed:\/\//i, 'https://')
+    .replace(/^pcast:\/\//i, 'https://')
     .replace(/^podcast:\/\//i, 'https://')
     .replace(/^itpc:\/\//i, 'https://');
 
@@ -67,33 +71,21 @@ export function normalizeFeedUrl(input: string): string {
  */
 export async function fetchFeed(
   feedUrl: string,
-  validators: { etag?: string | null; lastModified?: string | null } = {}
+  validators: { etag?: string | null; lastModified?: string | null } = {},
+  credentials: FeedCredentials | null = null
 ): Promise<FetchedFeed> {
   const url = normalizeFeedUrl(feedUrl);
 
-  // Extract HTTP Basic Auth credentials embedded in the URL (user:pass@host)
-  // and pass them as an Authorization header instead, so they never leak into
-  // logs or show up in the address bar.
-  const parsedUrl = new URL(url);
-  const fetchUrl =
-    parsedUrl.username || parsedUrl.password
-      ? (() => {
-          const clean = new URL(url);
-          clean.username = '';
-          clean.password = '';
-          return clean.toString();
-        })()
-      : url;
+  // Credentials embedded in the URL (user:pass@host) go in a header instead,
+  // so they never leak into logs; otherwise the podcast's saved ones.
+  const { url: fetchUrl, credentials: embedded } = splitCredentials(url);
+  const auth = embedded ?? credentials;
 
   const headers: Record<string, string> = {
     Accept: 'application/rss+xml, application/atom+xml, application/xml, text/xml;q=0.9, */*;q=0.8',
     'User-Agent': USER_AGENT,
   };
-
-  if (parsedUrl.username || parsedUrl.password) {
-    const credentials = `${decodeURIComponent(parsedUrl.username)}:${decodeURIComponent(parsedUrl.password)}`;
-    headers['Authorization'] = `Basic ${btoa(credentials)}`;
-  }
+  if (auth) headers['Authorization'] = basicAuthHeader(auth);
   if (validators.etag) headers['If-None-Match'] = validators.etag;
   if (validators.lastModified) headers['If-Modified-Since'] = validators.lastModified;
 

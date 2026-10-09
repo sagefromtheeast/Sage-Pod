@@ -41,6 +41,8 @@ export default function AddFeedScreen() {
   const [error, setError] = useState<string | null>(null);
   const [feedLinks, setFeedLinks] = useState<FeedLink[]>([]);
   const [needsLogin, setNeedsLogin] = useState(false);
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
 
   // Prefill from the clipboard when it holds a web address.
   useEffect(() => {
@@ -65,14 +67,15 @@ export default function AddFeedScreen() {
     setBusy(true);
     setError(null);
     setFeedLinks([]);
-    setNeedsLogin(false);
+    // Once the feed has asked for a login, every try sends what's typed.
+    const credentials = needsLogin && (username || password) ? { username, password } : null;
     try {
       // A preview, like a Discover result: Subscribe is on the podcast page.
       let opened: { feedId: number } | null = null;
       // At most two hops, so pages linking to each other can't loop.
       for (let hop = 0; !opened; hop++) {
         try {
-          opened = await previewFeed(value);
+          opened = await previewFeed(value, credentials);
         } catch (err) {
           // A web page with exactly one feed: open that feed, as if it had
           // been pasted. Several feeds are offered as choices below.
@@ -91,7 +94,7 @@ export default function AddFeedScreen() {
       setError(err instanceof Error ? err.message : 'That feed could not be loaded.');
       if (err instanceof FeedError) {
         setFeedLinks(err.feedLinks);
-        setNeedsLogin(err.status === 401 || err.status === 403);
+        if (err.status === 401 || err.status === 403) setNeedsLogin(true);
       }
     } finally {
       setBusy(false);
@@ -144,10 +147,38 @@ export default function AddFeedScreen() {
 
         {error ? <Text style={[styles.error, { color: theme.danger }]}>{error}</Text> : null}
         {needsLogin ? (
-          <Text style={[styles.help, { color: theme.textMuted }]}>
-            Password-protected feeds need secure storage on the device, which arrives with the next app build. If
-            the podcast gave you a private address instead, paste that one.
-          </Text>
+          <>
+            <Text style={[styles.help, { color: theme.textMuted }]}>
+              Enter the username and password the podcast gave you. They’re kept in the phone’s secure storage.
+            </Text>
+            <TextInput
+              value={username}
+              onChangeText={setUsername}
+              placeholder="Username"
+              placeholderTextColor={theme.textFaint}
+              style={[styles.input, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
+              autoCapitalize="none"
+              autoCorrect={false}
+              textContentType="username"
+              editable={!busy}
+              accessibilityLabel="Username"
+            />
+            <TextInput
+              value={password}
+              onChangeText={setPassword}
+              placeholder="Password"
+              placeholderTextColor={theme.textFaint}
+              style={[styles.input, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
+              autoCapitalize="none"
+              autoCorrect={false}
+              secureTextEntry
+              textContentType="password"
+              returnKeyType="go"
+              onSubmitEditing={() => void submit()}
+              editable={!busy}
+              accessibilityLabel="Password"
+            />
+          </>
         ) : null}
         {feedLinks.map((link) => (
           <Pressable
