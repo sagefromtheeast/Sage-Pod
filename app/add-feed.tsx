@@ -15,8 +15,9 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { hostOf } from '@/feed/auth';
 import type { FeedLink } from '@/feed/autodiscovery';
-import { FeedError } from '@/feed/fetch';
+import { FeedError, normalizeFeedUrl } from '@/feed/fetch';
 import { previewFeed } from '@/feed/sync';
 import { radius, space, type as typography } from '@/ui/theme';
 import { useTheme } from '@/ui/useTheme';
@@ -31,6 +32,15 @@ import { useTheme } from '@/ui/useTheme';
  * As in AntennaPod, a web address copied to the clipboard is filled in, and a
  * website's address works too: its page is searched for feed links.
  */
+/** The host a typed address will be fetched from ("example.com/feed" included). */
+function hostFor(address: string): string | null {
+  try {
+    return hostOf(normalizeFeedUrl(address));
+  } catch {
+    return null;
+  }
+}
+
 export default function AddFeedScreen() {
   const theme = useTheme();
   const router = useRouter();
@@ -42,7 +52,9 @@ export default function AddFeedScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [feedLinks, setFeedLinks] = useState<FeedLink[]>([]);
-  const [needsLogin, setNeedsLogin] = useState(false);
+  // The host that asked for a login: what's typed is sent only there.
+  const [loginHost, setLoginHost] = useState<string | null>(null);
+  const needsLogin = loginHost !== null;
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
@@ -78,15 +90,17 @@ export default function AddFeedScreen() {
     setBusy(true);
     setError(null);
     setFeedLinks([]);
-    // Once the feed has asked for a login, every try sends what's typed.
-    const credentials = needsLogin && (username || password) ? { username, password } : null;
+    // Sent only to the host that asked for it, never to a feed a page links
+    // to on another server.
+    const loginFor = (address: string) =>
+      loginHost !== null && hostFor(address) === loginHost && (username || password) ? { username, password } : null;
     try {
       // A preview, like a Discover result: Subscribe is on the podcast page.
       let opened: { feedId: number } | null = null;
       // At most two hops, so pages linking to each other can't loop.
       for (let hop = 0; !opened; hop++) {
         try {
-          opened = await previewFeed(value, credentials);
+          opened = await previewFeed(value, loginFor(value));
         } catch (err) {
           // A web page with exactly one feed: open that feed, as if it had
           // been pasted. Several feeds are offered as choices below.
@@ -105,7 +119,7 @@ export default function AddFeedScreen() {
       setError(err instanceof Error ? err.message : 'That feed could not be loaded.');
       if (err instanceof FeedError) {
         setFeedLinks(err.feedLinks);
-        if (err.status === 401 || err.status === 403) setNeedsLogin(true);
+        if (err.status === 401 || err.status === 403) setLoginHost(hostFor(value) ?? '');
       }
     } finally {
       setBusy(false);
