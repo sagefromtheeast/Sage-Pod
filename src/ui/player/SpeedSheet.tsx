@@ -1,10 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
 import { useEffect, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 
 import { setSetting, useSetting } from '@/db/settings';
 import { player } from '@/player';
+import { supportsAudioEffects } from '@/player/audioExtras';
 import {
   clampSpeed,
   formatSpeed,
@@ -29,11 +30,12 @@ type Props = {
 
 /**
  * AntennaPod's speed dialog: a 0.5×–4× slider in 0.05 steps, − / + nudges,
- * and preset chips the listener can add to or remove from.
+ * preset chips the listener can add to or remove from, and Skip silence (Android).
  */
 export function SpeedSheet({ visible, rate, feedTitle, onClose }: Props) {
   const theme = useTheme();
   const presets = parsePresets(useSetting('speedPresets'));
+  const skipSilence = useSetting('skipSilence');
   // Follow the finger while sliding; the engine only changes on release.
   const [draft, setDraft] = useState(rate);
   useEffect(() => setDraft(rate), [rate]);
@@ -101,6 +103,19 @@ export function SpeedSheet({ visible, rate, feedTitle, onClose }: Props) {
             {isPreset ? `Remove ${formatSpeed(draft)} from presets` : `Save ${formatSpeed(draft)} as a preset`}
           </Text>
         </Pressable>
+
+        {supportsAudioEffects(Platform.OS) ? (
+          <View style={[styles.switchRow, { borderTopColor: theme.border }]}>
+            <Text style={[styles.switchLabel, { color: theme.text }]}>Skip silence</Text>
+            <Switch
+              value={skipSilence}
+              onValueChange={(value) => void setSetting('skipSilence', value)}
+              trackColor={{ true: theme.accent, false: theme.track }}
+              thumbColor={theme.surface}
+              accessibilityLabel="Skip silence"
+            />
+          </View>
+        ) : null}
       </View>
     </BottomSheet>
   );
@@ -186,5 +201,15 @@ const styles = StyleSheet.create({
   presetToggleLabel: {
     ...typography.label,
     fontWeight: '600',
+  },
+  switchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: space.md,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  switchLabel: {
+    ...typography.body,
   },
 });

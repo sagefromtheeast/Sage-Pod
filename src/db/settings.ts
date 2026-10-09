@@ -58,6 +58,11 @@ export async function loadSettings(): Promise<Settings> {
   return next;
 }
 
+/** Called after any setting changes, for code outside React (the player). */
+export function subscribeSettings(listener: () => void): () => void {
+  return store.subscribe(listener);
+}
+
 export function settingsLoaded(): boolean {
   return loaded;
 }

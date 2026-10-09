@@ -35,12 +35,28 @@ export function shouldSkipEnding(position: number, duration: number, skipEndingS
   return position >= duration - skipEndingSeconds;
 }
 
-/** AntennaPod's volume reduction choices: off, light (half) and heavy (a fifth). */
+/**
+ * AntennaPod's volume adaptation: off, light (half) and heavy (a fifth)
+ * reduction, and light, medium and heavy boost. Stored in `feeds.volume_reduction`.
+ */
 export const VOLUME_REDUCTIONS = [1, 0.5, 0.2] as const;
-export type VolumeReduction = (typeof VOLUME_REDUCTIONS)[number];
+export const VOLUME_BOOSTS = [1.5, 2, 2.5] as const;
+export const VOLUME_ADAPTATIONS = [...VOLUME_REDUCTIONS, ...VOLUME_BOOSTS] as const;
+export type VolumeAdaptation = (typeof VOLUME_ADAPTATIONS)[number];
 
-export function volumeFor(reduction: number | null | undefined): VolumeReduction {
-  return (VOLUME_REDUCTIONS as readonly number[]).includes(reduction ?? 1) ? ((reduction ?? 1) as VolumeReduction) : 1;
+export function volumeFor(factor: number | null | undefined): VolumeAdaptation {
+  return (VOLUME_ADAPTATIONS as readonly number[]).includes(factor ?? 1) ? ((factor ?? 1) as VolumeAdaptation) : 1;
+}
+
+/** The player's own volume: a boost plays at full volume and adds gain on top. */
+export function playerVolume(factor: number | null | undefined): number {
+  return Math.min(1, volumeFor(factor));
+}
+
+/** A boost's extra gain in millibels, as AntennaPod sets it: 1000 × (factor − 1). 0 for no boost. */
+export function boostMillibels(factor: number | null | undefined): number {
+  const volume = volumeFor(factor);
+  return volume > 1 ? Math.round(1000 * (volume - 1)) : 0;
 }
 
 export type NewEpisodesAction = 'inbox' | 'queue' | 'nothing';

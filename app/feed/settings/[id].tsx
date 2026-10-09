@@ -1,6 +1,6 @@
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, ScrollView, StyleSheet, View } from 'react-native';
+import { Alert, Platform, ScrollView, StyleSheet, View } from 'react-native';
 
 import { getFeed, setFeedPrefs, setFeedUrl, type FeedPrefs } from '@/db/feeds';
 import { useSetting } from '@/db/settings';
@@ -15,11 +15,16 @@ import {
   NEW_EPISODE_ACTIONS,
   parseNewEpisodesAction,
   serializeTags,
+  VOLUME_ADAPTATIONS,
+  VOLUME_REDUCTIONS,
+  volumeFor,
   type NewEpisodesAction,
+  type VolumeAdaptation,
 } from '@/feed/feedPrefs';
 import { refreshFeed } from '@/feed/sync';
 import { askForNotifications } from '@/notify';
 import { PLAYBACK_RATES, player } from '@/player';
+import { supportsAudioEffects } from '@/player/audioExtras';
 import { SettingsOptions, SettingsSection, SettingsSwitch, SettingsTextInput } from '@/ui/SettingsRow';
 import { space } from '@/ui/theme';
 import { showToast } from '@/ui/UndoToast';
@@ -30,8 +35,18 @@ import { useTheme } from '@/ui/useTheme';
 const SKIP_INTRO_OPTIONS = [0, 10, 15, 30, 45, 60] as const;
 const SKIP_ENDING_OPTIONS = [0, 10, 15, 30, 45, 60, 90, 120] as const;
 const SPEED_OPTIONS = [-1, ...PLAYBACK_RATES] as const;
-const VOLUME_OPTIONS = [1, 0.5, 0.2] as const;
-const VOLUME_LABELS: Record<(typeof VOLUME_OPTIONS)[number], string> = { 1: 'Off', 0.5: 'Light', 0.2: 'Heavy' };
+const VOLUME_LABELS: Record<VolumeAdaptation, string> = {
+  1: 'Off',
+  0.5: 'Light reduction',
+  0.2: 'Heavy reduction',
+  1.5: 'Light boost',
+  2: 'Medium boost',
+  2.5: 'Heavy boost',
+};
+// Boosts need the Android engine's loudness enhancer.
+const VOLUME_OPTIONS: readonly VolumeAdaptation[] = supportsAudioEffects(Platform.OS)
+  ? VOLUME_ADAPTATIONS
+  : VOLUME_REDUCTIONS;
 const TRI_STATE = ['global', 'on', 'off'] as const;
 const ACTION_OPTIONS = ['global', ...NEW_EPISODE_ACTIONS] as const;
 const ACTION_LABELS: Record<NewEpisodesAction, string> = { inbox: 'Inbox', queue: 'Add to queue', nothing: 'Nothing' };
@@ -168,9 +183,13 @@ export default function FeedSettingsScreen() {
         onChange={(value) => void update({ skipEndingSeconds: value === 0 ? null : value })}
       />
       <SettingsOptions
-        label="Volume reduction"
-        description="For podcasts that are much louder than the rest."
-        value={(feed.volume_reduction ?? 1) as (typeof VOLUME_OPTIONS)[number]}
+        label="Volume adaptation"
+        description={
+          supportsAudioEffects(Platform.OS)
+            ? 'Quieter or louder than the rest of your podcasts.'
+            : 'For podcasts that are much louder than the rest.'
+        }
+        value={volumeFor(feed.volume_reduction)}
         options={VOLUME_OPTIONS}
         format={(volume) => VOLUME_LABELS[volume]}
         onChange={(value) => void update({ volumeReduction: value === 1 ? null : value })}

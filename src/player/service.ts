@@ -16,7 +16,7 @@ import {
 import { setFeedFlags, type FeedPrefs } from '@/db/feeds';
 import { dequeue, enqueueFront, nextInQueue } from '@/db/queue';
 import { deleteDownload, getLocalEpisodePath } from '@/player/downloads';
-import { getMeta, getSettings, setMeta, setSetting } from '@/db/settings';
+import { getMeta, getSettings, setMeta, setSetting, subscribeSettings } from '@/db/settings';
 import type { EpisodeWithFeed } from '@/db/types';
 import { confirmMeteredStreaming } from '@/player/meteredGuard';
 import { afterSkip, almostEnded } from '@/player/playedRules';
@@ -24,7 +24,8 @@ import { positionAfterPause } from '@/player/resumeRewind';
 import { clampSpeed } from '@/player/speed';
 import { basicAuthHeader } from '@/feed/auth';
 import { feedCredentialsFor } from '@/feed/credentials';
-import { boolOverride, resolveOverride, shouldSkipEnding, volumeFor } from '@/feed/feedPrefs';
+import { boolOverride, boostMillibels, playerVolume, resolveOverride, shouldSkipEnding } from '@/feed/feedPrefs';
+import { lockScreenOptions, onRemoteNext, setSkipSilence, setVolumeBoost } from '@/player/audioExtras';
 import {
   afterEpisodeFinished,
   extendTimer,
@@ -89,6 +90,9 @@ class PlayerService {
   private subscribers = new Set<Subscriber>();
 
   private statusSubscription: { remove: () => void } | null = null;
+  private remoteNextSubscription: { remove: () => void } | null = null;
+  /** The skip amounts and skip-silence choice last handed to the engine. */
+  private appliedControls = '';
   private saveHandle: ReturnType<typeof setInterval> | null = null;
   private sleepHandle: ReturnType<typeof setTimeout> | null = null;
   /**
@@ -109,7 +113,7 @@ class PlayerService {
   private markedPlayedId: number | null = null;
   /** Set once the current episode's "skip ending" has fired, so it fires once. */
   private skippedEnding = false;
-  /** The podcast's volume reduction (1 = none); the sleep fade scales from it. */
+  /** The player volume for the podcast's volume reduction (1 = none or a boost); the sleep fade scales from it. */
   private baseVolume = 1;
   /** Suppresses position writes while a seek is in flight. */
   private seeking = false;
@@ -125,6 +129,7 @@ class PlayerService {
    */
   async init(): Promise<void> {
     await this.ensureAudioMode();
+    subscribeSettings(() => this.applyControlSettings());
 
     const lastId = await getMeta('lastEpisodeId');
     if (!lastId) return;
@@ -243,12 +248,14 @@ class PlayerService {
     this.statusSubscription = player.addListener('playbackStatusUpdate', (status) =>
       this.onStatus(status)
     );
+    // The lock screen's and notification's next button.
+    this.remoteNextSubscription = onRemoteNext(player, () => void this.skipToNext());
 
     player.shouldCorrectPitch = true;
     player.setPlaybackRate(rate, 'high');
-    // Per-podcast volume reduction (AntennaPod: off / light / heavy).
-    this.baseVolume = volumeFor(episode.feed_volume_reduction);
-    player.volume = this.baseVolume;
+    // Per-podcast volume adaptation (AntennaPod: reductions and boosts).
+    this.applyVolume(episode.feed_volume_reduction);
+    setSkipSilence(player, settings.skipSilence);
 
     this.publishLockScreenMetadata(episode);
     await setMeta('lastEpisodeId', String(episode.id));
@@ -294,8 +301,10 @@ class PlayerService {
           albumTitle: episode.feed_title,
           artworkUrl: episode.image_url ?? episode.feed_image_url ?? undefined,
         },
-        { showSeekForward: true, showSeekBackward: true, isLiveStream: false }
+        // The patched engine reads the amounts and next button (src/player/audioExtras.ts).
+        lockScreenOptions(getSettings().skipForward, getSettings().skipBackward)
       );
+      this.appliedControls = controlsKey();
     } catch {
       // Graceful fallback if native lock screen binding fails.
     }
@@ -305,6 +314,8 @@ class PlayerService {
     this.stopPositionSaver();
     this.statusSubscription?.remove();
     this.statusSubscription = null;
+    this.remoteNextSubscription?.remove();
+    this.remoteNextSubscription = null;
 
     if (this.player) {
       try {
@@ -503,11 +514,24 @@ class PlayerService {
     if (prefs.autoDelete !== undefined) next.feed_auto_delete = prefs.autoDelete === null ? null : prefs.autoDelete ? 1 : 0;
     this.setState({ episode: next });
     if (prefs.playbackSpeed !== undefined) this.setRate(prefs.playbackSpeed ?? globalRate);
-    if (prefs.volumeReduction !== undefined) {
-      this.baseVolume = volumeFor(prefs.volumeReduction);
-      // A sleep fade in progress picks the new base up on its next tick.
-      if (this.player && !this.inWarning) this.player.volume = this.baseVolume;
-    }
+    if (prefs.volumeReduction !== undefined) this.applyVolume(prefs.volumeReduction);
+  }
+
+  /** A reduction lowers the player volume; a boost adds gain on top of full volume. */
+  private applyVolume(factor: number | null): void {
+    this.baseVolume = playerVolume(factor);
+    if (!this.player) return;
+    // A sleep fade in progress picks the new base up on its next tick.
+    if (!this.inWarning) this.player.volume = this.baseVolume;
+    setVolumeBoost(this.player, boostMillibels(factor));
+  }
+
+  /** Skip amounts and skip silence changed in Settings: hand them to the loaded episode now. */
+  private applyControlSettings(): void {
+    const key = controlsKey();
+    if (!this.player || !this.state.episode || key === this.appliedControls) return;
+    setSkipSilence(this.player, getSettings().skipSilence);
+    this.publishLockScreenMetadata(this.state.episode);
   }
 
   // ------------------------------------------------------------------- queue
@@ -778,3 +802,8 @@ class PlayerService {
 }
 
 export const player = new PlayerService();
+
+function controlsKey(): string {
+  const { skipForward, skipBackward, skipSilence } = getSettings();
+  return `${skipForward}|${skipBackward}|${skipSilence}`;
+}
