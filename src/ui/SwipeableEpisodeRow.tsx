@@ -4,8 +4,8 @@ import { Animated, StyleSheet, View } from 'react-native';
 import Swipeable from 'react-native-gesture-handler/Swipeable';
 
 import { subjectFor } from '@/actions/episodeActions';
-import { runEpisodeAction } from '@/actions/runEpisodeAction';
-import { isQueuedNow } from '@/db/queueMembership';
+import { ACTION_META, runEpisodeAction } from '@/actions/runEpisodeAction';
+import { isQueuedNow, useIsQueued } from '@/db/queueMembership';
 import { useSetting } from '@/db/settings';
 import type { EpisodeWithFeed } from '@/db/types';
 import { player } from '@/player';
@@ -19,6 +19,7 @@ import {
   type SwipeScreen,
 } from '@/settings/swipes';
 
+import type { IconName } from './ActionSheet';
 import { EpisodeRow } from './EpisodeRow';
 import { triggerHaptic } from './haptics';
 import type { Palette } from './theme';
@@ -66,6 +67,15 @@ export const SwipeableEpisodeRow = memo(function SwipeableEpisodeRow({
   const pair = parseSwipes(screen, useSetting(SWIPE_SCREENS[screen].setting));
   const right = unavailable.includes(pair.right) ? 'none' : pair.right;
   const left = unavailable.includes(pair.left) ? 'none' : pair.left;
+  // The strip shows what the swipe will do to this episode: a queue toggle on
+  // a queued episode shows "remove", not "add".
+  const queued = useIsQueued(episode.id);
+  const iconFor = (swipe: SwipeAction): IconName => {
+    const action = swipe.startsWith('toggle')
+      ? resolveSwipe(swipe, subjectFor(episode, { queued, playing: false }))
+      : null;
+    return action ? ACTION_META[action].icon : (SWIPE_ICONS[swipe] as IconName);
+  };
 
   const run = (swipe: SwipeAction) => {
     triggerHaptic('medium');
@@ -99,7 +109,7 @@ export const SwipeableEpisodeRow = memo(function SwipeableEpisodeRow({
           ]}
         >
           <Animated.View style={[styles.actionIcon, { transform: [{ scale }] }]}>
-            <Ionicons name={SWIPE_ICONS[swipe] as React.ComponentProps<typeof Ionicons>['name']} size={24} color={fg} />
+            <Ionicons name={iconFor(swipe)} size={24} color={fg} />
           </Animated.View>
         </View>
       );

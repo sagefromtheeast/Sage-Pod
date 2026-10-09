@@ -34,6 +34,9 @@ import { useEpisodeSelection } from '@/ui/useEpisodeSelection';
 import { useTheme } from '@/ui/useTheme';
 import { formatDuration } from '@/util/time';
 
+// A constant, so the memoised rows don't see a new array on every render.
+const NO_MOVE_TO_TOP = ['moveToTop'] as const;
+
 const matches = (episode: EpisodeWithFeed, term: string) =>
   episode.title.toLowerCase().includes(term) || episode.feed_title.toLowerCase().includes(term);
 
@@ -243,7 +246,7 @@ export default function QueueScreen() {
             onPlay={play}
             swipeEnabled={!locked && !selection.active}
             // Kept sorted: moving to the top would be undone at once.
-            unavailable={keptSorted ? ['moveToTop'] : undefined}
+            unavailable={keptSorted ? NO_MOVE_TO_TOP : undefined}
             actionHooks={actionHooks}
             selecting={selection.active}
             selected={selection.selected.has(item.id)}

@@ -11,10 +11,7 @@ import { onCellular } from './downloads';
  * downloaded on a cellular connection asks first. Resolves true to go ahead.
  * With `ask: false` (nobody tapped play) it answers no instead of asking.
  */
-export async function confirmMeteredStreaming(
-  episode: EpisodeWithFeed,
-  { ask }: { ask: boolean }
-): Promise<boolean> {
+export async function confirmMeteredStreaming(episode: EpisodeWithFeed, { ask }: { ask: boolean }): Promise<boolean> {
   if (getSettings().mobileStreaming || episode.download_state === 'done') return true;
   // react-native-web's Alert does nothing, so the promise below would never settle.
   if (Platform.OS === 'web') return true;
