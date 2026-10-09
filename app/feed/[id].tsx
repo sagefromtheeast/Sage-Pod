@@ -400,7 +400,7 @@ export default function FeedScreen() {
               action={
                 filtered
                   ? { label: 'Clear filter', onPress: () => void setFeedViewPrefs(feed.id, { episodeFilter: null }) }
-                  : undefined
+                  : { label: 'Search all podcasts', onPress: () => router.push({ pathname: '/search', params: { q: term } }) }
               }
             />
           ) : null
