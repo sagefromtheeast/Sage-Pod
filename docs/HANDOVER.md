@@ -48,6 +48,9 @@ sections, the Queue toolbar, the Now Playing layout); the look stays Sage Pod's
 - **Merging to `main` is delegated to you** (D-002): merge each phase PR once
   the Checks workflow is green and every review thread is addressed, with a
   merge commit (never squash), then confirm the release tag appeared.
+  The Codex bot reviews each PR when it is opened. If it is out of quota (it
+  says so in a comment), run `/code-review high origin/main...HEAD` yourself,
+  fix what is real, and merge only then.
 - A **new native dependency** (anything that needs a new EAS build), or a
   change to the audio engine (see decision D-004).
 - A **visible design change** beyond moving features into AntennaPod's places
