@@ -23,6 +23,7 @@ Format: context → decision → consequences → when to revisit.
 | D-015 | Episode pager swipes through the podcast's episodes | Accepted |
 | D-016 | Previews: stored, kept out of the library, cleared after a day | Accepted |
 | D-017 | Per-podcast settings: overrides fall back to global; feed passwords wait for secure storage | Accepted |
+| D-018 | Search: screens keep their own search, with a way out to the library search; online search merges Apple and fyyd | Accepted |
 
 ---
 
@@ -253,3 +254,22 @@ skip of trailers and short clips; a podcast's own minimum replaces the
 3-minute default. Feed usernames and passwords wait for Phase 17, where
 `expo-secure-store` (a native module) arrives with the device build; storing
 them in SQLite in plain text was rejected. *(Shipped in v0.11.0.)*
+
+## D-018 — Search: in-place first, then everywhere; one online search
+
+**Context.** In AntennaPod, the search icon on the Queue, a podcast or the
+Downloads opens the one search screen with a removable chip for where you came
+from. Sage Pod's Queue, Inbox and podcast page already filter in place
+(Phases 5, 6 and 9). AntennaPod also searches each directory separately.
+
+**Decision.** Screens with their own search keep it: you stay in the list you
+were looking at. When it finds nothing, "Search all podcasts" carries the
+words to the library search, which takes the place of the chips. Screens
+without their own search (Home, Library, the Downloads / Favourites / History
+lists) open the library search directly. Online search asks Apple and fyyd at
+once and merges them, Apple first, dropping the same feed seen twice; one
+failing still shows the other's results. Podcasts you follow are marked in
+results and left out of the charts. A website address is searched for feed
+links. A feed that needs a password gets an explanation, not a prompt: putting
+the password in the stored address was rejected for the same reason as in
+D-017. *(Shipped in v0.12.0.)*

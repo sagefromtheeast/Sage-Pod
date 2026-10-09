@@ -97,8 +97,13 @@ destructive.
 - [ ] Password-protected feeds → Phase 17 (needs secure storage, a native module; D-017)
 - [ ] On device: skip ending hands over to the next episode; volume reduction level
 
-## Phase 11 — Search & Discovery
-- [ ] Local search route + entry icons (wire up `searchEpisodes()`); fyyd (D-007); country; subscribed marks; clipboard; autodiscovery; OPML file import
+## Phase 11 — Search & Discovery ✅
+- [x] Library search: "Search online" handoff, up to 300 episodes, multi-select; search icons on Library and the Downloads / Favourites / History lists; "Search all podcasts" from the Queue, Inbox and podcast searches (D-018)
+- [x] Discover: Apple + fyyd merged (D-007), chart country picker, "Subscribed" marks, subscribed shows hidden from the charts
+- [x] Add by URL: clipboard prefill, website autodiscovery (one feed opens, several are offered), password-protected feeds explained
+- [x] OPML file import with a checklist and progress (Discover and Settings; Settings also from the clipboard); fixture-based fyyd and query-builder tests
+- [x] Shots: discover, discover-search, discover-country, search, search-select, add-feed, opml-import
+- [ ] On device: the system file picker for .opml files on Android and iOS; clipboard prefill (iOS shows a paste prompt)
 
 ## Phase 12 — Library
 - [ ] Display ⋯ (columns, titles, counter, sort); filter; tags; archive; error badge; multi-select; "+"; Episodes screen

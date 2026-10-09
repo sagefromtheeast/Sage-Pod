@@ -210,6 +210,11 @@ releasing, so a red check on `main` blocks the release.
   route leaves `FAILED-<route>--<viewport>.png` in the output folder.
 - react-native-web doesn't deliver long-press to nested `<Text>` (inline
   links), with mouse or touch. Check those on a device instead.
+- For a "before" set, put the release's `app/` and `src/` into the main tree
+  (`git checkout <tag> -- app src`, then delete the files the phase added) and
+  keep the new `shots-tool/`; restore with `git checkout HEAD -- app src`. A git
+  worktree with a symlinked `node_modules` mixes modules from both trees and
+  breaks the web build. List only routes that existed at the release.
 - The owner usually works from a phone. Prefer EAS builds and links over
   "run this on your laptop".
 
@@ -226,13 +231,15 @@ releasing, so a red check on `main` blocks the release.
   details (menu, inline links, timestamps, pager; v0.9.0), and the podcast
   page (preview, saved filter and sort, banners, info page; v0.10.0), and
   per-podcast settings (rename, tags, skip ending, volume reduction,
-  new-episode action, auto-download rules, auto-delete; v0.11.0).
+  new-episode action, auto-download rules, auto-delete; v0.11.0), and
+  search and discovery (fyyd, chart country, subscribed marks, feed
+  autodiscovery, OPML file import with a checklist; v0.12.0).
   Earlier: EAS device builds, stable Surprise Me, tablet layouts.
-- **Next**: Phase 11, search and discovery, then the remaining screen-by-screen
+- **Next**: Phase 12, the Library, then the remaining screen-by-screen
   phases. Schema is at version 5.
   Building blocks to reuse: `openEpisodeActions`, `runEpisodeAction`,
   `showToast`, `OverflowMenu`, `BottomSheet` / `ActionSheet`,
-  `useEpisodeSelection` + `SelectionBar`, `MiniPlayerDock`, `DraggableList` (see
+  `useEpisodeSelection` + `SelectionBar`, `MiniPlayerDock`, `DraggableList`, `NoMatches` (see
   `src/actions/` and `src/ui/`).
 - **Device build**: one EAS build at the end (D-011).
 - **The owner's preferences** (learned): keep the existing design; match
