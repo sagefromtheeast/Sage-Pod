@@ -203,6 +203,20 @@ const ROUTES = [
   ['settings-downloads', '/settings/downloads'],
   ['settings-import-export', '/settings/import-export'],
   ['settings-about', '/settings/about'],
+  ['stats-years', '/stats', async (page) => {
+    await page.getByRole('tab', { name: 'Years' }).click();
+    await page.getByText('BY YEAR').waitFor({ timeout: 10000 });
+  }],
+  ['stats-downloads', '/stats?tab=downloads', async (page) => {
+    await page.getByText(/^\d+ episodes$/).first().waitFor({ timeout: 10000 });
+  }],
+  ['stats-range', '/stats', async (page) => {
+    await page.getByLabel('Date range: All time').click();
+    await page.getByText('Last 12 months').waitFor({ timeout: 10000 });
+  }],
+  ['stats-feed', '/stats/feed/1', async (page) => {
+    await page.getByText('RELEASE SCHEDULE').waitFor({ timeout: 10000 });
+  }],
   ['feed-settings-automation', '/feed/settings/1', async (page) => {
     await page.getByText('AUTOMATION').first().scrollIntoViewIfNeeded();
     await page.getByText('Auto-delete').first().waitFor({ timeout: 10000 });
@@ -213,7 +227,11 @@ const ROUTES = [
     await page.getByRole('button', { name: 'More options' }).first().click();
     await page.getByText('Refresh complete podcast').first().waitFor({ timeout: 10000 });
   }],
-  // These last ones change the seeded data (a saved filter, the inbox, the queue order).
+  // These last ones change the seeded data (a saved filter, the inbox, the queue order, the statistics filter).
+  ['stats-marked', '/stats', async (page) => {
+    await page.getByText('Include marked played').click();
+    await page.getByText(/Played episodes count in full/).waitFor({ timeout: 10000 });
+  }],
   ['feed-filtered', '/feed/1', async (page) => {
     await page.getByRole('button', { name: 'Filter' }).first().click();
     await page.getByText('Unplayed', { exact: true }).first().click();
