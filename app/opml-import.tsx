@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { listSubscribedUrls } from '@/db/feeds';
@@ -9,6 +9,7 @@ import { feedUrlKey } from '@/discover/providers';
 import { getOpmlDraft, importFeeds } from '@/feed/opml';
 import { radius, space, type as typography } from '@/ui/theme';
 import { useLayout } from '@/ui/useLayout';
+import { showToast } from '@/ui/UndoToast';
 import { useTheme } from '@/ui/useTheme';
 
 /**
@@ -25,6 +26,15 @@ export default function OpmlImportScreen() {
   const followed = useMemo(() => new Set(subscribed.map((feed) => feedUrlKey(feed.feed_url))), [subscribed]);
   const [unticked, setUnticked] = useState<Set<string>>(() => new Set());
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
+  // The import carries on if the listener leaves; then it ends with a toast,
+  // not an alert whose OK would pop whatever screen they are on now.
+  const mounted = useRef(true);
+  useEffect(
+    () => () => {
+      mounted.current = false;
+    },
+    []
+  );
 
   const available = outlines.filter((outline) => !followed.has(feedUrlKey(outline.feedUrl)));
   const chosen = available.filter((outline) => !unticked.has(outline.feedUrl));
@@ -40,7 +50,16 @@ export default function OpmlImportScreen() {
 
   const run = async () => {
     setProgress({ done: 0, total: chosen.length });
-    const result = await importFeeds(chosen, (done, total) => setProgress({ done, total }));
+    const result = await importFeeds(chosen, (done, total) => {
+      if (mounted.current) setProgress({ done, total });
+    });
+    if (!mounted.current) {
+      showToast(
+        `Import finished: ${result.imported} podcast${result.imported === 1 ? '' : 's'} added` +
+          (result.failures.length > 0 ? `, ${result.failures.length} couldn't be reached` : '')
+      );
+      return;
+    }
     setProgress(null);
     const lines = [
       `${result.imported} podcast${result.imported === 1 ? '' : 's'} added.`,

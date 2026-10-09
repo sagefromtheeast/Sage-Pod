@@ -88,7 +88,9 @@ export default function SearchScreen() {
                 onPress={() =>
                   router.navigate({
                     pathname: '/discover',
-                    params: { q: query },
+                    // `at` makes a repeat of the same words a new request, so Discover
+                    // re-applies them even if its field was edited since.
+                    params: { q: query, at: String(Date.now()) },
                   })
                 }
                 style={({ pressed }) => [

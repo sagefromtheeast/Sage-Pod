@@ -35,7 +35,7 @@ export default function DiscoverScreen() {
   const theme = useTheme();
   const router = useRouter();
   // "Search online" from the library search hands its words over as `q`.
-  const { q } = useLocalSearchParams<{ q?: string }>();
+  const { q, at } = useLocalSearchParams<{ q?: string; at?: string }>();
   const country = parseCountry(useSetting('discoverCountry'));
   const [countryPickerOpen, setCountryPickerOpen] = useState(false);
 
@@ -50,7 +50,7 @@ export default function DiscoverScreen() {
 
   useEffect(() => {
     if (q) setTerm(q);
-  }, [q]);
+  }, [q, at]);
 
   // Podcasts you follow: marked in search results and left out of the charts.
   const { data: subscribedRows = [] } = useQuery(() => listSubscribedUrls(), ['feeds'], []);
