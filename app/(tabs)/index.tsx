@@ -416,7 +416,7 @@ export default function HomeScreen() {
             key={id}
             title={title}
             layout={layout}
-            right={<SectionLink label="Downloads" onPress={() => router.push('/list/downloads')} />}
+            right={<SectionLink label="Downloads" onPress={() => router.push('/downloads')} />}
             empty={downloads.length === 0 ? 'No downloaded episodes.' : null}
           >
             <Text style={[styles.sectionNote, { color: theme.textMuted, paddingHorizontal: layout.gutter }]}>

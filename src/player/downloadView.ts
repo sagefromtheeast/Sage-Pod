@@ -25,7 +25,7 @@ export function parseDownloadSort(raw: string | null | undefined): DownloadSort 
 type Sortable = {
   id: number;
   title: string;
-  published_at: number;
+  published_at: number | null;
   duration: number | null;
   downloaded_bytes: number | null;
   media_size: number | null;
@@ -46,10 +46,12 @@ export function sortDownloads<T extends Sortable>(episodes: readonly T[], sort: 
       case 'size':
         return sizeOf(a) - sizeOf(b);
       default:
-        return a.published_at - b.published_at;
+        return (a.published_at ?? 0) - (b.published_at ?? 0);
     }
   };
-  return [...episodes].sort((a, b) => sign * compare(a, b) || b.published_at - a.published_at || b.id - a.id);
+  return [...episodes].sort(
+    (a, b) => sign * compare(a, b) || (b.published_at ?? 0) - (a.published_at ?? 0) || b.id - a.id
+  );
 }
 
 /** "Delete played" removes finished downloads that aren't favourites. */

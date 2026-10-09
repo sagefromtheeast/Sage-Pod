@@ -45,7 +45,7 @@ type Shortcut = {
 
 const SHORTCUTS: Shortcut[] = [
   { label: 'Favourites', icon: 'heart', href: '/list/favorites' },
-  { label: 'Downloads', icon: 'arrow-down-circle', href: '/list/downloads' },
+  { label: 'Downloads', icon: 'arrow-down-circle', href: '/downloads' as Href },
   { label: 'History', icon: 'time', href: '/list/history' },
   { label: 'Episodes', icon: 'albums', href: '/episodes' as Href },
 ];
