@@ -1,3 +1,26 @@
+## [0.13.0](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.12.0...v0.13.0) (2026-10-09)
+
+### 🚀 New Features
+
+* **library:** display options, saved sort and filter, tags, archive, error badges, multi-select and an Episodes screen ([b9960b8](https://github.com/sagefromtheeast/Sage-Pod/commit/b9960b8fba37126b4102da51f27b31bc1d797dd9))
+
+### 🐛 Bug Fixes
+
+* **library:** selection stays on screen, archived podcasts stay out of the Inbox, and bulk changes are one write ([a2495be](https://github.com/sagefromtheeast/Sage-Pod/commit/a2495beb8d82ad0b5f528ea2fa89972ed4fcbeb0))
+
+### ♻️ Refactoring
+
+* **library:** library counts, archive state, tag operations and an all-episodes query ([1fdf06c](https://github.com/sagefromtheeast/Sage-Pod/commit/1fdf06c1758d1a107bf10376fc13403619249775))
+
+### 📚 Documentation
+
+* mark Phase 12 done and record D-019 ([d258951](https://github.com/sagefromtheeast/Sage-Pod/commit/d258951bf7b19179e0e9e1ede53c48235d83b96f))
+* review with /code-review when the Codex bot is out of quota ([2d65aed](https://github.com/sagefromtheeast/Sage-Pod/commit/2d65aed7949fa5f1f3b54b2eb464624deb3c4c63))
+
+### ✅ Tests
+
+* **shots:** Library display, tag, select, archive, archived podcast and Episodes screens ([32a0506](https://github.com/sagefromtheeast/Sage-Pod/commit/32a0506fb5a072fa985150b2590071d6966ba285))
+
 ## [0.12.0](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.11.0...v0.12.0) (2026-10-09)
 
 ### 🚀 New Features
