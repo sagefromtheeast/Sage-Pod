@@ -75,6 +75,20 @@ export async function setSetting<K extends keyof Settings>(
   );
 }
 
+/**
+ * Every preference back to its default: one transaction and one store update,
+ * so screens re-render once rather than once per key.
+ */
+export async function resetSettings(): Promise<void> {
+  const db = getDb();
+  // 'resumeRewind' is the pre-0.4 key loadSettings still reads when the new one is missing.
+  const keys = [...Object.keys(DEFAULT_SETTINGS), 'resumeRewind'];
+  await db.withTransactionAsync(async () => {
+    for (const key of keys) await db.runAsync('DELETE FROM settings WHERE key = ?', key);
+  });
+  store.set({ ...DEFAULT_SETTINGS });
+}
+
 /** Non-preference key/value storage (last-played episode, refresh timestamps). */
 export async function getMeta(key: string): Promise<string | null> {
   const row = await getDb().getFirstAsync<{ value: string }>(

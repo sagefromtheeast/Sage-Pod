@@ -1,6 +1,6 @@
 /**
  * Every preference, its type and default, in a module with no imports so tests
- * can check the defaults (src/db/__tests__/settingsSchema.test.ts).
+ * can check the defaults (src/settings/__tests__/settings.test.ts).
  * src/db/settings.ts keeps them in memory and in SQLite.
  */
 

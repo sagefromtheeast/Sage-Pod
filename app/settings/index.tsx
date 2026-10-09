@@ -1,8 +1,7 @@
 import { useRouter } from 'expo-router';
 import { Alert } from 'react-native';
 
-import { DEFAULT_SETTINGS, setSetting, type Settings } from '@/db/settings';
-import { player } from '@/player';
+import { DEFAULT_SETTINGS, resetSettings } from '@/db/settings';
 import { SettingsScreen } from '@/ui/settings/SettingsScreen';
 import { SettingsAction, SettingsLink, SettingsSection } from '@/ui/SettingsRow';
 import { useSetThemePreference } from '@/ui/useTheme';
@@ -22,11 +21,8 @@ export default function SettingsIndex() {
         text: 'Reset',
         style: 'destructive',
         onPress: async () => {
-          for (const key of Object.keys(DEFAULT_SETTINGS) as (keyof Settings)[]) {
-            await setSetting(key, DEFAULT_SETTINGS[key]);
-          }
+          await resetSettings();
           setThemePreference(DEFAULT_SETTINGS.themePreference);
-          player.setRate(DEFAULT_SETTINGS.playbackRate);
         },
       },
     ]);
