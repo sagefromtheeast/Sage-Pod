@@ -1,3 +1,20 @@
+## [0.17.0](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.16.0...v0.17.0) (2026-10-09)
+
+### 🚀 New Features
+
+* **backup:** database export and restore through SQLite's backup API ([360e54e](https://github.com/sagefromtheeast/Sage-Pod/commit/360e54e55862305c7ac9a258666d731dae15cfdd))
+* **backup:** export file names, HTML exports and the backup check ([cbbe13c](https://github.com/sagefromtheeast/Sage-Pod/commit/cbbe13cacf1d50530075293cc5bb743fda687fee))
+* **settings:** database backup and restore, OPML, HTML and favourites exports ([623cf51](https://github.com/sagefromtheeast/Sage-Pod/commit/623cf5127f15b8e338e0618b6f29b5aeb1216cc0))
+
+### 🐛 Bug Fixes
+
+* **backup:** check and migrate a backup before it replaces anything ([83c704d](https://github.com/sagefromtheeast/Sage-Pod/commit/83c704dab5513082249d195cadfc94ad9f75ddc0))
+* **backup:** replace the same day's export on iOS instead of failing ([1081286](https://github.com/sagefromtheeast/Sage-Pod/commit/1081286f4c65f711168bdec0935e78e14c7fba2b))
+
+### 📚 Documentation
+
+* record Phase 16 backup decisions (D-023) and progress ([6981681](https://github.com/sagefromtheeast/Sage-Pod/commit/6981681c814bda6178c3aa96a3a19304612e710e))
+
 ## [0.16.0](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.15.0...v0.16.0) (2026-10-09)
 
 ### 🚀 New Features
