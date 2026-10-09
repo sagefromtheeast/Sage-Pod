@@ -473,7 +473,7 @@ Stop and ask: new native dependency, schema migration, visible design change, an
 
 ## Phase 18 — Optional (one proposal each)
 - [x] Widget and Quick Settings tile (18a, D-026)
-- [ ] Binary chapters (18b)
+- [x] Binary chapters (18b, D-027)
 - [ ] Sync, Cast, Auto/Wear, video, Echo, nav customisation, parental control
 ```
 

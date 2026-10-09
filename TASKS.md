@@ -182,8 +182,10 @@ destructive.
 - [x] Tests: widget model and change check
 - [ ] On device: add the widget, resize it, light and dark; each button with the app open, backgrounded and swiped away; add the tile, toggle it while playing, paused and after a reboot
 
-## Phase 18b — Embedded chapters
-- [ ] ID3 CHAP and MP4 chapters read from the audio file when the feed gives no chapters
+## Phase 18b — Embedded chapters (D-027) ✅
+- [x] ID3 CHAP (title, link, picture) and MP4 chapters (QuickTime track, Nero) read from the audio file when the feed gives no chapters
+- [x] Streams read with HTTP ranges (only the tag or `moov`); downloads read from disk
+- [ ] On a device: a streamed MP3 and a downloaded M4A with chapters show them in the player
 
 ## Phase 18 — Optional (one proposal each)
 - [ ] Sync, Cast, Auto/Wear, video, Echo, nav customisation, parental control
@@ -192,6 +194,7 @@ destructive.
 - [ ] iOS home-screen widget (expo-widgets can show what's playing, but its buttons can't reach the player; D-026)
 - [ ] Hardware headset next/previous buttons seek instead of changing episode (AntennaPod's "Hardware forward button skips" setting)
 - [ ] Skip silence and volume boost on iOS (needs an audio tap; D-025)
+- [ ] Ogg / Opus chapters (Vorbis comments) and Podlove Simple Chapters in the feed (D-027)
 - [ ] `flushPosition` marks an episode played inside the smart-mark tail but doesn't dequeue or delete it like `onFinished` does
 - [x] A speed chosen in the player isn't saved (fixed by Phase 4's speed sheet)
 - [x] Refresh interval is only checked when the app opens (fixed by Phase 17a's background refresh)
