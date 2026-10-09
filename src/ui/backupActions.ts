@@ -2,14 +2,7 @@ import { reloadAppAsync } from 'expo';
 import { Directory, File } from 'expo-file-system';
 import { Alert } from 'react-native';
 
-import {
-  checkBackup,
-  exportFileName,
-  exportMimeType,
-  favouritesHtml,
-  subscriptionsHtml,
-  type ExportKind,
-} from '@/backup/formats';
+import { exportFileName, exportMimeType, favouritesHtml, subscriptionsHtml, type ExportKind } from '@/backup/formats';
 import {
   discardStagedBackup,
   exportDatabaseBytes,
@@ -18,9 +11,10 @@ import {
   restoreStagedBackup,
   stageBackup,
 } from '@/db/backup';
-import { LATEST_SCHEMA_VERSION } from '@/db/schema';
 import { exportOpml } from '@/feed/opml';
+import { isRefreshing } from '@/feed/sync';
 import { player } from '@/player';
+import { isDownloading } from '@/player/downloads';
 import { showToast } from '@/ui/UndoToast';
 
 /** The pickers reject, rather than resolve, when the listener backs out. */
@@ -85,10 +79,24 @@ export async function exportToFolder(kind: ExportKind): Promise<boolean> {
 }
 
 /**
+ * A refresh or download still running would write rows from the old data into
+ * the restored database, so a restore waits until neither is.
+ */
+function backgroundWorkBlocksRestore(): boolean {
+  if (!isRefreshing() && !isDownloading()) return false;
+  Alert.alert(
+    'Sage Pod is busy',
+    'Podcasts are refreshing or episodes are downloading. Let them finish, or cancel the downloads, then try again.'
+  );
+  return true;
+}
+
+/**
  * AntennaPod's "Database import": pick a backup, check it, warn, then replace
  * everything and restart. Nothing changes until the listener confirms.
  */
 export async function importDatabase(): Promise<void> {
+  if (backgroundWorkBlocksRestore()) return;
   let bytes: Uint8Array;
   try {
     const picked = await File.pickFileAsync({ mimeTypes: '*/*' });
@@ -106,10 +114,9 @@ export async function importDatabase(): Promise<void> {
     explain("Couldn't read that file", error);
     return;
   }
-  const check = checkBackup(staged.info, LATEST_SCHEMA_VERSION);
-  if (!check.ok) {
+  if (!staged.check.ok) {
     await discardStagedBackup(staged);
-    Alert.alert("Can't restore this file", check.reason);
+    Alert.alert("Can't restore this file", staged.check.reason);
     return;
   }
 
@@ -126,6 +133,11 @@ export async function importDatabase(): Promise<void> {
         style: 'destructive',
         onPress: () =>
           void (async () => {
+            // Checked again: a refresh may have started while the warning was up.
+            if (backgroundWorkBlocksRestore()) {
+              await discardStagedBackup(staged);
+              return;
+            }
             try {
               await player.release();
               await restoreStagedBackup(staged);

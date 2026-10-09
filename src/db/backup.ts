@@ -7,10 +7,19 @@ import {
   type SQLiteDatabase,
 } from 'expo-sqlite';
 
-import type { BackupInfo, HtmlFavourite, HtmlFeed } from '@/backup/formats';
+import {
+  checkBackup,
+  checkColumns,
+  NOT_SAGE_POD,
+  type BackupCheck,
+  type BackupInfo,
+  type HtmlFavourite,
+  type HtmlFeed,
+  type TableColumns,
+} from '@/backup/formats';
 
 import { getDb } from './index';
-import { migrate } from './schema';
+import { LATEST_SCHEMA_VERSION, migrate } from './schema';
 
 /** Scratch databases next to the app's own, so SQLite can open them by name. */
 const EXPORT_NAME = 'sagepod-export.db';
@@ -52,10 +61,11 @@ export async function exportDatabaseBytes(): Promise<Uint8Array> {
 }
 
 /**
- * A picked backup, opened beside the app's database but not yet used.
- * `database` is null when the file isn't an SQLite database at all.
+ * A picked backup, opened beside the app's database and brought up to this
+ * version, but not yet used. `check` says whether it may replace the app's
+ * data; `database` is null when the file isn't an SQLite database at all.
  */
-export type StagedBackup = { info: BackupInfo; database: SQLiteDatabase | null };
+export type StagedBackup = { info: BackupInfo; check: BackupCheck; database: SQLiteDatabase | null };
 
 const NOT_A_DATABASE: BackupInfo = { userVersion: 0, tables: [], integrity: '', feeds: 0, episodes: 0 };
 
@@ -75,22 +85,56 @@ async function readInfo(db: SQLiteDatabase): Promise<BackupInfo> {
   };
 }
 
-/** Copies a picked file in and reads what it holds; nothing of the app's changes. */
+/** Every column of the app's own tables, as `db` has them. */
+async function columnsOf(db: SQLiteDatabase, tables: readonly string[]): Promise<TableColumns> {
+  const columns: Record<string, string[]> = {};
+  for (const table of tables) {
+    const rows = await db.getAllAsync<{ name: string }>(`PRAGMA table_info("${table.replace(/"/g, '""')}")`);
+    columns[table] = rows.map((row) => row.name);
+  }
+  return columns;
+}
+
+async function appTables(): Promise<string[]> {
+  const rows = await getDb().getAllAsync<{ name: string }>(
+    "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'"
+  );
+  return rows.map((row) => row.name);
+}
+
+/**
+ * Copies a picked file in, reads what it holds and, if it passes, brings it up
+ * to this version's tables and checks them against the app's. All of it on
+ * the scratch copy: nothing of the app's changes.
+ */
 export async function stageBackup(bytes: Uint8Array): Promise<StagedBackup> {
   await removeScratch(RESTORE_NAME);
   const file = scratchFile(RESTORE_NAME);
   file.create();
   file.write(bytes);
   let database: SQLiteDatabase | null = null;
+  let info: BackupInfo;
   try {
     database = await openDatabaseAsync(RESTORE_NAME);
-    return { info: await readInfo(database), database };
+    info = await readInfo(database);
   } catch {
     // Not an SQLite file at all ("file is not a database").
     await database?.closeAsync().catch(() => {});
     await removeScratch(RESTORE_NAME);
-    return { info: NOT_A_DATABASE, database: null };
+    return { info: NOT_A_DATABASE, check: { ok: false, reason: NOT_SAGE_POD }, database: null };
   }
+  let check = checkBackup(info, LATEST_SCHEMA_VERSION);
+  if (check.ok) {
+    try {
+      await migrate(database);
+      const tables = await appTables();
+      check = checkColumns(await columnsOf(getDb(), tables), await columnsOf(database, tables));
+    } catch {
+      // A migration that can't apply means tables that aren't really ours.
+      check = { ok: false, reason: NOT_SAGE_POD };
+    }
+  }
+  return { info, check, database };
 }
 
 export async function discardStagedBackup(staged: StagedBackup): Promise<void> {
@@ -99,18 +143,19 @@ export async function discardStagedBackup(staged: StagedBackup): Promise<void> {
 }
 
 /**
- * Replaces everything in the app's database with the staged backup, in one
- * step (SQLite's backup API: on failure nothing changes), then brings an older
- * backup up to this version's tables. The caller restarts the app afterwards,
- * since every screen and the player hold state read from the old data.
+ * Replaces everything in the app's database with the staged backup, already
+ * at this version, in one step (SQLite's backup API: on failure nothing
+ * changes). The caller restarts the app afterwards, since every screen and the
+ * player hold state read from the old data.
  */
 export async function restoreStagedBackup(staged: StagedBackup): Promise<void> {
-  if (!staged.database) throw new Error('Nothing to restore');
+  if (!staged.database || !staged.check.ok) throw new Error('Nothing to restore');
   try {
     await backupDatabaseAsync({ sourceDatabase: staged.database, destDatabase: getDb() });
   } finally {
     await discardStagedBackup(staged);
   }
+  // Nothing left to migrate; this sets the connection's pragmas again.
   await migrate(getDb());
 }
 
@@ -126,7 +171,7 @@ export async function listFeedsForExport(): Promise<HtmlFeed[]> {
 /** Every favourite episode, grouped by podcast for the favourites export. */
 export async function listFavouritesForExport(): Promise<HtmlFavourite[]> {
   return getDb().getAllAsync<HtmlFavourite>(
-    `SELECT COALESCE(f.custom_title, f.title) AS feedTitle, f.link AS feedLink, e.title AS title, e.link AS link,
+    `SELECT f.id AS feedId, COALESCE(f.custom_title, f.title) AS feedTitle, f.link AS feedLink, e.title AS title, e.link AS link,
             e.media_url AS mediaUrl, e.published_at AS publishedAt
        FROM episodes e JOIN feeds f ON f.id = e.feed_id
       WHERE e.is_favorite = 1

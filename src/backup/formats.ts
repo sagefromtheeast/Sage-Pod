@@ -98,6 +98,7 @@ export function subscriptionsHtml(feeds: readonly HtmlFeed[]): string {
 }
 
 export type HtmlFavourite = {
+  feedId: number;
   feedTitle: string;
   feedLink: string | null;
   title: string;
@@ -111,13 +112,15 @@ export type HtmlFavourite = {
  * linking to its web page (or its audio when there is none).
  */
 export function favouritesHtml(episodes: readonly HtmlFavourite[]): string {
-  const groups = new Map<string, HtmlFavourite[]>();
+  // By podcast, not by title: two podcasts can share a name.
+  const groups = new Map<number, HtmlFavourite[]>();
   for (const episode of episodes) {
-    const group = groups.get(episode.feedTitle);
+    const group = groups.get(episode.feedId);
     if (group) group.push(episode);
-    else groups.set(episode.feedTitle, [episode]);
+    else groups.set(episode.feedId, [episode]);
   }
-  const sections = [...groups].map(([feedTitle, items]) => {
+  const sections = [...groups.values()].map((items) => {
+    const { feedTitle } = items[0];
     const feedLink = safeUrl(items[0].feedLink);
     const heading = feedLink ? `<a href="${escapeHtml(feedLink)}">${escapeHtml(feedTitle)}</a>` : escapeHtml(feedTitle);
     const rows = items.map((item) => {
@@ -149,14 +152,13 @@ export type BackupCheck = { ok: true } | { ok: false; reason: string };
  * Whether a database file can replace the app's: a Sage Pod database, intact,
  * and not from a newer version of the app (whose tables this one can't read).
  */
+export const NOT_SAGE_POD =
+  "That file isn't a Sage Pod backup. To move from another podcast app, export its subscriptions as OPML and import that instead.";
+
 export function checkBackup(info: BackupInfo, latestVersion: number): BackupCheck {
   const missing = REQUIRED_TABLES.filter((table) => !info.tables.includes(table));
   if (missing.length > 0 || info.userVersion < 1) {
-    return {
-      ok: false,
-      reason:
-        "That file isn't a Sage Pod backup. To move from another podcast app, export its subscriptions as OPML and import that instead.",
-    };
+    return { ok: false, reason: NOT_SAGE_POD };
   }
   if (info.userVersion > latestVersion) {
     return {
@@ -166,6 +168,22 @@ export function checkBackup(info: BackupInfo, latestVersion: number): BackupChec
   }
   if (info.integrity !== 'ok') {
     return { ok: false, reason: 'That backup is damaged, so nothing was changed.' };
+  }
+  return { ok: true };
+}
+
+/** Each table's column names. */
+export type TableColumns = Record<string, readonly string[]>;
+
+/**
+ * The second check, on the backup once it has been brought up to this
+ * version: every table and column the app's own database has must be there,
+ * so a file that merely borrows the table names can't replace real data.
+ */
+export function checkColumns(expected: TableColumns, actual: TableColumns): BackupCheck {
+  for (const [table, columns] of Object.entries(expected)) {
+    const present = actual[table] ?? [];
+    if (columns.some((column) => !present.includes(column))) return { ok: false, reason: NOT_SAGE_POD };
   }
   return { ok: true };
 }

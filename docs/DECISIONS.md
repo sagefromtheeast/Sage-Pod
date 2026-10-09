@@ -403,12 +403,15 @@ before any import that overwrites the live database.
   writes still in the WAL.
 - Database import is allowed to replace the live data, with safeguards: the
   picked file is staged beside the app's database and checked first (a Sage
-  Pod database, `quick_check` ok, not from a newer schema). The warning says
-  how many podcasts and episodes it holds and what it replaces, and suggests
-  exporting first. On confirmation the player saves and lets go of its
+  Pod database, `quick_check` ok, not from a newer schema), then migrated on
+  that scratch copy and checked to have every table and column the app's own
+  database has. The warning says how many podcasts and episodes it holds and
+  what it replaces, and suggests exporting first. A restore waits until no
+  feed refresh or download is running, since their writes would land in the
+  restored data. On confirmation the player saves and lets go of its
   episode, the backup API copies the file over in one step (nothing changes
-  if it fails), migrations bring an older backup up to date, and the app
-  restarts with `reloadAppAsync` (in the installed `expo` package).
+  if it fails), and the app restarts with `reloadAppAsync` (in the installed
+  `expo` package).
 - No hidden "before restore" copy: there would be no way to use it. The
   warning points to Export database instead.
 - Audio files are not in the backup. On the same phone the restored episodes

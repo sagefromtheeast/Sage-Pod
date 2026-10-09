@@ -199,12 +199,26 @@ export async function queueDownload(
   void pump();
 }
 
+/**
+ * Downloads whose work isn't finished, counted until their last write: a
+ * cancelled one still records its state after `active` lets go of it.
+ */
+let runsInFlight = 0;
+
+/** Whether any download is queued or still writing; a database restore waits for none. */
+export function isDownloading(): boolean {
+  return runsInFlight > 0 || waiting.length > 0;
+}
+
 /** Starts queued downloads up to the concurrency limit. */
 async function pump(): Promise<void> {
   while (active.size < MAX_CONCURRENT && waiting.length > 0) {
     const next = waiting.shift();
     if (next === undefined) return;
-    void run(next.episodeId, next.isAuto);
+    runsInFlight += 1;
+    void run(next.episodeId, next.isAuto).finally(() => {
+      runsInFlight -= 1;
+    });
   }
 }
 

@@ -243,10 +243,26 @@ export async function previewFeed(rawUrl: string): Promise<{ feedId: number; sub
  * `quiet` stores new episodes without the new-episodes action (Inbox, queue)
  * or auto-download.
  */
+let refreshesRunning = 0;
+
+/** Whether a feed refresh is writing; a database restore waits for none. */
+export function isRefreshing(): boolean {
+  return refreshesRunning > 0;
+}
+
 export async function refreshFeed(
   feed: FeedRow,
   options: { full?: boolean; quiet?: boolean } = {}
 ): Promise<SyncResult> {
+  refreshesRunning += 1;
+  try {
+    return await refreshFeedNow(feed, options);
+  } finally {
+    refreshesRunning -= 1;
+  }
+}
+
+async function refreshFeedNow(feed: FeedRow, options: { full?: boolean; quiet?: boolean }): Promise<SyncResult> {
   let fetched: Awaited<ReturnType<typeof fetchFeed>>;
   try {
     // A full refresh ignores the cache validators, so the server can't answer 304.

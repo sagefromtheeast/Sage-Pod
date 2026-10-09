@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 
 import {
   checkBackup,
+  checkColumns,
   escapeHtml,
   exportFileName,
   exportMimeType,
@@ -78,6 +79,7 @@ describe('HTML exports', () => {
   it('groups favourites by podcast, linking the page or else the audio', () => {
     const html = favouritesHtml([
       {
+        feedId: 1,
         feedTitle: 'Show A',
         feedLink: 'https://a.example',
         title: 'Ep 1',
@@ -86,6 +88,7 @@ describe('HTML exports', () => {
         publishedAt: new Date(2026, 0, 5, 12).getTime(),
       },
       {
+        feedId: 2,
         feedTitle: 'Show B',
         feedLink: null,
         title: 'Ep 9',
@@ -94,6 +97,7 @@ describe('HTML exports', () => {
         publishedAt: null,
       },
       {
+        feedId: 1,
         feedTitle: 'Show A',
         feedLink: 'https://a.example',
         title: 'Ep 2',
@@ -110,6 +114,15 @@ describe('HTML exports', () => {
     assert.ok(html.includes('<li><div>Ep 2</div></li>'));
     // Both of Show A's episodes sit under its one heading.
     assert.ok(html.indexOf('Ep 2') < html.indexOf('Show B'));
+  });
+
+  it('keeps two podcasts with the same title apart', () => {
+    const favourite = { feedTitle: 'News', feedLink: null, link: null, mediaUrl: null, publishedAt: null };
+    const html = favouritesHtml([
+      { ...favourite, feedId: 1, title: 'Morning' },
+      { ...favourite, feedId: 2, title: 'Evening' },
+    ]);
+    assert.equal(html.match(/<h2>News<\/h2>/g)?.length, 2);
   });
 
   it('says so when there is nothing to export', () => {
@@ -148,5 +161,19 @@ describe('database backup check', () => {
   it('refuses a damaged backup', () => {
     const result = checkBackup({ ...good, integrity: '*** in database main ***' }, 6);
     assert.match(!result.ok ? result.reason : '', /damaged/);
+  });
+});
+
+describe('backup column check', () => {
+  const app = { feeds: ['id', 'feed_url', 'title'], settings: ['key', 'value'] };
+
+  it('accepts a backup with every table and column the app has', () => {
+    assert.deepEqual(checkColumns(app, { ...app, extra: ['x'], feeds: [...app.feeds, 'old_column'] }), { ok: true });
+  });
+
+  it('refuses tables that only borrow the names', () => {
+    const result = checkColumns(app, { feeds: ['id'], settings: ['key', 'value'] });
+    assert.match(!result.ok ? result.reason : '', /isn't a Sage Pod backup/);
+    assert.equal(checkColumns(app, { feeds: app.feeds }).ok, false);
   });
 });
