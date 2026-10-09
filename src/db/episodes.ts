@@ -373,15 +373,17 @@ export async function listPendingDownloads(): Promise<EpisodeWithFeed[]> {
 /** The `n` newest not-yet-downloaded episodes of an auto-download feed. */
 export async function listAutoDownloadCandidates(
   feedId: number,
-  limit: number
+  limit: number,
+  offset = 0
 ): Promise<EpisodeRow[]> {
   return getDb().getAllAsync<EpisodeRow>(
     `SELECT * FROM episodes
       WHERE feed_id = ? AND is_played = 0 AND download_state = 'none'
-      ORDER BY published_at DESC
-      LIMIT ?`,
+      ORDER BY published_at DESC, id DESC
+      LIMIT ? OFFSET ?`,
     feedId,
-    limit
+    limit,
+    offset
   );
 }
 

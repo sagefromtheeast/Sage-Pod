@@ -14,7 +14,7 @@ import {
   markPlayed,
   savePosition,
 } from '@/db/episodes';
-import { setFeedFlags } from '@/db/feeds';
+import { setFeedFlags, type FeedPrefs } from '@/db/feeds';
 import { dequeue, enqueueFront, nextInQueue } from '@/db/queue';
 import { deleteDownload, getLocalEpisodePath } from '@/player/downloads';
 import { getMeta, getSettings, setMeta, setSetting } from '@/db/settings';
@@ -446,6 +446,29 @@ class PlayerService {
       await setFeedFlags(episode.feed_id, { playbackSpeed: value });
     } else {
       await setSetting('playbackRate', value);
+    }
+  }
+
+  /**
+   * A podcast's settings changed while one of its episodes is loaded: carry
+   * the new values into the cached episode so speed, skip ending, volume and
+   * auto-delete follow them now rather than from the next episode.
+   */
+  applyFeedPrefs(feedId: number, prefs: Partial<FeedPrefs>, globalRate: number): void {
+    const episode = this.state.episode;
+    if (!episode || episode.feed_id !== feedId) return;
+    const next = { ...episode };
+    if (prefs.playbackSpeed !== undefined) next.feed_playback_speed = prefs.playbackSpeed;
+    if (prefs.skipIntroSeconds !== undefined) next.feed_skip_intro_seconds = prefs.skipIntroSeconds;
+    if (prefs.skipEndingSeconds !== undefined) next.feed_skip_ending_seconds = prefs.skipEndingSeconds;
+    if (prefs.volumeReduction !== undefined) next.feed_volume_reduction = prefs.volumeReduction;
+    if (prefs.autoDelete !== undefined) next.feed_auto_delete = prefs.autoDelete === null ? null : prefs.autoDelete ? 1 : 0;
+    this.setState({ episode: next });
+    if (prefs.playbackSpeed !== undefined) this.setRate(prefs.playbackSpeed ?? globalRate);
+    if (prefs.volumeReduction !== undefined) {
+      this.baseVolume = volumeFor(prefs.volumeReduction);
+      // A sleep fade in progress picks the new base up on its next tick.
+      if (this.player && !this.inWarning) this.player.volume = this.baseVolume;
     }
   }
 

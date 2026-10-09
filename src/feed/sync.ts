@@ -359,13 +359,19 @@ export async function autoDownloadCandidates(feed: FeedRow): Promise<number[]> {
     exclude: parseWords(feed.download_exclude),
     minMinutes: feed.download_min_minutes ?? 0,
   };
-  const rows = await listAutoDownloadCandidates(feed.id, limit * 3);
+  // Pages through the unplayed episodes, newest first, so selective rules
+  // still find matches further back.
+  const pageSize = Math.max(limit * 3, 50);
   const candidates: number[] = [];
-  for (const row of rows) {
-    if (shouldAutoDownload(row, rules)) {
-      candidates.push(row.id);
-      if (candidates.length >= limit) break;
+  for (let offset = 0; candidates.length < limit; offset += pageSize) {
+    const rows = await listAutoDownloadCandidates(feed.id, pageSize, offset);
+    for (const row of rows) {
+      if (shouldAutoDownload(row, rules)) {
+        candidates.push(row.id);
+        if (candidates.length >= limit) break;
+      }
     }
+    if (rows.length < pageSize) break;
   }
   return candidates;
 }

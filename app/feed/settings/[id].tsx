@@ -57,10 +57,8 @@ export default function FeedSettingsScreen() {
   const update = useCallback(
     async (prefs: Partial<FeedPrefs>) => {
       await setFeedPrefs(feedId, prefs);
-      // A new speed applies at once if this podcast is playing.
-      if (prefs.playbackSpeed !== undefined && player.getState().episode?.feed_id === feedId) {
-        player.setRate(prefs.playbackSpeed ?? globalSpeed);
-      }
+      // Applies at once if one of this podcast's episodes is loaded.
+      player.applyFeedPrefs(feedId, prefs, globalSpeed);
     },
     [feedId, globalSpeed]
   );
