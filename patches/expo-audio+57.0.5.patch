@@ -1,0 +1,393 @@
+diff --git a/node_modules/expo-audio/android/src/main/java/expo/modules/audio/AudioModule.kt b/node_modules/expo-audio/android/src/main/java/expo/modules/audio/AudioModule.kt
+index 992239b..be8b1b7 100644
+--- a/node_modules/expo-audio/android/src/main/java/expo/modules/audio/AudioModule.kt
++++ b/node_modules/expo-audio/android/src/main/java/expo/modules/audio/AudioModule.kt
+@@ -525,6 +525,18 @@ class AudioModule : Module() {
+         }
+       }
+ 
++      Function("setSkipSilence") { player: AudioPlayer, enabled: Boolean ->
++        runOnMain {
++          player.setSkipSilence(enabled)
++        }
++      }
++
++      Function("setVolumeBoost") { player: AudioPlayer, millibels: Int ->
++        runOnMain {
++          player.setVolumeBoost(millibels)
++        }
++      }
++
+       Function("setAudioSamplingEnabled") { player: AudioPlayer, enabled: Boolean ->
+         runOnMain {
+           player.setSamplingEnabled(enabled)
+diff --git a/node_modules/expo-audio/android/src/main/java/expo/modules/audio/AudioPlayer.kt b/node_modules/expo-audio/android/src/main/java/expo/modules/audio/AudioPlayer.kt
+index c76a9fd..8a36cb4 100644
+--- a/node_modules/expo-audio/android/src/main/java/expo/modules/audio/AudioPlayer.kt
++++ b/node_modules/expo-audio/android/src/main/java/expo/modules/audio/AudioPlayer.kt
+@@ -3,6 +3,7 @@ package expo.modules.audio
+ import android.Manifest
+ import android.content.Context
+ import android.content.pm.PackageManager
++import android.media.audiofx.LoudnessEnhancer
+ import android.media.audiofx.Visualizer
+ import android.util.Log
+ import androidx.core.content.ContextCompat
+@@ -39,6 +40,8 @@ class AudioPlayer(
+     .setAudioAttributes(AudioAttributes.DEFAULT, false)
+     .setSeekForwardIncrementMs(SEEK_JUMP_INTERVAL_MS)
+     .setSeekBackIncrementMs(SEEK_JUMP_INTERVAL_MS)
++    // Sage Pod: pause when headphones are unplugged.
++    .setHandleAudioBecomingNoisy(true)
+     .apply {
+       if (bufferDurationMs > 0) {
+         setLoadControl(
+@@ -77,6 +80,7 @@ class AudioPlayer(
+     }
+ 
+   private var samplingEnabled = false
++  private var loudnessEnhancer: LoudnessEnhancer? = null
+   private var visualizer: Visualizer? = null
+   private val context by lazy {
+     appContext.reactContext
+@@ -180,6 +184,28 @@ class AudioPlayer(
+     }
+   }
+ 
++  // Sage Pod: skip silence and volume boost.
++  fun setSkipSilence(enabled: Boolean) {
++    ref.skipSilenceEnabled = enabled
++  }
++
++  fun setVolumeBoost(millibels: Int) {
++    try {
++      if (millibels <= 0) {
++        loudnessEnhancer?.release()
++        loudnessEnhancer = null
++        return
++      }
++      val enhancer = loudnessEnhancer ?: LoudnessEnhancer(ref.audioSessionId).also { loudnessEnhancer = it }
++      enhancer.setTargetGain(millibels)
++      enhancer.enabled = true
++    } catch (e: RuntimeException) {
++      // Some devices refuse audio effects; play at normal volume instead.
++      Log.w(TAG, "Volume boost unavailable", e)
++      loudnessEnhancer = null
++    }
++  }
++
+   override fun setPlaybackRate(rate: Float) {
+     val playbackRate = rate.coerceIn(0.1f, 2.0f)
+     val pitch = if (preservesPitch) 1f else playbackRate
+@@ -283,6 +309,8 @@ class AudioPlayer(
+     }
+     serviceConnection.unbind()
+     visualizer?.release()
++    loudnessEnhancer?.release()
++    loudnessEnhancer = null
+     super.releasePlayer()
+   }
+ 
+diff --git a/node_modules/expo-audio/android/src/main/java/expo/modules/audio/AudioRecords.kt b/node_modules/expo-audio/android/src/main/java/expo/modules/audio/AudioRecords.kt
+index 86880d9..28e6af7 100644
+--- a/node_modules/expo-audio/android/src/main/java/expo/modules/audio/AudioRecords.kt
++++ b/node_modules/expo-audio/android/src/main/java/expo/modules/audio/AudioRecords.kt
+@@ -110,7 +110,11 @@ enum class AndroidAudioEncoder(val value: String) : Enumerable {
+ class AudioLockScreenOptions(
+   @Field val showSeekForward: Boolean,
+   @Field val showSeekBackward: Boolean,
+-  @Field val isLiveStream: Boolean? = null
++  @Field val isLiveStream: Boolean? = null,
++  // Sage Pod: the listener's skip amounts and a next-episode button.
++  @Field val seekForwardSeconds: Double? = null,
++  @Field val seekBackwardSeconds: Double? = null,
++  @Field val showNext: Boolean? = null
+ ) : Record
+ 
+ enum class InterruptionMode(val value: String) : Enumerable {
+diff --git a/node_modules/expo-audio/android/src/main/java/expo/modules/audio/service/AudioControlsService.kt b/node_modules/expo-audio/android/src/main/java/expo/modules/audio/service/AudioControlsService.kt
+index 196a5d5..0e267f6 100644
+--- a/node_modules/expo-audio/android/src/main/java/expo/modules/audio/service/AudioControlsService.kt
++++ b/node_modules/expo-audio/android/src/main/java/expo/modules/audio/service/AudioControlsService.kt
+@@ -88,8 +88,9 @@ class AudioControlsService : MediaSessionService() {
+             currentPlayerRef.play()
+           }
+ 
+-        ACTION_SEEK_FORWARD -> currentPlayerRef.seekTo(currentPlayerRef.currentPosition + SEEK_INTERVAL_MS)
+-        ACTION_SEEK_BACKWARD -> currentPlayerRef.seekTo(currentPlayerRef.currentPosition - SEEK_INTERVAL_MS)
++        ACTION_SEEK_FORWARD -> currentPlayerRef.seekTo(currentPlayerRef.currentPosition + forwardMs())
++        ACTION_SEEK_BACKWARD -> currentPlayerRef.seekTo((currentPlayerRef.currentPosition - backwardMs()).coerceAtLeast(0))
++        ACTION_NEXT -> emitNext()
+       }
+     }
+ 
+@@ -136,6 +137,41 @@ class AudioControlsService : MediaSessionService() {
+     return playsInSilentMode || audioManager.ringerMode == AudioManager.RINGER_MODE_NORMAL
+   }
+ 
++  // Sage Pod: the listener's skip amounts and a next-episode button.
++  private fun forwardMs(): Long =
++    currentOptions?.seekForwardSeconds?.takeIf { it > 0 }?.let { (it * 1000).toLong() } ?: SEEK_INTERVAL_MS
++
++  private fun backwardMs(): Long =
++    currentOptions?.seekBackwardSeconds?.takeIf { it > 0 }?.let { (it * 1000).toLong() } ?: SEEK_INTERVAL_MS
++
++  private fun showsNext(): Boolean = currentOptions?.showNext == true
++
++  private fun emitNext() {
++    currentPlayer?.emit(EVENT_REMOTE_NEXT)
++  }
++
++  private fun buildSessionCallback() = AudioMediaSessionCallback(
++    forwardMs = { forwardMs() },
++    backwardMs = { backwardMs() },
++    onNext = { emitNext() }
++  )
++
++  private fun forwardIcon(): Int = when (forwardMs()) {
++    5_000L -> CommandButton.ICON_SKIP_FORWARD_5
++    10_000L -> CommandButton.ICON_SKIP_FORWARD_10
++    15_000L -> CommandButton.ICON_SKIP_FORWARD_15
++    30_000L -> CommandButton.ICON_SKIP_FORWARD_30
++    else -> CommandButton.ICON_SKIP_FORWARD
++  }
++
++  private fun backwardIcon(): Int = when (backwardMs()) {
++    5_000L -> CommandButton.ICON_SKIP_BACK_5
++    10_000L -> CommandButton.ICON_SKIP_BACK_10
++    15_000L -> CommandButton.ICON_SKIP_BACK_15
++    30_000L -> CommandButton.ICON_SKIP_BACK_30
++    else -> CommandButton.ICON_SKIP_BACK
++  }
++
+   private fun createNotificationChannelIfNeeded() {
+     val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+@@ -229,6 +265,17 @@ class AudioControlsService : MediaSessionService() {
+         compactViewIndices.add(currentIndex)
+       }
+ 
++      // Expanded view only: the compact view keeps back, play and forward.
++      if (showsNext()) {
++        builder.addAction(
++          NotificationCompat.Action(
++            androidx.media3.session.R.drawable.media3_icon_next,
++            "Next episode",
++            buildActionPendingIntent(ACTION_NEXT)
++          )
++        )
++      }
++
+       style.setShowActionsInCompactView(*compactViewIndices.toIntArray())
+     }
+ 
+@@ -243,7 +290,7 @@ class AudioControlsService : MediaSessionService() {
+     // Add seek backward button if enabled
+     if (currentOptions?.showSeekBackward == true) {
+       mediaButtons.add(
+-        CommandButton.Builder(CommandButton.ICON_SKIP_BACK_10)
++        CommandButton.Builder(backwardIcon())
+           .setDisplayName("Seek Backward")
+           .setEnabled(true)
+           .setSessionCommand(SessionCommand(ACTION_SEEK_BACKWARD, Bundle.EMPTY))
+@@ -265,7 +312,7 @@ class AudioControlsService : MediaSessionService() {
+     // Add seek forward button if enabled
+     if (currentOptions?.showSeekForward == true) {
+       mediaButtons.add(
+-        CommandButton.Builder(CommandButton.ICON_SKIP_FORWARD_10)
++        CommandButton.Builder(forwardIcon())
+           .setDisplayName("Seek Forward")
+           .setEnabled(true)
+           .setSessionCommand(SessionCommand(ACTION_SEEK_FORWARD, Bundle.EMPTY))
+@@ -274,6 +321,17 @@ class AudioControlsService : MediaSessionService() {
+       )
+     }
+ 
++    if (showsNext()) {
++      mediaButtons.add(
++        CommandButton.Builder(CommandButton.ICON_NEXT)
++          .setDisplayName("Next episode")
++          .setEnabled(true)
++          .setSessionCommand(SessionCommand(ACTION_NEXT, Bundle.EMPTY))
++          .setSlots(CommandButton.SLOT_OVERFLOW)
++          .build()
++      )
++    }
++
+     session.setCustomLayout(mediaButtons)
+     session.setMediaButtonPreferences(mediaButtons)
+   }
+@@ -323,7 +381,13 @@ class AudioControlsService : MediaSessionService() {
+   private fun resolveSessionPlayer(player: AudioPlayer, options: AudioLockScreenOptions?): Player {
+     val isLive = options?.isLiveStream ?: player.isLive
+     if (!isLive) {
+-      return player.ref
++      // Sage Pod: controllers that send seek forward/back get the listener's amounts.
++      return object : ForwardingPlayer(player.ref) {
++        override fun getSeekForwardIncrement(): Long = forwardMs()
++        override fun getSeekBackIncrement(): Long = backwardMs()
++        override fun seekForward() = seekTo(currentPosition + forwardMs())
++        override fun seekBack() = seekTo((currentPosition - backwardMs()).coerceAtLeast(0))
++      }
+     }
+ 
+     return object : ForwardingPlayer(player.ref) {
+@@ -371,7 +435,7 @@ class AudioControlsService : MediaSessionService() {
+           updateMetadata(metadata)
+         }
+         val session = MediaSession.Builder(context, sessionPlayer)
+-          .setCallback(AudioMediaSessionCallback())
++          .setCallback(buildSessionCallback())
+           .build()
+ 
+         // Replace the basic media session with a session connected to our playback service.
+@@ -452,7 +516,7 @@ class AudioControlsService : MediaSessionService() {
+           updateMetadata(metadata)
+         }
+         val session = MediaSession.Builder(context, sessionPlayer)
+-          .setCallback(AudioMediaSessionCallback())
++          .setCallback(buildSessionCallback())
+           .build()
+ 
+         player.mediaSession.release()
+@@ -558,6 +622,8 @@ class AudioControlsService : MediaSessionService() {
+ 
+     const val ACTION_SEEK_FORWARD = "expo.modules.audio.action.SEEK_FORWARD"
+     const val ACTION_SEEK_BACKWARD = "expo.modules.audio.action.SEEK_BACKWARD"
++    const val ACTION_NEXT = "expo.modules.audio.action.NEXT"
++    const val EVENT_REMOTE_NEXT = "remoteNext"
+ 
+     const val SEEK_INTERVAL_MS = 10000L
+   }
+diff --git a/node_modules/expo-audio/android/src/main/java/expo/modules/audio/service/AudioMediaSessionCallback.kt b/node_modules/expo-audio/android/src/main/java/expo/modules/audio/service/AudioMediaSessionCallback.kt
+index 839aaef..fba9c06 100644
+--- a/node_modules/expo-audio/android/src/main/java/expo/modules/audio/service/AudioMediaSessionCallback.kt
++++ b/node_modules/expo-audio/android/src/main/java/expo/modules/audio/service/AudioMediaSessionCallback.kt
+@@ -10,7 +10,12 @@ import androidx.media3.common.util.UnstableApi
+ import com.google.common.util.concurrent.ListenableFuture
+ 
+ @OptIn(UnstableApi::class)
+-class AudioMediaSessionCallback : MediaSession.Callback {
++// Sage Pod: skip amounts and the next button come from the lock-screen options.
++class AudioMediaSessionCallback(
++  private val forwardMs: () -> Long = { AudioControlsService.SEEK_INTERVAL_MS },
++  private val backwardMs: () -> Long = { AudioControlsService.SEEK_INTERVAL_MS },
++  private val onNext: () -> Unit = {}
++) : MediaSession.Callback {
+   override fun onConnect(
+     session: MediaSession,
+     controller: MediaSession.ControllerInfo
+@@ -35,6 +40,7 @@ class AudioMediaSessionCallback : MediaSession.Callback {
+           MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon()
+             .add(SessionCommand(AudioControlsService.ACTION_SEEK_BACKWARD, Bundle.EMPTY))
+             .add(SessionCommand(AudioControlsService.ACTION_SEEK_FORWARD, Bundle.EMPTY))
++            .add(SessionCommand(AudioControlsService.ACTION_NEXT, Bundle.EMPTY))
+             .build()
+         )
+         .build()
+@@ -51,10 +57,11 @@ class AudioMediaSessionCallback : MediaSession.Callback {
+   ): ListenableFuture<SessionResult> {
+     when (command.customAction) {
+       AudioControlsService.ACTION_SEEK_FORWARD -> {
+-        session.player.seekTo(session.player.currentPosition + AudioControlsService.SEEK_INTERVAL_MS)
++        session.player.seekTo(session.player.currentPosition + forwardMs())
+       }
++      AudioControlsService.ACTION_NEXT -> onNext()
+       AudioControlsService.ACTION_SEEK_BACKWARD -> {
+-        session.player.seekTo(session.player.currentPosition - AudioControlsService.SEEK_INTERVAL_MS)
++        session.player.seekTo((session.player.currentPosition - backwardMs()).coerceAtLeast(0))
+       }
+     }
+     return super.onCustomCommand(session, controller, command, args)
+diff --git a/node_modules/expo-audio/ios/AudioRecords.swift b/node_modules/expo-audio/ios/AudioRecords.swift
+index 33db27c..f5b0761 100644
+--- a/node_modules/expo-audio/ios/AudioRecords.swift
++++ b/node_modules/expo-audio/ios/AudioRecords.swift
+@@ -70,6 +70,10 @@ struct LockScreenOptions: Record {
+   @Field var showSeekForward: Bool = false
+   @Field var showSeekBackward: Bool = false
+   @Field var isLiveStream: Bool? = false
++  // Sage Pod: the listener's skip amounts and a next-episode button.
++  @Field var seekForwardSeconds: Double? = nil
++  @Field var seekBackwardSeconds: Double? = nil
++  @Field var showNext: Bool? = false
+ }
+ 
+ enum BitRateStrategy: String, Enumerable {
+diff --git a/node_modules/expo-audio/ios/MediaController.swift b/node_modules/expo-audio/ios/MediaController.swift
+index e977f57..4186c9d 100644
+--- a/node_modules/expo-audio/ios/MediaController.swift
++++ b/node_modules/expo-audio/ios/MediaController.swift
+@@ -232,6 +232,10 @@ class MediaController {
+   }
+ 
+   private func enableRemoteCommands(options: LockScreenOptions?) {
++    // Sage Pod: each episode load calls this again; drop the previous handlers
++    // so one press doesn't seek (or skip) once per episode played.
++    removeAllRemoteTargets()
++
+     remoteCommandCenter.playCommand.addTarget { [weak self] _ in
+       guard let player = self?.activePlayer else {
+         return .commandFailed
+@@ -275,7 +279,7 @@ class MediaController {
+       return .success
+     }
+ 
+-    remoteCommandCenter.skipForwardCommand.preferredIntervals = [10.0]
++    remoteCommandCenter.skipForwardCommand.preferredIntervals = [NSNumber(value: options?.seekForwardSeconds ?? 10.0)]
+     remoteCommandCenter.skipForwardCommand.addTarget { [weak self] event in
+       guard let player = self?.activePlayer,
+       let event = event as? MPSkipIntervalCommandEvent else {
+@@ -289,7 +293,7 @@ class MediaController {
+       return .success
+     }
+ 
+-    remoteCommandCenter.skipBackwardCommand.preferredIntervals = [10.0]
++    remoteCommandCenter.skipBackwardCommand.preferredIntervals = [NSNumber(value: options?.seekBackwardSeconds ?? 10.0)]
+     remoteCommandCenter.skipBackwardCommand.addTarget { [weak self] event in
+       guard let player = self?.activePlayer,
+       let event = event as? MPSkipIntervalCommandEvent else {
+@@ -303,6 +307,16 @@ class MediaController {
+       return .success
+     }
+ 
++    remoteCommandCenter.nextTrackCommand.addTarget { [weak self] _ in
++      guard let player = self?.activePlayer else {
++        return .commandFailed
++      }
++
++      player.emit(event: "remoteNext")
++      return .success
++    }
++
++    remoteCommandCenter.nextTrackCommand.isEnabled = options?.showNext ?? false
+     remoteCommandCenter.playCommand.isEnabled = true
+     remoteCommandCenter.pauseCommand.isEnabled = true
+     remoteCommandCenter.togglePlayPauseCommand.isEnabled = true
+@@ -318,13 +332,19 @@ class MediaController {
+     remoteCommandCenter.changePlaybackPositionCommand.isEnabled = false
+     remoteCommandCenter.skipForwardCommand.isEnabled = false
+     remoteCommandCenter.skipBackwardCommand.isEnabled = false
++    remoteCommandCenter.nextTrackCommand.isEnabled = false
++
++    removeAllRemoteTargets()
++  }
+ 
+-    // Remove event targets
+-    remoteCommandCenter.playCommand.removeTarget(self)
+-    remoteCommandCenter.pauseCommand.removeTarget(self)
+-    remoteCommandCenter.togglePlayPauseCommand.removeTarget(self)
+-    remoteCommandCenter.changePlaybackPositionCommand.removeTarget(self)
+-    remoteCommandCenter.skipForwardCommand.removeTarget(self)
+-    remoteCommandCenter.skipBackwardCommand.removeTarget(self)
++  private func removeAllRemoteTargets() {
++    // nil removes every target, including the closures added above.
++    remoteCommandCenter.playCommand.removeTarget(nil)
++    remoteCommandCenter.pauseCommand.removeTarget(nil)
++    remoteCommandCenter.togglePlayPauseCommand.removeTarget(nil)
++    remoteCommandCenter.changePlaybackPositionCommand.removeTarget(nil)
++    remoteCommandCenter.skipForwardCommand.removeTarget(nil)
++    remoteCommandCenter.skipBackwardCommand.removeTarget(nil)
++    remoteCommandCenter.nextTrackCommand.removeTarget(nil)
+   }
+ }
