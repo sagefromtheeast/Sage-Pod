@@ -1,3 +1,21 @@
+## [0.11.0](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.10.0...v0.11.0) (2026-10-09)
+
+### 🚀 New Features
+
+* **podcast-settings:** rename, tags, skip ending, volume reduction, new-episode action, auto-download and auto-delete per podcast ([7e06901](https://github.com/sagefromtheeast/Sage-Pod/commit/7e069015ee25e62f3c1253131c9104c3d4d7ee31))
+
+### 🐛 Bug Fixes
+
+* **podcast-settings:** settings changed mid-episode apply now, and auto-download looks past the newest episodes ([97cf47c](https://github.com/sagefromtheeast/Sage-Pod/commit/97cf47cf35c68f91f58df709ce1ffd16f707e9f3))
+
+### 📚 Documentation
+
+* mark Phase 10 done and record D-017 ([64a1068](https://github.com/sagefromtheeast/Sage-Pod/commit/64a10683bfd355f363a5e886b054c5d982b75263))
+
+### ✅ Tests
+
+* **shots:** podcast settings, top and automation ([ffe683d](https://github.com/sagefromtheeast/Sage-Pod/commit/ffe683d3999f332441924433fb418eae57f69a8c))
+
 ## [0.10.0](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.9.0...v0.10.0) (2026-10-06)
 
 ### 🚀 New Features
