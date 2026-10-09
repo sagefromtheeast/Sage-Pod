@@ -373,15 +373,17 @@ export async function listPendingDownloads(): Promise<EpisodeWithFeed[]> {
 /** The `n` newest not-yet-downloaded episodes of an auto-download feed. */
 export async function listAutoDownloadCandidates(
   feedId: number,
-  limit: number
+  limit: number,
+  offset = 0
 ): Promise<EpisodeRow[]> {
   return getDb().getAllAsync<EpisodeRow>(
     `SELECT * FROM episodes
       WHERE feed_id = ? AND is_played = 0 AND download_state = 'none'
-      ORDER BY published_at DESC
-      LIMIT ?`,
+      ORDER BY published_at DESC, id DESC
+      LIMIT ? OFFSET ?`,
     feedId,
-    limit
+    limit,
+    offset
   );
 }
 
@@ -420,7 +422,7 @@ export async function listInboxEpisodes(
   if (term) {
     // Match the episode or podcast title; % and _ in the term are literal.
     const like = `%${term.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
-    where.push("(e.title LIKE ? ESCAPE '\\' OR f.title LIKE ? ESCAPE '\\')");
+    where.push("(e.title LIKE ? ESCAPE '\\' OR COALESCE(f.custom_title, f.title) LIKE ? ESCAPE '\\')");
     params.push(like, like);
   }
 
@@ -447,12 +449,12 @@ export async function listInboxIds(feedId: number | null = null): Promise<number
 
 export async function listInboxFeeds(): Promise<InboxFeedInfo[]> {
   return getDb().getAllAsync<InboxFeedInfo>(
-    `SELECT f.id, f.title, f.image_url, COUNT(e.id) AS unplayed_count
+    `SELECT f.id, COALESCE(f.custom_title, f.title) AS title, f.image_url, COUNT(e.id) AS unplayed_count
        FROM feeds f
        JOIN episodes e ON e.feed_id = f.id
       WHERE e.is_new = 1 AND e.is_played = 0
-      GROUP BY f.id, f.title, f.image_url
-      ORDER BY f.title COLLATE NOCASE ASC`
+      GROUP BY f.id
+      ORDER BY COALESCE(f.custom_title, f.title) COLLATE NOCASE ASC`
   );
 }
 

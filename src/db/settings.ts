@@ -67,6 +67,10 @@ export type Settings = {
   confirmInboxRemoveAll: boolean;
   /** Home's sections in order, hidden ones prefixed with '-' ('' = default; see src/home/sections.ts). */
   homeSections: string;
+  /** Where new episodes of a podcast go unless it says otherwise: 'inbox' | 'queue' | 'nothing'. */
+  newEpisodesAction: 'inbox' | 'queue' | 'nothing';
+  /** Auto-download new episodes of podcasts that don't set their own choice. */
+  autoDownloadNew: boolean;
 };
 
 /** Skip amounts offered by long-pressing the player's rewind / forward buttons (AntennaPod's list). */
@@ -102,6 +106,8 @@ export const DEFAULT_SETTINGS: Settings = {
   inboxSort: 'date:desc',
   confirmInboxRemoveAll: true,
   homeSections: '',
+  newEpisodesAction: 'inbox',
+  autoDownloadNew: false,
 };
 
 const store = createStore<Settings>({ ...DEFAULT_SETTINGS });

@@ -1,9 +1,5 @@
-const AUTO_DOWNLOAD_EXCLUDED_PATTERNS = [
-  /\btrailer\b/i,
-  /\bteaser\b/i,
-  /\bpromo\b/i,
-  /\bsneak peek\b/i,
-];
+// Relative, not '@/': the node test runner resolves this file too.
+import { shouldAutoDownload } from '../feed/feedPrefs';
 
 /** Human-readable byte count, e.g. "1.4 GB". */
 export function formatBytes(bytes: number | null | undefined): string {
@@ -19,27 +15,13 @@ export function formatBytes(bytes: number | null | undefined): string {
 }
 
 /**
- * Decides whether an episode is suitable for automated background download.
- * Filters out promotional clips, trailers, teasers, and micro-clips (< 3 mins / 180s).
- * Manual downloads bypass this check.
+ * Whether an episode is suitable for automated background download, with no
+ * podcast-specific rules: skips trailers, teasers, promos and clips under three
+ * minutes. Manual downloads bypass this check. (Per-podcast rules: see
+ * `shouldAutoDownload` in src/feed/feedPrefs.ts, which this delegates to.)
  */
-export function shouldAutoDownloadEpisode(episode: {
-  title: string;
-  duration?: number | null;
-}): boolean {
-  for (const pattern of AUTO_DOWNLOAD_EXCLUDED_PATTERNS) {
-    if (pattern.test(episode.title)) {
-      return false;
-    }
-  }
-
-  // Minimum duration threshold: ignore episodes shorter than 3 minutes (180s)
-  // if duration is known and positive.
-  if (episode.duration != null && episode.duration > 0 && episode.duration < 180) {
-    return false;
-  }
-
-  return true;
+export function shouldAutoDownloadEpisode(episode: { title: string; duration?: number | null }): boolean {
+  return shouldAutoDownload(episode);
 }
 
 export const KNOWN_AUDIO_EXTENSIONS = new Set([

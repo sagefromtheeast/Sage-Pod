@@ -43,7 +43,7 @@ export type StatRow = {
 export async function getListeningStats(): Promise<StatRow[]> {
   const db = getDb();
   return db.getAllAsync<StatRow>(`
-    SELECT h.feed_id, f.title AS feed_title, f.image_url AS feed_image_url, SUM(h.listened_seconds) AS total_seconds
+    SELECT h.feed_id, COALESCE(f.custom_title, f.title) AS feed_title, f.image_url AS feed_image_url, SUM(h.listened_seconds) AS total_seconds
     FROM playback_history h
     JOIN feeds f ON f.id = h.feed_id
     GROUP BY h.feed_id

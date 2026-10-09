@@ -128,6 +128,11 @@ const ROUTES = [
     await page.getByText('Saved for this podcast').waitFor({ timeout: 10000 });
   }],
   ['feed-info', '/feed/info/1'],
+  ['feed-settings', '/feed/settings/1'],
+  ['feed-settings-automation', '/feed/settings/1', async (page) => {
+    await page.getByText('AUTOMATION').first().scrollIntoViewIfNeeded();
+    await page.getByText('Auto-delete').first().waitFor({ timeout: 10000 });
+  }],
   ['feed-banner', '/feed/6'],
   ['feed-preview', '/feed/7'],
   ['feed-menu', '/feed/1', async (page) => {

@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 
 import { radius, space, type as typography } from './theme';
 import { useTheme } from './useTheme';
@@ -138,6 +139,59 @@ export function SettingsAction({
   );
 }
 
+/**
+ * A row with a text field that saves when editing ends (blur or the return
+ * key), not on every keystroke. `value` is the saved value; editing starts
+ * from it again whenever it changes outside the field.
+ */
+export function SettingsTextInput({
+  label,
+  description,
+  value,
+  placeholder,
+  onSubmit,
+  keyboardType = 'default',
+  autoCapitalize = 'sentences',
+}: BaseProps & {
+  value: string;
+  placeholder?: string;
+  onSubmit: (value: string) => void;
+  keyboardType?: 'default' | 'url' | 'number-pad';
+  autoCapitalize?: 'none' | 'sentences' | 'words';
+}) {
+  const theme = useTheme();
+  const [draft, setDraft] = useState(value);
+  useEffect(() => setDraft(value), [value]);
+  const commit = () => {
+    if (draft !== value) onSubmit(draft.trim());
+  };
+
+  return (
+    <View style={[styles.stacked, { borderBottomColor: theme.border }]}>
+      <View style={styles.rowText}>
+        <Text style={[styles.label, { color: theme.text }]}>{label}</Text>
+        {description ? (
+          <Text style={[styles.description, { color: theme.textMuted }]}>{description}</Text>
+        ) : null}
+      </View>
+      <TextInput
+        value={draft}
+        onChangeText={setDraft}
+        onBlur={commit}
+        onSubmitEditing={commit}
+        placeholder={placeholder}
+        placeholderTextColor={theme.textFaint}
+        keyboardType={keyboardType}
+        autoCapitalize={autoCapitalize}
+        autoCorrect={false}
+        returnKeyType="done"
+        style={[styles.input, { color: theme.text, backgroundColor: theme.surfaceAlt }]}
+        accessibilityLabel={label}
+      />
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   sectionTitle: {
     ...typography.caption,
@@ -187,5 +241,11 @@ const styles = StyleSheet.create({
   chipLabel: {
     ...typography.caption,
     fontWeight: '600',
+  },
+  input: {
+    ...typography.body,
+    paddingHorizontal: space.md,
+    paddingVertical: space.sm,
+    borderRadius: radius.md,
   },
 });

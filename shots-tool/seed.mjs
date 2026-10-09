@@ -49,6 +49,9 @@ export function seedSql() {
   // Stories, and a podcast being previewed (not subscribed: kept out of Library).
   s.push(`UPDATE feeds SET funding = ${q(JSON.stringify([{ url: 'https://sagepod.test/support', label: 'Become a member' }]))} WHERE id = 1;`);
   s.push(`UPDATE feeds SET last_refresh_error = 'The server answered 503 (Service Unavailable).' WHERE id = 6;`);
+  // Phase 10: per-podcast settings on The Quiet Hour (none change how other screens look).
+  s.push(`UPDATE feeds SET tags = 'Craft, Interviews', skip_ending_seconds = 30, new_episodes_action = 'queue',
+    download_exclude = 'bonus' WHERE id = 1;`);
   s.push(`INSERT INTO feeds (id, feed_url, title, author, description, image_url, link, language, last_refreshed_at, created_at, state)
     VALUES (7, 'https://feeds.sagepod.test/7.xml', 'Window Seat', 'Lena Ortiz', 'Stories told from the window seat of night trains.',
     'https://art.sagepod.test/3.svg', 'https://sagepod.test/7', 'en', ${NOW}, ${NOW}, 'preview');`);

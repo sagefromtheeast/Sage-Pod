@@ -1,101 +1,213 @@
-import { useLocalSearchParams, Stack } from 'expo-router';
-import { useCallback, useState } from 'react';
-import { ScrollView, StyleSheet, View, Text } from 'react-native';
+import { Stack, useLocalSearchParams } from 'expo-router';
+import { useCallback } from 'react';
+import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { getFeed, setFeedFlags } from '@/db/feeds';
-import { getSettings } from '@/db/settings';
+import { getFeed, setFeedPrefs, setFeedUrl, type FeedPrefs } from '@/db/feeds';
+import { useSetting } from '@/db/settings';
 import type { FeedRow } from '@/db/types';
 import { useQuery } from '@/db/useQuery';
+import { normalizeFeedUrl } from '@/feed/fetch';
+import {
+  boolOverride,
+  globalLabel,
+  NEW_EPISODE_ACTIONS,
+  parseNewEpisodesAction,
+  serializeTags,
+  type NewEpisodesAction,
+} from '@/feed/feedPrefs';
+import { refreshFeed } from '@/feed/sync';
 import { PLAYBACK_RATES, player } from '@/player';
-import { SettingsOptions, SettingsSection, SettingsSwitch } from '@/ui/SettingsRow';
+import { SettingsOptions, SettingsSection, SettingsSwitch, SettingsTextInput } from '@/ui/SettingsRow';
 import { space, type as typography } from '@/ui/theme';
+import { showToast } from '@/ui/UndoToast';
 import { useTheme } from '@/ui/useTheme';
 
-// Skip intro is per podcast only (as in AntennaPod): there is no global value
-// to inherit, so "not set" simply means Off.
+// Skip intro and ending are per podcast only (as in AntennaPod): there is no
+// global value to inherit, so "not set" simply means Off.
 const SKIP_INTRO_OPTIONS = [0, 10, 15, 30, 45, 60] as const;
+const SKIP_ENDING_OPTIONS = [0, 10, 15, 30, 45, 60, 90, 120] as const;
 const SPEED_OPTIONS = [-1, ...PLAYBACK_RATES] as const;
+const VOLUME_OPTIONS = [1, 0.5, 0.2] as const;
+const VOLUME_LABELS: Record<(typeof VOLUME_OPTIONS)[number], string> = { 1: 'Off', 0.5: 'Light', 0.2: 'Heavy' };
+const TRI_STATE = ['global', 'on', 'off'] as const;
+const ACTION_OPTIONS = ['global', ...NEW_EPISODE_ACTIONS] as const;
+const ACTION_LABELS: Record<NewEpisodesAction, string> = { inbox: 'Inbox', queue: 'Add to queue', nothing: 'Nothing' };
+const MIN_MINUTE_OPTIONS = [0, 5, 10, 20, 30, 45] as const;
 
+type TriState = (typeof TRI_STATE)[number];
+const toTri = (value: boolean | null | undefined): TriState => (value == null ? 'global' : value ? 'on' : 'off');
+const fromTri = (value: TriState): boolean | null => (value === 'global' ? null : value === 'on');
+
+/**
+ * Per-podcast settings in AntennaPod's groups. Every setting that has a global
+ * counterpart offers "Global (x)", showing what the global value is now.
+ */
 export default function FeedSettingsScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const feedId = Number(id);
   const theme = useTheme();
 
-  const { data: feed } = useQuery<FeedRow | null>(
-    () => getFeed(feedId),
-    ['feeds'],
-    [feedId]
-  );
+  const globalSpeed = useSetting('playbackRate');
+  const globalAction = useSetting('newEpisodesAction');
+  const globalAutoDownload = useSetting('autoDownloadNew');
+  const globalAutoDelete = useSetting('deleteAfterFinished');
+
+  const { data: feed } = useQuery<FeedRow | null>(() => getFeed(feedId), ['feeds'], [feedId]);
 
   const update = useCallback(
-    async (
-      flags: {
-        autoDownload?: boolean;
-        keepUpdated?: boolean;
-        playbackSpeed?: number | null;
-        skipIntroSeconds?: number | null;
-      }
-    ) => {
-      await setFeedFlags(feedId, flags);
-      
-      // If we're updating the playback speed and this feed is currently playing, update the player
-      if (flags.playbackSpeed !== undefined) {
-        const current = player.getState();
-        if (current.episode?.feed_id === feedId) {
-          if (flags.playbackSpeed === null) {
-            // Revert to global
-            player.setRate(getSettings().playbackRate);
-          } else {
-            player.setRate(flags.playbackSpeed);
-          }
-        }
+    async (prefs: Partial<FeedPrefs>) => {
+      await setFeedPrefs(feedId, prefs);
+      // Applies at once if one of this podcast's episodes is loaded.
+      player.applyFeedPrefs(feedId, prefs, globalSpeed);
+    },
+    [feedId, globalSpeed]
+  );
+
+  const changeUrl = useCallback(
+    async (raw: string) => {
+      if (!feed || !raw) return;
+      try {
+        const url = normalizeFeedUrl(raw);
+        if (url === feed.feed_url) return;
+        await setFeedUrl(feedId, url);
+        showToast('Feed address changed');
+        // Reads the new address now; a failure shows on the podcast page's banner.
+        await refreshFeed({ ...feed, feed_url: url, etag: null, last_modified: null }).catch(() => undefined);
+      } catch (error) {
+        Alert.alert("Couldn't change the address", error instanceof Error ? error.message : String(error));
       }
     },
-    [feedId]
+    [feed, feedId]
   );
 
   if (!feed) {
     return <View style={[styles.root, { backgroundColor: theme.bg }]} />;
   }
 
-  const speedVal = feed.playback_speed === null ? -1 : feed.playback_speed;
-  const skipIntroVal = feed.skip_intro_seconds ?? 0;
+  const action = parseNewEpisodesAction(feed.new_episodes_action);
+  const onOff = (value: boolean) => (value ? 'On' : 'Off');
 
   return (
-    <ScrollView style={[styles.root, { backgroundColor: theme.bg }]}>
+    <ScrollView style={[styles.root, { backgroundColor: theme.bg }]} keyboardShouldPersistTaps="handled">
       <Stack.Screen options={{ title: 'Podcast Settings' }} />
-      
-      <SettingsSection title="Overrides" />
+
+      <SettingsSection title="Display" />
+      <SettingsTextInput
+        label="Name"
+        description="Your name for this podcast. Leave empty to use the feed's title."
+        value={feed.custom_title ?? ''}
+        placeholder="Name from the feed"
+        onSubmit={(value) => void update({ customTitle: value || null })}
+        autoCapitalize="words"
+      />
+      <SettingsTextInput
+        label="Tags"
+        description="Separate with commas, e.g. News, Tech. The Library can filter by tag."
+        value={feed.tags ?? ''}
+        placeholder="No tags"
+        onSubmit={(value) => void update({ tags: serializeTags(value.split(',')) || null })}
+      />
+
+      <SettingsSection title="Playback" />
       <SettingsOptions
         label="Playback speed"
-        description="Override the global playback speed for this podcast."
-        value={speedVal}
+        value={feed.playback_speed ?? -1}
         options={SPEED_OPTIONS}
-        format={(rate) => (rate === -1 ? 'Global' : `${rate}×`)}
-        onChange={(val) => void update({ playbackSpeed: val === -1 ? null : val })}
+        format={(rate) => (rate === -1 ? globalLabel(`${globalSpeed}×`) : `${rate}×`)}
+        onChange={(value) => void update({ playbackSpeed: value === -1 ? null : value })}
       />
       <SettingsOptions
         label="Skip intro"
-        description="Automatically skip the first few seconds of every episode."
-        value={skipIntroVal}
+        description="Start every episode this far in."
+        value={feed.skip_intro_seconds ?? 0}
         options={SKIP_INTRO_OPTIONS}
         format={(seconds) => (seconds === 0 ? 'Off' : `${seconds}s`)}
-        onChange={(val) => void update({ skipIntroSeconds: val === 0 ? null : val })}
+        onChange={(value) => void update({ skipIntroSeconds: value === 0 ? null : value })}
+      />
+      <SettingsOptions
+        label="Skip ending"
+        description="Treat this much of the end of each episode as finished and move on."
+        value={feed.skip_ending_seconds ?? 0}
+        options={SKIP_ENDING_OPTIONS}
+        format={(seconds) => (seconds === 0 ? 'Off' : `${seconds}s`)}
+        onChange={(value) => void update({ skipEndingSeconds: value === 0 ? null : value })}
+      />
+      <SettingsOptions
+        label="Volume reduction"
+        description="For podcasts that are much louder than the rest."
+        value={(feed.volume_reduction ?? 1) as (typeof VOLUME_OPTIONS)[number]}
+        options={VOLUME_OPTIONS}
+        format={(volume) => VOLUME_LABELS[volume]}
+        onChange={(value) => void update({ volumeReduction: value === 1 ? null : value })}
       />
 
-      <SettingsSection title="Updates" />
+      <SettingsSection title="Automation" />
       <SettingsSwitch
-        label="Include in global refresh"
-        description="Check for new episodes when refreshing all feeds."
+        label="Keep updated"
+        description="Check for new episodes when refreshing all podcasts."
         value={feed.keep_updated === 1}
-        onValueChange={(val) => void update({ keepUpdated: val })}
+        onValueChange={(value) => void update({ keepUpdated: value })}
       />
-      <SettingsSwitch
+      <SettingsOptions
+        label="New episodes"
+        description="Where this podcast's new episodes go."
+        value={action ?? 'global'}
+        options={ACTION_OPTIONS}
+        format={(option) => (option === 'global' ? globalLabel(ACTION_LABELS[globalAction]) : ACTION_LABELS[option])}
+        onChange={(value) => void update({ newEpisodesAction: value === 'global' ? null : value })}
+      />
+      <SettingsOptions
         label="Auto-download"
-        description="Automatically download new episodes (respects global limit)."
-        value={feed.auto_download === 1}
-        onValueChange={(val) => void update({ autoDownload: val })}
+        description="Download new episodes when the podcast refreshes."
+        value={toTri(boolOverride(feed.auto_download_override))}
+        options={TRI_STATE}
+        format={(option) => (option === 'global' ? globalLabel(onOff(globalAutoDownload)) : onOff(option === 'on'))}
+        onChange={(value) => void update({ autoDownload: fromTri(value) })}
       />
+      <SettingsTextInput
+        label="Only download titles with"
+        description="Comma-separated words; leave empty to allow any."
+        value={feed.download_include ?? ''}
+        placeholder="Any title"
+        onSubmit={(value) => void update({ downloadInclude: value || null })}
+        autoCapitalize="none"
+      />
+      <SettingsTextInput
+        label="Never download titles with"
+        description="Trailers, teasers and promos are always skipped."
+        value={feed.download_exclude ?? ''}
+        placeholder="e.g. bonus, live"
+        onSubmit={(value) => void update({ downloadExclude: value || null })}
+        autoCapitalize="none"
+      />
+      <SettingsOptions
+        label="Shortest episode to download"
+        value={feed.download_min_minutes ?? 0}
+        options={MIN_MINUTE_OPTIONS}
+        format={(minutes) => (minutes === 0 ? 'Default (3 min)' : `${minutes} min`)}
+        onChange={(value) => void update({ downloadMinMinutes: value === 0 ? null : value })}
+      />
+      <SettingsOptions
+        label="Auto-delete"
+        description="Delete downloads once they're played."
+        value={toTri(boolOverride(feed.auto_delete))}
+        options={TRI_STATE}
+        format={(option) => (option === 'global' ? globalLabel(onOff(globalAutoDelete)) : onOff(option === 'on'))}
+        onChange={(value) => void update({ autoDelete: fromTri(value) })}
+      />
+
+      <SettingsSection title="Advanced" />
+      <SettingsTextInput
+        label="Feed address"
+        description="Change it if the podcast moved and the old address stopped working."
+        value={feed.feed_url}
+        onSubmit={(value) => void changeUrl(value)}
+        keyboardType="url"
+        autoCapitalize="none"
+      />
+      <Text style={[styles.note, { color: theme.textFaint }]}>
+        Password-protected feeds need secure storage on the device, which arrives with the next app build.
+      </Text>
     </ScrollView>
   );
 }
@@ -103,5 +215,10 @@ export default function FeedSettingsScreen() {
 const styles = StyleSheet.create({
   root: {
     flex: 1,
+  },
+  note: {
+    ...typography.caption,
+    padding: space.lg,
+    paddingBottom: space.xxl,
   },
 });
