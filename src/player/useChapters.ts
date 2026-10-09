@@ -1,19 +1,36 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+
+import type { EpisodeWithFeed } from '@/db/types';
+import { loadEmbeddedChapters } from '@/player/embeddedChapters';
 
 import { parseChapters, type Chapter } from './chapters';
 
 export type { Chapter };
 
 /**
- * Chapters already fetched this session, by URL. Reopening the player (or the
- * mini player re-rendering it) shouldn't refetch a file that never changes.
+ * Chapters already loaded this session, by chapters URL or, for chapters in
+ * the audio itself, by episode. Reopening the player (or the mini player
+ * re-rendering it) shouldn't fetch them again.
  */
 const cache = new Map<string, Chapter[]>();
 
-export function useChapters(chaptersUrl: string | null | undefined) {
-  const [chapters, setChapters] = useState<Chapter[]>(() =>
-    chaptersUrl ? (cache.get(chaptersUrl) ?? []) : []
-  );
+async function fetchChapters(url: string): Promise<Chapter[]> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return parseChapters(await res.json());
+}
+
+/**
+ * The episode's chapters: the feed's chapters file when it names one, as
+ * AntennaPod prefers it, otherwise any chapters stored in the audio (D-027).
+ */
+export function useChapters(episode: EpisodeWithFeed | null | undefined) {
+  const chaptersUrl = episode?.chapters_url ?? null;
+  const key = episode ? (chaptersUrl ?? `embedded:${episode.id}`) : null;
+  const latest = useRef(episode);
+  latest.current = episode;
+
+  const [chapters, setChapters] = useState<Chapter[]>(() => (key ? (cache.get(key) ?? []) : []));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
@@ -21,12 +38,13 @@ export function useChapters(chaptersUrl: string | null | undefined) {
     let cancelled = false;
     setError(null);
 
-    if (!chaptersUrl) {
+    const current = latest.current;
+    if (!key || !current) {
       setChapters([]);
       return;
     }
 
-    const cached = cache.get(chaptersUrl);
+    const cached = cache.get(key);
     if (cached) {
       setChapters(cached);
       return;
@@ -34,14 +52,9 @@ export function useChapters(chaptersUrl: string | null | undefined) {
 
     setChapters([]);
     setLoading(true);
-    fetch(chaptersUrl)
-      .then((res) => {
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        return res.json();
-      })
-      .then((data) => {
-        const parsed = parseChapters(data);
-        cache.set(chaptersUrl, parsed);
+    (chaptersUrl ? fetchChapters(chaptersUrl) : loadEmbeddedChapters(current))
+      .then((parsed) => {
+        cache.set(key, parsed);
         if (!cancelled) setChapters(parsed);
       })
       .catch((err) => {
@@ -54,7 +67,7 @@ export function useChapters(chaptersUrl: string | null | undefined) {
     return () => {
       cancelled = true;
     };
-  }, [chaptersUrl]);
+  }, [key, chaptersUrl]);
 
   return { chapters, loading, error };
 }

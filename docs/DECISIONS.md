@@ -32,6 +32,7 @@ Format: context → decision → consequences → when to revisit.
 | D-024 | Phase 17a: Expo's own native modules, no patched code | Accepted |
 | D-025 | Phase 17b: patch expo-audio with patch-package, build it from source | Accepted |
 | D-026 | Phase 18a: Android widget with react-native-android-widget, tile through the media session, no iOS widget yet | Accepted |
+| D-027 | Phase 18b: chapters from the audio file, read in TypeScript over byte ranges | Accepted |
 
 ---
 
@@ -584,3 +585,42 @@ device, since web screenshots can't render it.
 the widget library falls behind an Expo SDK.
 
 *(Ships as v0.20.0.)*
+
+## D-027 — Phase 18b: chapters from the audio file, read in TypeScript over byte ranges
+
+**Context.** Many podcasts put chapters only in the audio: ID3v2 `CHAP`
+frames in MP3s, and QuickTime chapter tracks or Nero `chpl` lists in
+M4A / MP4. AntennaPod reads them when the feed names no chapters file.
+Sage Pod showed chapters only from a Podcasting 2.0 JSON file. expo-audio
+exposes no metadata, and a streamed episode isn't on disk.
+
+**Decision (lead developer).**
+- **Pure TypeScript readers** in `src/player/embedded/` (ID3v2.3/2.4
+  `CHAP` with title, link and picture; MP4 `tref/chap` text track first,
+  then Nero `chpl`). They read through a `ByteSource`, so they're tested in
+  Node with built files and work the same on a download or a stream. No
+  native code and no new dependency.
+- **Byte ranges, not whole files**: a download is read with
+  expo-file-system's `FileHandle`; a stream with HTTP `Range` requests in
+  64 KB blocks (`blockSource`). Only the ID3 frame headers and `CHAP`
+  frames, or the box headers on the way to `moov` and `moov` itself, are
+  read. A large cover image at the front of the tag is skipped unread. A
+  server that ignores ranges gets its response aborted and the episode
+  has no chapters. A real 165 MB episode took 2 requests and 128 KB.
+- **The feed's chapters file wins** when there is one, as in AntennaPod.
+  Embedded chapters load when the player opens and are kept for the
+  session (`useChapters`); nothing is stored in the database.
+- Chapter pictures become `data:` URIs (up to 512 KB each); links must be
+  http(s).
+
+**Consequences.** Episodes from many hosts now show chapters with no feed
+change. Ogg / Opus chapters (Vorbis comments) and ID3v2.2 aren't read.
+Opening the player on a streamed episode without a chapters file costs one
+or two small range requests, once per session.
+
+**Revisit** if expo-audio exposes the player's own metadata (then read
+chapters from it), or if chapters are needed outside the player (then
+store them per episode).
+
+*(Ships as v0.21.0.)*
+
