@@ -161,6 +161,17 @@ describe('MP4 chapters', () => {
     assert.deepEqual(await readEmbeddedChapters(bufferSource(m4a({ track: false, nero: false }))), []);
   });
 
+  it('skips samples too large to be titles, or outside the file', async () => {
+    const file = m4a({ nero: false });
+    const view = Buffer.from(file);
+    const stsz = view.indexOf('stsz');
+    view.writeUInt32BE(0xffffffff, stsz + 4 + 12); // first sample's size
+    const { reads, source } = counting(bufferSource(Uint8Array.from(view)));
+    // Both titles share a chunk, so the bogus size also pushes the second one past the end.
+    assert.deepEqual(await readEmbeddedChapters(source), []);
+    assert.ok(reads.every(([, length]) => length < 4000));
+  });
+
   it('decodes UTF-16 text samples', () => {
     assert.equal(sampleText(bytes([0, 6, 0xfe, 0xff, 0, 'H'.charCodeAt(0), 0, 'i'.charCodeAt(0)])), 'Hi');
     assert.equal(sampleText(bytes([0])), '');

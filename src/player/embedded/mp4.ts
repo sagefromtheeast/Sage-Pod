@@ -13,6 +13,8 @@ const MAX_MOOV = 16 * 1024 * 1024;
 const MAX_CHAPTERS = 1000;
 /** Chapter titles closer together than this are read in one go. */
 const MAX_SPAN = 256 * 1024;
+/** A chapter title sample is a few bytes; anything larger is a corrupt table, not a title. */
+const MAX_SAMPLE = 4096;
 
 type Box = { type: string; start: number; end: number };
 
@@ -177,7 +179,10 @@ async function trackChapters(src: ByteSource, moov: Uint8Array): Promise<Chapter
   });
   if (!textTrak) return [];
 
-  const samples = chapterSamples(moov, textTrak);
+  // The tables are untrusted: read only title-sized samples inside the file.
+  const samples = chapterSamples(moov, textTrak).filter(
+    (s) => s.size <= MAX_SAMPLE && (src.size == null || s.offset + s.size <= src.size)
+  );
   if (!samples.length) return [];
   const first = Math.min(...samples.map((s) => s.offset));
   const last = Math.max(...samples.map((s) => s.offset + s.size));
