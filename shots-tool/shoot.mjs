@@ -127,7 +127,7 @@ const ROUTES = [
     await page.getByText("For the charts and Apple's search results").waitFor({ timeout: 10000 });
   }],
   ['add-feed', '/add-feed'],
-  ['opml-import', '/settings', async (page) => {
+  ['opml-import', '/settings/import-export', async (page) => {
     await page.context().grantPermissions(['clipboard-read', 'clipboard-write'], { origin: base });
     await page.evaluate((xml) => navigator.clipboard.writeText(xml), OPML);
     await page.getByText('Import OPML from clipboard').click();
@@ -193,6 +193,16 @@ const ROUTES = [
   }],
   ['feed-info', '/feed/info/1'],
   ['feed-settings', '/feed/settings/1'],
+  ['settings-interface', '/settings/interface'],
+  ['settings-swipes', '/settings/swipes'],
+  ['settings-swipe-choice', '/settings/swipes', async (page) => {
+    await page.getByLabel(/^Swipe left: /).first().click();
+    await page.getByText('Add to / remove from favourites').last().waitFor({ timeout: 10000 });
+  }],
+  ['settings-playback', '/settings/playback'],
+  ['settings-downloads', '/settings/downloads'],
+  ['settings-import-export', '/settings/import-export'],
+  ['settings-about', '/settings/about'],
   ['feed-settings-automation', '/feed/settings/1', async (page) => {
     await page.getByText('AUTOMATION').first().scrollIntoViewIfNeeded();
     await page.getByText('Auto-delete').first().waitFor({ timeout: 10000 });
