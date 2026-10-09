@@ -1,3 +1,4 @@
+import * as Sharing from 'expo-sharing';
 import { Alert, Share } from 'react-native';
 
 export type ShareEpisodeParams = {
@@ -27,6 +28,19 @@ export async function shareEpisode({
       url: shareUrl,
       title,
     });
+  } catch (error) {
+    Alert.alert('Could not share', error instanceof Error ? error.message : String(error));
+  }
+}
+
+/** AntennaPod's "Share file": the downloaded audio itself, to another app or a nearby phone. */
+export async function shareEpisodeFile(fileUri: string, title: string): Promise<void> {
+  try {
+    if (!(await Sharing.isAvailableAsync())) {
+      Alert.alert('Could not share', 'Sharing files isn’t available on this device.');
+      return;
+    }
+    await Sharing.shareAsync(fileUri, { dialogTitle: title, mimeType: 'audio/*' });
   } catch (error) {
     Alert.alert('Could not share', error instanceof Error ? error.message : String(error));
   }
