@@ -1,3 +1,22 @@
+## [0.14.0](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.13.0...v0.14.0) (2026-10-09)
+
+### 🚀 New Features
+
+* **downloads:** a download log kept across restarts, and manual downloads ask before using mobile data ([225e1ac](https://github.com/sagefromtheeast/Sage-Pod/commit/225e1acc84b4a64bec0fc1762ee0f6c3d6ef0507))
+* **downloads:** a Downloads screen with downloads in progress, saved sort, search, delete played and the download log ([2413a60](https://github.com/sagefromtheeast/Sage-Pod/commit/2413a6081c3507b70cc9c2fd80cb2f6a3c812091))
+
+### 🐛 Bug Fixes
+
+* **downloads:** failed downloads can be dismissed, the log sheet is one sheet, and offline failures are logged ([e7c281a](https://github.com/sagefromtheeast/Sage-Pod/commit/e7c281a1da50f8c4fa892ea23a11164c653949a1))
+
+### 📚 Documentation
+
+* mark Phase 13 done and record D-020 ([527337b](https://github.com/sagefromtheeast/Sage-Pod/commit/527337b88ed91bb78631779a5bdc7d0f33798f3b))
+
+### ✅ Tests
+
+* **shots:** Downloads, its search, the download log and a failed entry ([eb39fda](https://github.com/sagefromtheeast/Sage-Pod/commit/eb39fdab02239dc7da485801ac25312c06979482))
+
 ## [0.13.0](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.12.0...v0.13.0) (2026-10-09)
 
 ### 🚀 New Features
