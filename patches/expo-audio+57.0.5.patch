@@ -22,7 +22,7 @@ index 992239b..be8b1b7 100644
          runOnMain {
            player.setSamplingEnabled(enabled)
 diff --git a/node_modules/expo-audio/android/src/main/java/expo/modules/audio/AudioPlayer.kt b/node_modules/expo-audio/android/src/main/java/expo/modules/audio/AudioPlayer.kt
-index c76a9fd..8a36cb4 100644
+index c76a9fd..9718213 100644
 --- a/node_modules/expo-audio/android/src/main/java/expo/modules/audio/AudioPlayer.kt
 +++ b/node_modules/expo-audio/android/src/main/java/expo/modules/audio/AudioPlayer.kt
 @@ -3,6 +3,7 @@ package expo.modules.audio
@@ -33,7 +33,15 @@ index c76a9fd..8a36cb4 100644
  import android.media.audiofx.Visualizer
  import android.util.Log
  import androidx.core.content.ContextCompat
-@@ -39,6 +40,8 @@ class AudioPlayer(
+@@ -14,6 +15,7 @@ import androidx.media3.common.Player
+ import androidx.media3.common.util.UnstableApi
+ import androidx.media3.exoplayer.DefaultLoadControl
+ import androidx.media3.exoplayer.ExoPlayer
++import androidx.media3.exoplayer.analytics.AnalyticsListener
+ import androidx.media3.exoplayer.source.MediaSource
+ import androidx.media3.session.MediaSession
+ import expo.modules.audio.service.AudioPlaybackServiceConnection
+@@ -39,6 +41,8 @@ class AudioPlayer(
      .setAudioAttributes(AudioAttributes.DEFAULT, false)
      .setSeekForwardIncrementMs(SEEK_JUMP_INTERVAL_MS)
      .setSeekBackIncrementMs(SEEK_JUMP_INTERVAL_MS)
@@ -42,15 +50,30 @@ index c76a9fd..8a36cb4 100644
      .apply {
        if (bufferDurationMs > 0) {
          setLoadControl(
-@@ -77,6 +80,7 @@ class AudioPlayer(
+@@ -77,6 +81,8 @@ class AudioPlayer(
      }
  
    private var samplingEnabled = false
 +  private var loudnessEnhancer: LoudnessEnhancer? = null
++  private var boostMillibels = 0
    private var visualizer: Visualizer? = null
    private val context by lazy {
      appContext.reactContext
-@@ -180,6 +184,28 @@ class AudioPlayer(
+@@ -85,6 +91,13 @@ class AudioPlayer(
+ 
+   init {
+     installPlayerListeners()
++    // Sage Pod: an audio effect is tied to one session; follow the player's.
++    ref.addAnalyticsListener(object : AnalyticsListener {
++      override fun onAudioSessionIdChanged(eventTime: AnalyticsListener.EventTime, audioSessionId: Int) {
++        releaseVolumeBoost()
++        applyVolumeBoost()
++      }
++    })
+     source?.let {
+       setMediaSource(source)
+     }
+@@ -180,6 +193,40 @@ class AudioPlayer(
      }
    }
  
@@ -60,31 +83,42 @@ index c76a9fd..8a36cb4 100644
 +  }
 +
 +  fun setVolumeBoost(millibels: Int) {
++    boostMillibels = millibels
++    applyVolumeBoost()
++  }
++
++  private fun applyVolumeBoost() {
++    if (boostMillibels <= 0) {
++      releaseVolumeBoost()
++      return
++    }
++    // Until the player has its own session, wait for onAudioSessionIdChanged.
++    val sessionId = ref.audioSessionId
++    if (sessionId == C.AUDIO_SESSION_ID_UNSET) return
 +    try {
-+      if (millibels <= 0) {
-+        loudnessEnhancer?.release()
-+        loudnessEnhancer = null
-+        return
-+      }
-+      val enhancer = loudnessEnhancer ?: LoudnessEnhancer(ref.audioSessionId).also { loudnessEnhancer = it }
-+      enhancer.setTargetGain(millibels)
++      val enhancer = loudnessEnhancer ?: LoudnessEnhancer(sessionId).also { loudnessEnhancer = it }
++      enhancer.setTargetGain(boostMillibels)
 +      enhancer.enabled = true
 +    } catch (e: RuntimeException) {
 +      // Some devices refuse audio effects; play at normal volume instead.
 +      Log.w(TAG, "Volume boost unavailable", e)
-+      loudnessEnhancer = null
++      releaseVolumeBoost()
 +    }
++  }
++
++  private fun releaseVolumeBoost() {
++    loudnessEnhancer?.release()
++    loudnessEnhancer = null
 +  }
 +
    override fun setPlaybackRate(rate: Float) {
      val playbackRate = rate.coerceIn(0.1f, 2.0f)
      val pitch = if (preservesPitch) 1f else playbackRate
-@@ -283,6 +309,8 @@ class AudioPlayer(
+@@ -283,6 +330,7 @@ class AudioPlayer(
      }
      serviceConnection.unbind()
      visualizer?.release()
-+    loudnessEnhancer?.release()
-+    loudnessEnhancer = null
++    releaseVolumeBoost()
      super.releasePlayer()
    }
  
