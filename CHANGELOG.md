@@ -1,3 +1,22 @@
+## [0.12.0](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.11.0...v0.12.0) (2026-10-09)
+
+### 🚀 New Features
+
+* **discover:** fyyd search, chart country, subscribed marks, feed autodiscovery and OPML file import ([0fe47cf](https://github.com/sagefromtheeast/Sage-Pod/commit/0fe47cfd34a39a246a11beb1709c51fcae23e8cd))
+* **search:** search online, multi-select and 300 results in library search, search from Library and Downloads ([a302763](https://github.com/sagefromtheeast/Sage-Pod/commit/a302763b0b5aca1940d9a1202a0bd7ccae4314a8))
+
+### 🐛 Bug Fixes
+
+* **discover:** a repeated "Search online" re-applies its words, and an OPML import finished elsewhere ends with a toast ([b71f222](https://github.com/sagefromtheeast/Sage-Pod/commit/b71f222b6bd3bedb94e0c4c701eec3afa0ef731a))
+
+### 📚 Documentation
+
+* mark Phase 11 done and record D-018 ([e9e9ba4](https://github.com/sagefromtheeast/Sage-Pod/commit/e9e9ba4c28467c64838e1a5d82911d44f1d7af51))
+
+### ✅ Tests
+
+* **shots:** Discover search and country, search select, add by URL, OPML checklist ([e479d3a](https://github.com/sagefromtheeast/Sage-Pod/commit/e479d3ac843943927970112fa28292cd61857d7f))
+
 ## [0.11.0](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.10.0...v0.11.0) (2026-10-09)
 
 ### 🚀 New Features
