@@ -45,7 +45,7 @@ export default function PlayerScreen() {
 
   const { episode, position, duration, playing, buffering, rate, sleepTimer, error } =
     usePlayerState();
-  const { chapters } = useChapters(episode?.chapters_url);
+  const { chapters } = useChapters(episode);
   const skipBackward = useSetting('skipBackward');
   const skipForward = useSetting('skipForward');
   const episodeId = episode?.id ?? null;
