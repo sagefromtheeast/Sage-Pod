@@ -51,8 +51,8 @@ ${body}
 }
 
 /** Pulls every `xmlUrl` out of an OPML document, including nested folders. */
-export function parseOpml(xml: string): { title: string; feedUrl: string }[] {
-  const outlines: { title: string; feedUrl: string }[] = [];
+export function parseOpml(xml: string): OpmlOutline[] {
+  const outlines: OpmlOutline[] = [];
   const seen = new Set<string>();
   const pattern = /<outline\b[^>]*\bxmlUrl\s*=\s*["']([^"']+)["'][^>]*>/gi;
 
@@ -74,6 +74,8 @@ export function parseOpml(xml: string): { title: string; feedUrl: string }[] {
   return outlines;
 }
 
+export type OpmlOutline = { title: string; feedUrl: string };
+
 export type ImportResult = {
   imported: number;
   skipped: number;
@@ -81,17 +83,16 @@ export type ImportResult = {
 };
 
 /**
- * Subscribes to every feed in an OPML document.
+ * Subscribes to the chosen feeds of an OPML document.
  *
  * Feeds are imported one at a time on purpose: an import of a hundred
  * subscriptions each fetches a full feed body, and doing that in parallel is a
  * good way to get rate-limited by a host that serves several of them.
  */
-export async function importOpml(
-  xml: string,
+export async function importFeeds(
+  outlines: readonly OpmlOutline[],
   onProgress?: (done: number, total: number) => void
 ): Promise<ImportResult> {
-  const outlines = parseOpml(xml);
   const result: ImportResult = { imported: 0, skipped: 0, failures: [] };
 
   for (let index = 0; index < outlines.length; index++) {
@@ -110,4 +111,18 @@ export async function importOpml(
   }
 
   return result;
+}
+
+/**
+ * The OPML list waiting on the import checklist (`/opml-import`). Too big for
+ * route params, so the picker or clipboard hands it over here.
+ */
+let draft: OpmlOutline[] = [];
+
+export function setOpmlDraft(outlines: OpmlOutline[]): void {
+  draft = outlines;
+}
+
+export function getOpmlDraft(): OpmlOutline[] {
+  return draft;
 }

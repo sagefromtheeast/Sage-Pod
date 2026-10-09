@@ -18,9 +18,9 @@ export type PodcastResult = {
   episodeCount: number | null;
 };
 
-const SEARCH_ENDPOINT = 'https://itunes.apple.com/search';
+import { DEFAULT_COUNTRY, itunesChartsUrl, itunesSearchUrl } from './providers';
+
 const LOOKUP_ENDPOINT = 'https://itunes.apple.com/lookup';
-const CHARTS_ENDPOINT = 'https://rss.applemarketingtools.com/api/v2';
 const REQUEST_TIMEOUT_MS = 15_000;
 
 type RawResult = {
@@ -38,7 +38,7 @@ type RawResult = {
 
 export class DiscoveryError extends Error {}
 
-async function getJson<T>(url: string): Promise<T> {
+export async function getJson<T>(url: string): Promise<T> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
@@ -84,12 +84,7 @@ export async function searchPodcasts(
   const query = term.trim();
   if (!query) return [];
 
-  const { limit = 40, country = 'US' } = options;
-  const url =
-    `${SEARCH_ENDPOINT}?media=podcast&entity=podcast` +
-    `&term=${encodeURIComponent(query)}&limit=${limit}&country=${country}`;
-
-  const data = await getJson<{ results?: RawResult[] }>(url);
+  const data = await getJson<{ results?: RawResult[] }>(itunesSearchUrl(query, options));
   return (data.results ?? []).map(toPodcast).filter((p): p is PodcastResult => p !== null);
 }
 
@@ -120,10 +115,8 @@ async function lookupPodcasts(ids: string[], country: string): Promise<PodcastRe
 export async function fetchTopPodcasts(
   options: { limit?: number; country?: string } = {}
 ): Promise<PodcastResult[]> {
-  const { limit = 25, country = 'us' } = options;
-  const url = `${CHARTS_ENDPOINT}/${country}/podcasts/top/${limit}/podcasts.json`;
-
-  const data = await getJson<{ feed?: { results?: { id?: string }[] } }>(url);
+  const { limit = 25, country = DEFAULT_COUNTRY } = options;
+  const data = await getJson<{ feed?: { results?: { id?: string }[] } }>(itunesChartsUrl(country, limit));
   const ids = (data.feed?.results ?? [])
     .map((entry) => entry.id)
     .filter((id): id is string => typeof id === 'string');

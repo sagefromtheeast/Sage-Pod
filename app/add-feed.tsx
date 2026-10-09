@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as Clipboard from 'expo-clipboard';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -14,6 +15,8 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import type { FeedLink } from '@/feed/autodiscovery';
+import { FeedError } from '@/feed/fetch';
 import { previewFeed } from '@/feed/sync';
 import { radius, space, type as typography } from '@/ui/theme';
 import { useTheme } from '@/ui/useTheme';
@@ -24,6 +27,9 @@ import { useTheme } from '@/ui/useTheme';
  * A dedicated screen rather than `Alert.prompt`, which exists only on iOS —
  * on Android that call is a silent no-op, which would make the entire
  * "add by URL" path dead on half the platforms this app targets.
+ *
+ * As in AntennaPod, a web address copied to the clipboard is filled in, and a
+ * website's address works too: its page is searched for feed links.
  */
 export default function AddFeedScreen() {
   const theme = useTheme();
@@ -33,21 +39,60 @@ export default function AddFeedScreen() {
   const [url, setUrl] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [feedLinks, setFeedLinks] = useState<FeedLink[]>([]);
+  const [needsLogin, setNeedsLogin] = useState(false);
 
-  async function submit() {
-    const value = url.trim();
+  // Prefill from the clipboard when it holds a web address.
+  useEffect(() => {
+    let current = true;
+    Clipboard.getStringAsync()
+      .then((text) => {
+        const candidate = text.trim();
+        if (current && /^(?:https?|feed|itpc|podcast):\/\/\S+$/i.test(candidate)) {
+          setUrl((value) => value || candidate);
+        }
+      })
+      .catch(() => undefined);
+    return () => {
+      current = false;
+    };
+  }, []);
+
+  async function submit(address = url) {
+    let value = address.trim();
     if (!value || busy) return;
 
     setBusy(true);
     setError(null);
+    setFeedLinks([]);
+    setNeedsLogin(false);
     try {
       // A preview, like a Discover result: Subscribe is on the podcast page.
-      const { feedId } = await previewFeed(value);
+      let opened: { feedId: number } | null = null;
+      // At most two hops, so pages linking to each other can't loop.
+      for (let hop = 0; !opened; hop++) {
+        try {
+          opened = await previewFeed(value);
+        } catch (err) {
+          // A web page with exactly one feed: open that feed, as if it had
+          // been pasted. Several feeds are offered as choices below.
+          if (err instanceof FeedError && err.feedLinks.length === 1 && hop < 2) {
+            value = err.feedLinks[0].url;
+            setUrl(value);
+            continue;
+          }
+          throw err;
+        }
+      }
       // Replace, so backing out of the podcast lands on Discover rather than
       // this form.
-      router.replace(`/feed/${feedId}`);
+      router.replace(`/feed/${opened.feedId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'That feed could not be loaded.');
+      if (err instanceof FeedError) {
+        setFeedLinks(err.feedLinks);
+        setNeedsLogin(err.status === 401 || err.status === 403);
+      }
     } finally {
       setBusy(false);
     }
@@ -75,7 +120,7 @@ export default function AddFeedScreen() {
         </View>
 
         <Text style={[styles.help, { color: theme.textMuted }]}>
-          Paste the feed address of any podcast. Most shows link theirs from their website.
+          Paste a podcast's feed address, or the address of its website and Sage Pod will look for the feed.
         </Text>
 
         <TextInput
@@ -98,6 +143,36 @@ export default function AddFeedScreen() {
         />
 
         {error ? <Text style={[styles.error, { color: theme.danger }]}>{error}</Text> : null}
+        {needsLogin ? (
+          <Text style={[styles.help, { color: theme.textMuted }]}>
+            Password-protected feeds need secure storage on the device, which arrives with the next app build. If
+            the podcast gave you a private address instead, paste that one.
+          </Text>
+        ) : null}
+        {feedLinks.map((link) => (
+          <Pressable
+            key={link.url}
+            onPress={() => {
+              setUrl(link.url);
+              void submit(link.url);
+            }}
+            style={({ pressed }) => [
+              styles.feedLink,
+              { borderColor: theme.border, backgroundColor: pressed ? theme.surfaceAlt : theme.surface },
+            ]}
+            accessibilityRole="button"
+          >
+            <Ionicons name="radio-outline" size={20} color={theme.accent} />
+            <View style={styles.feedLinkText}>
+              <Text style={[styles.feedLinkTitle, { color: theme.text }]} numberOfLines={1}>
+                {link.title ?? 'Podcast feed'}
+              </Text>
+              <Text style={[styles.error, { color: theme.textMuted }]} numberOfLines={1}>
+                {link.url}
+              </Text>
+            </View>
+          </Pressable>
+        ))}
 
         <Pressable
           onPress={() => void submit()}
@@ -151,6 +226,22 @@ const styles = StyleSheet.create({
   },
   error: {
     ...typography.caption,
+  },
+  feedLink: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.md,
+    padding: space.md,
+    borderRadius: radius.md,
+    borderWidth: StyleSheet.hairlineWidth,
+  },
+  feedLinkText: {
+    flex: 1,
+    gap: 2,
+  },
+  feedLinkTitle: {
+    ...typography.body,
+    fontWeight: '600',
   },
   submit: {
     alignItems: 'center',

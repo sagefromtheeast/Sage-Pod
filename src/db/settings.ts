@@ -71,6 +71,8 @@ export type Settings = {
   newEpisodesAction: 'inbox' | 'queue' | 'nothing';
   /** Auto-download new episodes of podcasts that don't set their own choice. */
   autoDownloadNew: boolean;
+  /** Discover's chart and search country (ISO 3166 code, lower case; see src/discover/providers.ts). */
+  discoverCountry: string;
 };
 
 /** Skip amounts offered by long-pressing the player's rewind / forward buttons (AntennaPod's list). */
@@ -108,6 +110,7 @@ export const DEFAULT_SETTINGS: Settings = {
   homeSections: '',
   newEpisodesAction: 'inbox',
   autoDownloadNew: false,
+  discoverCountry: 'us',
 };
 
 const store = createStore<Settings>({ ...DEFAULT_SETTINGS });

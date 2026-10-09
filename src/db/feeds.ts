@@ -155,6 +155,13 @@ export async function setFeedFlags(
 }
 
 /** Every subscribed feed URL, for OPML export. */
+/** Subscribed podcasts' addresses and ids, for marking directory results as already followed. */
+export async function listSubscribedUrls(): Promise<{ id: number; feed_url: string }[]> {
+  return getDb().getAllAsync<{ id: number; feed_url: string }>(
+    "SELECT id, feed_url FROM feeds WHERE state = 'subscribed'"
+  );
+}
+
 export async function listFeedUrls(): Promise<Pick<FeedRow, 'title' | 'feed_url' | 'link'>[]> {
   return getDb().getAllAsync(
     "SELECT title, feed_url, link FROM feeds WHERE state = 'subscribed' ORDER BY title COLLATE NOCASE"

@@ -1,4 +1,5 @@
 import * as Clipboard from 'expo-clipboard';
+import { useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 
@@ -9,7 +10,7 @@ import {
   type Settings,
 } from '@/db/settings';
 import { NEW_EPISODE_ACTIONS, type NewEpisodesAction } from '@/feed/feedPrefs';
-import { exportOpml, importOpml } from '@/feed/opml';
+import { exportOpml } from '@/feed/opml';
 import { refreshAllFeeds } from '@/feed/sync';
 import { PLAYBACK_RATES, player } from '@/player';
 import { downloadedBytes, formatBytes } from '@/player/downloads';
@@ -19,6 +20,7 @@ import {
   SettingsSection,
   SettingsSwitch,
 } from '@/ui/SettingsRow';
+import { importOpmlFile, importOpmlFromClipboard } from '@/ui/opmlImport';
 import { MINI_PLAYER_HEIGHT, space, type as typography } from '@/ui/theme';
 import { useSetThemePreference, useTheme } from '@/ui/useTheme';
 
@@ -43,6 +45,7 @@ const ENQUEUE_LOCATION_LABELS: Record<(typeof ENQUEUE_LOCATIONS)[number], string
 
 export default function SettingsScreen() {
   const theme = useTheme();
+  const router = useRouter();
   const setThemePreference = useSetThemePreference();
 
   // Settings live in a module cache the player reads synchronously; this local
@@ -91,49 +94,6 @@ export default function SettingsScreen() {
     } finally {
       setBusy(null);
     }
-  }, []);
-
-  const importFromClipboard = useCallback(async () => {
-    Alert.alert(
-      'Import from clipboard',
-      'Copy an OPML file to your clipboard first, then tap Import.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Import',
-          onPress: async () => {
-            setBusy('import');
-            try {
-              const xml = await Clipboard.getStringAsync();
-              if (!xml || (!xml.includes('<opml') && !xml.includes('<outline'))) {
-                Alert.alert(
-                  'Not OPML',
-                  'The clipboard does not appear to contain an OPML subscription list.'
-                );
-                return;
-              }
-              const result = await importOpml(xml);
-              Alert.alert(
-                'Import complete',
-                [
-                  result.imported > 0
-                    ? `${result.imported} new subscription${result.imported === 1 ? '' : 's'} added.`
-                    : null,
-                  result.skipped > 0 ? `${result.skipped} already subscribed.` : null,
-                  result.failures.length > 0
-                    ? `${result.failures.length} could not be reached.`
-                    : null,
-                ]
-                  .filter(Boolean)
-                  .join('\n') || 'No feeds found in the OPML data.'
-              );
-            } finally {
-              setBusy(null);
-            }
-          },
-        },
-      ]
-    );
   }, []);
 
   const resetDefaults = useCallback(() => {
@@ -298,10 +258,14 @@ export default function SettingsScreen() {
         busy={busy === 'opml'}
       />
       <SettingsAction
-        label="Import subscriptions (OPML)"
-        description="Paste an OPML file from your clipboard."
-        onPress={() => void importFromClipboard()}
-        busy={busy === 'import'}
+        label="Import OPML file"
+        description="Pick a subscription list exported from another podcast app."
+        onPress={() => void importOpmlFile(router)}
+      />
+      <SettingsAction
+        label="Import OPML from clipboard"
+        description="For a subscription list you've copied as text."
+        onPress={() => void importOpmlFromClipboard(router)}
       />
 
       <SettingsSection title="About" />
