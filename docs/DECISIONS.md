@@ -422,3 +422,54 @@ before any import that overwrites the live database.
 - OPML import progress already existed (the checklist screen, Phase 11).
 
 *(Shipped in v0.17.0.)*
+
+## D-024 — Phase 17a: Expo's own native modules, no patched code
+
+**Context.** Phase 17 is everything that needs native code. Most of it is
+covered by Expo's own modules; the expo-audio gaps (lock-screen skip
+amounts, a next button, skip silence, volume boost, headset unplug) need
+expo-audio itself changed. The phase is split: 17a uses only Expo modules
+and ships now; 17b is the expo-audio work, decided separately.
+
+**Decision.**
+- **Modules added:** expo-notifications, expo-background-task (with
+  expo-task-manager), expo-sharing, expo-secure-store, expo-battery. All
+  from Expo SDK 57, all config-plugin only: no hand-written native code.
+- **Notifications** are local (no push server). New episodes notify per
+  podcast (Podcast settings › Episode notifications, off by default, schema
+  7 adds `feeds.notify`), as AntennaPod does. Refresh and download errors
+  have their own switches in Settings › Notifications, on by default; only
+  automatic refreshes notify. Three Android channels (new episodes, download
+  errors, refresh errors) so each can be tuned in the system settings.
+  Permission is asked only when the listener turns one of these on, never
+  at startup. A tap opens the podcast, Downloads or Library.
+- **Background refresh** runs at the refresh interval (at least 15 minutes,
+  the system's floor; the system picks the exact time). It refreshes, which
+  notifies and auto-downloads as an in-app refresh does, then writes the
+  automatic backup if one is due. Re-registered only when the interval
+  changes, since registering resets the system's schedule.
+- **Automatic backup** (Import and export › Automatic backup), as
+  AntennaPod's: the database every 3 days, the newest 5 kept. Android writes
+  to a folder the listener picks (the system keeps the permission). iOS
+  forgets a picked folder when the app restarts, so there backups go to
+  Sage Pod's own Backups folder, made visible in the Files app
+  (`UIFileSharingEnabled`, `LSSupportsOpeningDocumentsInPlace`). Pruning
+  touches only files named `sagepod-backup-YYYY-MM-DD[ (n)].db`. Opening the
+  app also writes one that is due, since the system may rarely wake the task.
+- **Feed username and password** (Podcast settings › Authentication, and a
+  login prompt when adding a feed answers 401 or 403) live in secure storage
+  keyed by podcast, with the host they were given for. They are sent to the
+  feed, its streams and its downloads only on that host: a CDN never gets
+  them, and a restored database whose ids now name other podcasts can't send
+  them anywhere new. A `user:pass@` in a stored feed address is moved out on
+  the next refresh. UTF-8 Basic auth.
+- **Podcast links**: `itpc`, `pcast`, `feed` and `podcast` URL schemes (and
+  `feed:https://…`) open Add podcast with the address, which loads at once.
+  Expo Router's `+native-intent` does the rewrite. Shared text (Android's
+  SEND intent) would need native code: not done.
+- **Sharing**: a downloaded episode's audio file (episode ⋯ › Share audio
+  file). Exports keep saving to a picked folder (D-023).
+- **Only while charging** (Settings › Downloads): automatic downloads wait
+  while the phone is unplugged; an unknown battery state never holds them.
+
+*(Ships as v0.18.0. Needs a device build to try; nothing here runs on web.)*

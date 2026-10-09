@@ -468,7 +468,7 @@ Stop and ask: new native dependency, schema migration, visible design change, an
 - [ ] OPML/DB/HTML/favourites export + DB import; OPML progress
 
 ## Phase 17 — Native (EAS build)
-- [ ] Notifications; background refresh + auto backup; deep links; sharing; secure store
+- [x] Notifications; background refresh + auto backup; deep links; sharing; secure store (17a, D-024)
 - [ ] expo-audio limits (lock-screen amounts/buttons, skip silence, boost, headset unplug) — route chosen
 
 ## Phase 18 — Optional (one proposal each)
