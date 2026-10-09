@@ -14,7 +14,7 @@ import { getMeta, getSettings, loadSettings } from '@/db/settings';
 import { refreshAllFeeds } from '@/feed/sync';
 import { player } from '@/player';
 import { useNotificationTaps } from '@/notify';
-import { manageAutoDownloads } from '@/player/downloads';
+import { manageAutoDownloads, useRetryHeldDownloadsOnPower } from '@/player/downloads';
 import { EpisodeActionsHost } from '@/ui/EpisodeActionsHost';
 import { palettes, space, type as typography } from '@/ui/theme';
 import type { ThemePreference } from '@/ui/theme';
@@ -103,6 +103,7 @@ function AppShell() {
   const theme = useTheme();
   useNotificationTaps();
   useBackgroundRefresh();
+  useRetryHeldDownloadsOnPower();
 
   return (
     <GestureHandlerRootView style={styles.root}>

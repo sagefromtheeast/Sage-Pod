@@ -9,7 +9,7 @@ import { Platform } from 'react-native';
 import { addDownloadLog, type NewDownloadLogEntry } from '@/db/downloadLog';
 import { getEpisode, listDownloaded, listPendingDownloads, setDownloadState } from '@/db/episodes';
 import { listQueue, onEpisodeQueued } from '@/db/queue';
-import { getSettings } from '@/db/settings';
+import { getMeta, getSettings, setMeta } from '@/db/settings';
 import { notifyDownloadFailed } from '@/notify';
 import { boolOverride, resolveOverride } from '@/feed/feedPrefs';
 import type { EpisodeWithFeed } from '@/db/types';
@@ -196,6 +196,63 @@ async function onBattery(): Promise<boolean> {
   }
 }
 
+/**
+ * Automatic downloads held back by Wi-Fi only or Only while charging, kept
+ * across restarts and retried when the app opens, the background refresh
+ * runs, or the phone is plugged in.
+ */
+const HELD_KEY = 'heldAutoDownloads';
+let held: Set<number> | null = null;
+
+async function heldDownloads(): Promise<Set<number>> {
+  if (!held) {
+    let ids: unknown = [];
+    try {
+      ids = JSON.parse((await getMeta(HELD_KEY)) ?? '[]');
+    } catch {
+      // A damaged list is just forgotten.
+    }
+    held ??= new Set(Array.isArray(ids) ? ids.filter((id): id is number => typeof id === 'number') : []);
+  }
+  return held;
+}
+
+async function holdAutoDownload(episodeId: number): Promise<void> {
+  const ids = await heldDownloads();
+  if (ids.has(episodeId)) return;
+  ids.add(episodeId);
+  await setMeta(HELD_KEY, JSON.stringify([...ids]));
+}
+
+export async function retryHeldAutoDownloads(): Promise<void> {
+  if (Platform.OS === 'web') return;
+  const ids = await heldDownloads();
+  if (ids.size === 0 || !(await networkAllowsDownload(true))) return;
+  const retry = [...ids];
+  ids.clear();
+  await setMeta(HELD_KEY, '[]');
+  for (const id of retry) {
+    const episode = await getEpisode(id);
+    // Played, downloaded or deleted meanwhile: nothing left to fetch.
+    if (episode && episode.is_played === 0 && episode.download_state === 'none') {
+      void queueDownload(id, { isAuto: true });
+    }
+  }
+}
+
+/** Retries held automatic downloads when the phone is plugged in. */
+export function useRetryHeldDownloadsOnPower(): void {
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    const subscription = Battery.addBatteryStateListener(({ batteryState }) => {
+      if (batteryState === Battery.BatteryState.CHARGING || batteryState === Battery.BatteryState.FULL) {
+        void retryHeldAutoDownloads().catch(() => undefined);
+      }
+    });
+    return () => subscription.remove();
+  }, []);
+}
+
 /** Queues an episode for download, starting it when a slot frees up. */
 export async function queueDownload(
   episodeId: number,
@@ -258,6 +315,8 @@ async function run(episodeId: number, isAuto: boolean, attempt = 0): Promise<voi
       });
     }
     await setDownloadState(episodeId, isAuto ? 'none' : 'error');
+    // Remembered, so it starts once the phone is on Wi-Fi or charging again.
+    if (isAuto) await holdAutoDownload(episodeId);
     emit({ episodeId, progress: null, bytesWritten: 0, totalBytes: null });
     return;
   }
@@ -524,7 +583,10 @@ export async function manageAutoDownloads(): Promise<void> {
     }
   }
 
-  // 5. Queue auto-downloads up to user limit
+  // 5. Auto-downloads that waited for Wi-Fi or power.
+  await retryHeldAutoDownloads();
+
+  // 6. Queue auto-downloads up to user limit
   if (settings.autoDownloadLimit > 0 && (await networkAllowsDownload(true))) {
     const queue = await listQueue();
     let queuedToDownload = 0;
