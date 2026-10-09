@@ -1,11 +1,13 @@
 import { Stack, useLocalSearchParams } from 'expo-router';
-import { useCallback } from 'react';
-import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { Alert, ScrollView, StyleSheet, View } from 'react-native';
 
 import { getFeed, setFeedPrefs, setFeedUrl, type FeedPrefs } from '@/db/feeds';
 import { useSetting } from '@/db/settings';
 import type { FeedRow } from '@/db/types';
 import { useQuery } from '@/db/useQuery';
+import { splitCredentials, type FeedCredentials } from '@/feed/auth';
+import { getStoredCredentials, setFeedCredentials } from '@/feed/credentials';
 import { normalizeFeedUrl } from '@/feed/fetch';
 import {
   boolOverride,
@@ -16,9 +18,10 @@ import {
   type NewEpisodesAction,
 } from '@/feed/feedPrefs';
 import { refreshFeed } from '@/feed/sync';
+import { askForNotifications } from '@/notify';
 import { PLAYBACK_RATES, player } from '@/player';
 import { SettingsOptions, SettingsSection, SettingsSwitch, SettingsTextInput } from '@/ui/SettingsRow';
-import { space, type as typography } from '@/ui/theme';
+import { space } from '@/ui/theme';
 import { showToast } from '@/ui/UndoToast';
 import { useTheme } from '@/ui/useTheme';
 
@@ -63,13 +66,38 @@ export default function FeedSettingsScreen() {
     [feedId, globalSpeed]
   );
 
+  const [login, setLogin] = useState<FeedCredentials>({ username: '', password: '' });
+  useEffect(() => {
+    void getStoredCredentials(feedId).then((stored) =>
+      setLogin({ username: stored?.username ?? '', password: stored?.password ?? '' })
+    );
+  }, [feedId]);
+
+  const saveLogin = async (next: FeedCredentials) => {
+    if (!feed) return;
+    setLogin(next);
+    try {
+      await setFeedCredentials(feedId, feed.feed_url, next);
+    } catch (error) {
+      Alert.alert("Couldn't save the login", error instanceof Error ? error.message : String(error));
+      return;
+    }
+    // Tried at once; a refusal shows on the podcast page's banner.
+    await refreshFeed({ ...feed, etag: null, last_modified: null }).catch(() => undefined);
+  };
+
   const changeUrl = useCallback(
     async (raw: string) => {
       if (!feed || !raw) return;
       try {
-        const url = normalizeFeedUrl(raw);
-        if (url === feed.feed_url) return;
+        // A pasted "user:pass@" goes to the keychain, not the address.
+        const { url, credentials } = splitCredentials(normalizeFeedUrl(raw));
+        if (url === feed.feed_url && !credentials) return;
         await setFeedUrl(feedId, url);
+        // The login moves with the podcast, now for the new address's host.
+        const login = credentials ?? (await getStoredCredentials(feedId));
+        if (login) await setFeedCredentials(feedId, url, login);
+        if (credentials) setLogin(credentials);
         showToast('Feed address changed');
         // Reads the new address now; a failure shows on the podcast page's banner.
         await refreshFeed({ ...feed, feed_url: url, etag: null, last_modified: null }).catch(() => undefined);
@@ -79,6 +107,13 @@ export default function FeedSettingsScreen() {
     },
     [feed, feedId]
   );
+
+  const setNotify = async (value: boolean) => {
+    await update({ notify: value });
+    if (value && !(await askForNotifications())) {
+      showToast('Notifications are off for Sage Pod in the system settings');
+    }
+  };
 
   if (!feed) {
     return <View style={[styles.root, { backgroundColor: theme.bg }]} />;
@@ -141,6 +176,14 @@ export default function FeedSettingsScreen() {
         onChange={(value) => void update({ volumeReduction: value === 1 ? null : value })}
       />
 
+      <SettingsSection title="Notifications" />
+      <SettingsSwitch
+        label="Episode notifications"
+        description="A notification when a refresh finds new episodes."
+        value={feed.notify === 1}
+        onValueChange={(value) => void setNotify(value)}
+      />
+
       <SettingsSection title="Automation" />
       <SettingsSwitch
         label="Keep updated"
@@ -196,6 +239,22 @@ export default function FeedSettingsScreen() {
         onChange={(value) => void update({ autoDelete: fromTri(value) })}
       />
 
+      <SettingsSection title="Authentication" />
+      <SettingsTextInput
+        label="Username"
+        value={login.username}
+        onSubmit={(username) => void saveLogin({ ...login, username })}
+        autoCapitalize="none"
+      />
+      <SettingsTextInput
+        label="Password"
+        description="For a password-protected feed. Kept in the phone’s secure storage and sent only to the feed’s own server."
+        value={login.password}
+        onSubmit={(password) => void saveLogin({ ...login, password })}
+        autoCapitalize="none"
+        secure
+      />
+
       <SettingsSection title="Advanced" />
       <SettingsTextInput
         label="Feed address"
@@ -205,9 +264,7 @@ export default function FeedSettingsScreen() {
         keyboardType="url"
         autoCapitalize="none"
       />
-      <Text style={[styles.note, { color: theme.textFaint }]}>
-        Password-protected feeds need secure storage on the device, which arrives with the next app build.
-      </Text>
+      <View style={styles.end} />
     </ScrollView>
   );
 }
@@ -216,9 +273,7 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
   },
-  note: {
-    ...typography.caption,
-    padding: space.lg,
-    paddingBottom: space.xxl,
+  end: {
+    height: space.xxl,
   },
 });

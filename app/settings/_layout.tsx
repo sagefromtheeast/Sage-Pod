@@ -41,6 +41,7 @@ export default function SettingsLayout() {
       <Stack.Screen name="swipes" options={{ title: 'Swipe actions' }} />
       <Stack.Screen name="playback" options={{ title: 'Playback' }} />
       <Stack.Screen name="downloads" options={{ title: 'Downloads' }} />
+      <Stack.Screen name="notifications" options={{ title: 'Notifications' }} />
       <Stack.Screen name="import-export" options={{ title: 'Import and export' }} />
       <Stack.Screen name="about" options={{ title: 'About' }} />
     </Stack>

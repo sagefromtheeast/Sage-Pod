@@ -94,7 +94,7 @@ destructive.
 - [x] Rename, tags, skip ending, volume reduction, new-episodes action (inbox / queue / nothing), auto-download tri-state with include/exclude words and a minimum length, auto-delete tri-state, edit feed address (migration 5)
 - [x] Episode filter: already per podcast since Phase 9
 - [x] Shots: podcast settings top and automation
-- [ ] Password-protected feeds → Phase 17 (needs secure storage, a native module; D-017)
+- [x] Password-protected feeds (Phase 17a, D-024)
 - [ ] On device: skip ending hands over to the next episode; volume reduction level
 
 ## Phase 11 — Search & Discovery ✅
@@ -132,7 +132,7 @@ destructive.
 - [x] About: version from expo-constants, privacy, licences
 - [x] Settings schema test (every default is an offered choice); swipe, played-rule and cleanup tests
 - [x] Shots: settings, settings-interface, settings-swipes, settings-swipe-choice, settings-playback, settings-downloads, settings-import-export, settings-about
-- [ ] Download only when charging: needs expo-battery (native), moved to Phase 17
+- [x] Download only when charging (Phase 17a, D-024)
 - [ ] On device: swipe each list's pairs; the streaming prompt on mobile data; skipping near the end marks played
 
 ## Phase 15 — Statistics ✅
@@ -153,10 +153,19 @@ destructive.
 - [x] Shots: settings, settings-import-export
 - [ ] On device: export each file to Downloads and a cloud drive; export, change something, import, and check feeds, queue and positions come back; import an AntennaPod .db and a random file (both refused)
 
-## Phase 17 — Native (EAS build; ask before each)
-- [ ] Download only when charging (expo-battery, from Phase 14)
-- [ ] Notifications; background refresh + auto backup; deep links; sharing; secure store (+ feed username/password, from Phase 10)
-- [ ] expo-audio gaps via local Expo modules (D-004): lock-screen amounts/buttons, skip silence, volume boost, headset unplug
+## Phase 17a — Native, Expo modules (D-024) ✅
+- [x] Notifications: new episodes per podcast (migration 7), refresh and download errors, Settings › Notifications, taps open the screen
+- [x] Background refresh at the refresh interval; automatic backup every 3 days keeping 5 (picked folder on Android, Files app on iOS)
+- [x] Feed username and password in secure storage, sent only to the feed's host; login prompt on 401
+- [x] itpc / pcast / feed / podcast links open Add podcast
+- [x] Share a downloaded episode's audio file
+- [x] Automatic downloads only while charging
+- [x] Tests: notification content, backup schedule and pruning, credentials, podcast links
+- [x] Shots: settings, settings-notifications, settings-downloads-auto, settings-import-export, feed-settings-auth
+- [ ] On device: each notification and its tap; a background refresh overnight; automatic backup lands and prunes; a protected feed (add, refresh, stream, download); an itpc:// link from a browser; share a file; unplug and check auto-downloads wait
+
+## Phase 17b — expo-audio gaps (route to decide)
+- [ ] Lock-screen skip amounts and a next button, skip silence, volume boost, headset unplug (D-004)
 
 ## Phase 18 — Optional (one proposal each)
 - [ ] Sync, Cast, Auto/Wear, widget/tile, video, Echo, binary chapters, nav customisation, parental control
@@ -164,5 +173,5 @@ destructive.
 ## Discovered (not yet scheduled)
 - [ ] `flushPosition` marks an episode played inside the smart-mark tail but doesn't dequeue or delete it like `onFinished` does
 - [x] A speed chosen in the player isn't saved (fixed by Phase 4's speed sheet)
-- [ ] Refresh interval is only checked when the app opens (Phase 17 background refresh)
+- [x] Refresh interval is only checked when the app opens (fixed by Phase 17a's background refresh)
 - [ ] `fetchOlderFeedEpisodes`: a later refresh restores the first page's `next_page_url` (COALESCE), so older pages can be re-fetched; harmless (upserts dedupe) but wasteful

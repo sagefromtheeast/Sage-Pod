@@ -1,3 +1,5 @@
+import { splitCredentials } from '@/feed/auth';
+import { forgetFeedCredentials, setFeedCredentials } from '@/feed/credentials';
 import { deleteFeedDownloads } from '@/player/downloads';
 import { getDb } from './index';
 import { searchWords } from './search';
@@ -15,7 +17,7 @@ const FEED_COLUMNS = `
   f.state, f.last_refresh_error, f.episode_filter, f.episode_sort, f.funding,
   f.custom_title, f.tags, f.skip_ending_seconds, f.volume_reduction, f.auto_delete,
   f.new_episodes_action, f.auto_download_override, f.download_include, f.download_exclude,
-  f.download_min_minutes
+  f.download_min_minutes, f.notify
 `;
 
 export async function listFeeds(): Promise<FeedWithCounts[]> {
@@ -134,6 +136,7 @@ export async function deleteFeed(id: number): Promise<void> {
   // ON DELETE CASCADE clears the feed's episodes, and the queue's cascade
   // clears any of those episodes that were queued.
   await getDb().runAsync('DELETE FROM feeds WHERE id = ?', id);
+  await forgetFeedCredentials(id);
 }
 
 export async function setFeedFlags(
@@ -296,7 +299,10 @@ export async function removeStalePreviews(
     now - PREVIEW_TTL_MS,
     keepEpisodeId ?? -1
   );
-  for (const { id } of stale) await db.runAsync('DELETE FROM feeds WHERE id = ?', id);
+  for (const { id } of stale) {
+    await db.runAsync('DELETE FROM feeds WHERE id = ?', id);
+    await forgetFeedCredentials(id);
+  }
   return stale.length;
 }
 
@@ -362,6 +368,7 @@ const PREF_COLUMNS = {
   downloadExclude: 'download_exclude',
   downloadMinMinutes: 'download_min_minutes',
   autoDelete: 'auto_delete',
+  notify: 'notify',
 } as const;
 
 export type FeedPrefs = {
@@ -378,6 +385,7 @@ export type FeedPrefs = {
   downloadExclude: string | null;
   downloadMinMinutes: number | null;
   autoDelete: boolean | null;
+  notify: boolean;
 };
 
 /** Saves any of a podcast's settings (or several podcasts') in one statement, only the keys given. */
@@ -417,4 +425,18 @@ export async function setFeedUrl(id: number, feedUrl: string): Promise<void> {
     feedUrl,
     id
   );
+}
+
+/**
+ * Moves a "user:pass@" out of a stored feed address into the keychain, for
+ * podcasts subscribed before credentials had their own place. Leaves the
+ * address alone if the plain one is already another podcast's.
+ */
+export async function moveEmbeddedCredentials(feed: FeedRow): Promise<void> {
+  const { url, credentials } = splitCredentials(feed.feed_url);
+  if (!credentials) return;
+  const taken = await getDb().getFirstAsync<{ id: number }>('SELECT id FROM feeds WHERE feed_url = ?', url);
+  if (taken) return;
+  await setFeedCredentials(feed.id, url, credentials);
+  await getDb().runAsync('UPDATE feeds SET feed_url = ? WHERE id = ?', url, feed.id);
 }

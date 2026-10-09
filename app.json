@@ -5,7 +5,13 @@
     "owner": "sag3-technologies",
     "version": "0.17.0",
     "orientation": "default",
-    "scheme": "sagepod",
+    "scheme": [
+      "sagepod",
+      "itpc",
+      "pcast",
+      "feed",
+      "podcast"
+    ],
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "ios": {
@@ -17,7 +23,9 @@
         ],
         "NSAppTransportSecurity": {
           "NSAllowsArbitraryLoads": true
-        }
+        },
+        "UIFileSharingEnabled": true,
+        "LSSupportsOpeningDocumentsInPlace": true
       },
       "buildNumber": "1700"
     },
@@ -80,7 +88,17 @@
       ],
       "expo-image",
       "expo-sqlite",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/android-icon-monochrome.png",
+          "color": "#16A34A"
+        }
+      ],
+      "expo-background-task",
+      "expo-sharing",
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true

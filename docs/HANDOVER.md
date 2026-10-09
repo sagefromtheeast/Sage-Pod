@@ -244,9 +244,11 @@ releasing, so a red check on `main` blocks the release.
   and Statistics (Subscriptions / Years / Downloads tabs, filter, reset,
   per-podcast numbers, release schedule guess; v0.16.0), and Backup
   (database export and restore, OPML / HTML / favourites exports to a
-  picked folder; v0.17.0).
+  picked folder; v0.17.0), and Phase 17a (notifications, background
+  refresh, automatic backup, protected feeds, podcast links, file sharing,
+  charging-only downloads; v0.18.0; D-024).
   Earlier: EAS device builds, stable Surprise Me, tablet layouts.
-- **Next**: Phase 17 (native, needs an EAS build; ask before each). Schema is at version 6; feeds.state can be 'subscribed',
+- **Next**: Phase 17b (the expo-audio gaps; choose the route first, D-004 and D-024). Schema is at version 7; feeds.state can be 'subscribed',
   'preview' or 'archived'.
   Building blocks to reuse: `openEpisodeActions`, `runEpisodeAction`,
   `showToast`, `OverflowMenu`, `BottomSheet` / `ActionSheet`,

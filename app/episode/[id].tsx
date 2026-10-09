@@ -3,6 +3,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { useMemo, useRef, useState } from 'react';
 import {
   FlatList,
+  Platform,
   StyleSheet,
   useWindowDimensions,
   View,
@@ -20,7 +21,8 @@ import { EpisodeDetails } from '@/ui/episode/EpisodeDetails';
 import { MiniPlayerDock } from '@/ui/MiniPlayerDock';
 import { OverflowMenu } from '@/ui/OverflowMenu';
 import { useTheme } from '@/ui/useTheme';
-import { shareEpisode } from '@/util/share';
+import { getLocalEpisodePath } from '@/player/downloads';
+import { shareEpisode, shareEpisodeFile } from '@/util/share';
 
 /**
  * Episode details, swipeable sideways to the podcast's other episodes (newest
@@ -101,6 +103,8 @@ function EpisodeMenu({ episodeId }: { episodeId: number }) {
     const loaded = loadedId === episode.id;
     const position = loaded ? player.getState().position : episode.position;
     const link = episode.link ?? episode.media_url;
+    // Native only: the web build (the screenshot harness) has no files.
+    const localFile = Platform.OS === 'web' ? null : getLocalEpisodePath(episode);
     return [
       ...(loaded
         ? [{ key: 'skip', label: 'Skip episode', icon: 'play-skip-forward-outline' as const, onPress: () => void player.skipToNext() }]
@@ -171,6 +175,16 @@ function EpisodeMenu({ episodeId }: { episodeId: number }) {
         onPress: () =>
           void shareEpisode({ title: episode.title, podcastTitle: episode.feed_title, url: episode.media_url }),
       },
+      ...(localFile
+        ? [
+            {
+              key: 'shareFile',
+              label: 'Share audio file',
+              icon: 'document-outline' as const,
+              onPress: () => void shareEpisodeFile(localFile, episode.title),
+            },
+          ]
+        : []),
     ];
   }, [episode, loadedId, router]);
 

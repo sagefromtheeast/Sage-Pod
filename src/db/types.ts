@@ -47,6 +47,8 @@ export type FeedRow = {
   download_include: string | null;
   download_exclude: string | null;
   download_min_minutes: number | null;
+  /** 1 when new episodes of this podcast post a notification (V7). */
+  notify: number;
 };
 
 export type EpisodeRow = {

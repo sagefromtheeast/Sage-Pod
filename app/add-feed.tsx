@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -15,8 +15,9 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { hostOf } from '@/feed/auth';
 import type { FeedLink } from '@/feed/autodiscovery';
-import { FeedError } from '@/feed/fetch';
+import { FeedError, normalizeFeedUrl } from '@/feed/fetch';
 import { previewFeed } from '@/feed/sync';
 import { radius, space, type as typography } from '@/ui/theme';
 import { useTheme } from '@/ui/useTheme';
@@ -31,24 +32,48 @@ import { useTheme } from '@/ui/useTheme';
  * As in AntennaPod, a web address copied to the clipboard is filled in, and a
  * website's address works too: its page is searched for feed links.
  */
+/** The host a typed address will be fetched from ("example.com/feed" included). */
+function hostFor(address: string): string | null {
+  try {
+    return hostOf(normalizeFeedUrl(address));
+  } catch {
+    return null;
+  }
+}
+
 export default function AddFeedScreen() {
   const theme = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  // A podcast link from another app (itpc://, feed://…) arrives as ?url=.
+  const { url: linked } = useLocalSearchParams<{ url?: string }>();
 
   const [url, setUrl] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [feedLinks, setFeedLinks] = useState<FeedLink[]>([]);
-  const [needsLogin, setNeedsLogin] = useState(false);
+  // The host that asked for a login: what's typed is sent only there.
+  const [loginHost, setLoginHost] = useState<string | null>(null);
+  const needsLogin = loginHost !== null;
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+
+  // A linked feed opens straight away, as a tap on Subscribe would.
+  useEffect(() => {
+    if (!linked) return;
+    setUrl(linked);
+    void submit(linked);
+    // Only when a link arrives, not as the form changes.
+  }, [linked]);
 
   // Prefill from the clipboard when it holds a web address.
   useEffect(() => {
+    if (linked) return;
     let current = true;
     Clipboard.getStringAsync()
       .then((text) => {
         const candidate = text.trim();
-        if (current && /^(?:https?|feed|itpc|podcast):\/\/\S+$/i.test(candidate)) {
+        if (current && /^(?:https?|feed|itpc|pcast|podcast):\/\/\S+$/i.test(candidate)) {
           setUrl((value) => value || candidate);
         }
       })
@@ -56,7 +81,7 @@ export default function AddFeedScreen() {
     return () => {
       current = false;
     };
-  }, []);
+  }, [linked]);
 
   async function submit(address = url) {
     let value = address.trim();
@@ -65,14 +90,17 @@ export default function AddFeedScreen() {
     setBusy(true);
     setError(null);
     setFeedLinks([]);
-    setNeedsLogin(false);
+    // Sent only to the host that asked for it, never to a feed a page links
+    // to on another server.
+    const loginFor = (address: string) =>
+      loginHost !== null && hostFor(address) === loginHost && (username || password) ? { username, password } : null;
     try {
       // A preview, like a Discover result: Subscribe is on the podcast page.
       let opened: { feedId: number } | null = null;
       // At most two hops, so pages linking to each other can't loop.
       for (let hop = 0; !opened; hop++) {
         try {
-          opened = await previewFeed(value);
+          opened = await previewFeed(value, loginFor(value));
         } catch (err) {
           // A web page with exactly one feed: open that feed, as if it had
           // been pasted. Several feeds are offered as choices below.
@@ -91,7 +119,7 @@ export default function AddFeedScreen() {
       setError(err instanceof Error ? err.message : 'That feed could not be loaded.');
       if (err instanceof FeedError) {
         setFeedLinks(err.feedLinks);
-        setNeedsLogin(err.status === 401 || err.status === 403);
+        if (err.status === 401 || err.status === 403) setLoginHost(hostFor(value) ?? '');
       }
     } finally {
       setBusy(false);
@@ -110,7 +138,8 @@ export default function AddFeedScreen() {
         <View style={styles.header}>
           <Text style={[styles.title, { color: theme.text }]}>Add by RSS URL</Text>
           <Pressable
-            onPress={() => router.back()}
+            // Opened from a link, there may be nothing behind it to go back to.
+            onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
             hitSlop={10}
             accessibilityRole="button"
             accessibilityLabel="Close"
@@ -144,10 +173,38 @@ export default function AddFeedScreen() {
 
         {error ? <Text style={[styles.error, { color: theme.danger }]}>{error}</Text> : null}
         {needsLogin ? (
-          <Text style={[styles.help, { color: theme.textMuted }]}>
-            Password-protected feeds need secure storage on the device, which arrives with the next app build. If
-            the podcast gave you a private address instead, paste that one.
-          </Text>
+          <>
+            <Text style={[styles.help, { color: theme.textMuted }]}>
+              Enter the username and password the podcast gave you. They’re kept in the phone’s secure storage.
+            </Text>
+            <TextInput
+              value={username}
+              onChangeText={setUsername}
+              placeholder="Username"
+              placeholderTextColor={theme.textFaint}
+              style={[styles.input, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
+              autoCapitalize="none"
+              autoCorrect={false}
+              textContentType="username"
+              editable={!busy}
+              accessibilityLabel="Username"
+            />
+            <TextInput
+              value={password}
+              onChangeText={setPassword}
+              placeholder="Password"
+              placeholderTextColor={theme.textFaint}
+              style={[styles.input, { color: theme.text, backgroundColor: theme.surface, borderColor: theme.border }]}
+              autoCapitalize="none"
+              autoCorrect={false}
+              secureTextEntry
+              textContentType="password"
+              returnKeyType="go"
+              onSubmitEditing={() => void submit()}
+              editable={!busy}
+              accessibilityLabel="Password"
+            />
+          </>
         ) : null}
         {feedLinks.map((link) => (
           <Pressable

@@ -49,6 +49,12 @@ export default function SettingsIndex() {
         onPress={() => router.push('/settings/downloads')}
       />
       <SettingsLink
+        icon="notifications-outline"
+        label="Notifications"
+        description="Refresh and download errors"
+        onPress={() => router.push('/settings/notifications')}
+      />
+      <SettingsLink
         icon="swap-horizontal-outline"
         label="Import and export"
         description="Database backup, OPML, HTML and favourites"

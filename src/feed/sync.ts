@@ -1,7 +1,8 @@
 import { getDb } from '@/db';
 import { listAutoDownloadCandidates } from '@/db/episodes';
-import { getFeedByUrl, listFeedsToRefresh, subscribeFeed } from '@/db/feeds';
+import { getFeedByUrl, listFeedsToRefresh, moveEmbeddedCredentials, subscribeFeed } from '@/db/feeds';
 import { getSettings } from '@/db/settings';
+import { notifyNewEpisodes, notifyRefreshFailed } from '@/notify';
 import type { FeedRow } from '@/db/types';
 import { enqueueMany } from '@/db/queue';
 import { onCellular, queueDownload } from '@/player/downloads';
@@ -15,6 +16,8 @@ import {
   type DownloadRules,
 } from './feedPrefs';
 
+import { splitCredentials, type FeedCredentials } from './auth';
+import { feedCredentialsFor, setFeedCredentials } from './credentials';
 import { fetchFeed, normalizeFeedUrl } from './fetch';
 import type { ParsedEpisode, ParsedFeed } from './parser';
 
@@ -164,8 +167,12 @@ async function updateFeedRow(
 const fundingJson = (feed: ParsedFeed) => (feed.funding.length > 0 ? JSON.stringify(feed.funding) : null);
 
 /** Fetches a feed and stores it with its episodes, as a subscription or a preview. */
-async function insertFeed(feedUrl: string, state: 'subscribed' | 'preview'): Promise<number> {
-  const { feed, etag, lastModified } = await fetchFeed(feedUrl);
+async function insertFeed(
+  feedUrl: string,
+  state: 'subscribed' | 'preview',
+  credentials: FeedCredentials | null
+): Promise<number> {
+  const { feed, etag, lastModified } = await fetchFeed(feedUrl, {}, credentials);
   const result = await getDb().runAsync(
     `INSERT INTO feeds
        (feed_url, title, author, description, image_url, link, language, explicit,
@@ -188,6 +195,7 @@ async function insertFeed(feedUrl: string, state: 'subscribed' | 'preview'): Pro
     state
   );
   const feedId = result.lastInsertRowId;
+  if (credentials) await setFeedCredentials(feedId, feedUrl, credentials);
   // Existing episodes are *not* marked new, or a fresh subscription would
   // announce a 400-episode back catalogue as unread.
   await upsertEpisodes(feedId, feed.episodes, false);
@@ -203,11 +211,15 @@ async function insertFeed(feedUrl: string, state: 'subscribed' | 'preview'): Pro
  * the podcast page's "Last refresh failed" banner instead of undoing (or
  * misreporting) the subscription.
  */
-export async function subscribe(rawUrl: string): Promise<{ feedId: number; alreadySubscribed: boolean }> {
-  const feedUrl = normalizeFeedUrl(rawUrl);
+export async function subscribe(
+  rawUrl: string,
+  given: FeedCredentials | null = null
+): Promise<{ feedId: number; alreadySubscribed: boolean }> {
+  const { feedUrl, credentials } = feedAddress(rawUrl, given);
 
   const existing = await getFeedByUrl(feedUrl);
   if (existing) {
+    if (credentials) await setFeedCredentials(existing.id, feedUrl, credentials);
     if (existing.state === 'subscribed') {
       await refreshFeed(existing);
       return { feedId: existing.id, alreadySubscribed: true };
@@ -222,7 +234,13 @@ export async function subscribe(rawUrl: string): Promise<{ feedId: number; alrea
     return { feedId: existing.id, alreadySubscribed: false };
   }
 
-  return { feedId: await insertFeed(feedUrl, 'subscribed'), alreadySubscribed: false };
+  return { feedId: await insertFeed(feedUrl, 'subscribed', credentials), alreadySubscribed: false };
+}
+
+/** The address to store, without any "user:pass@", and the credentials to keep instead. */
+function feedAddress(rawUrl: string, given: FeedCredentials | null) {
+  const { url: feedUrl, credentials: embedded } = splitCredentials(normalizeFeedUrl(rawUrl));
+  return { feedUrl, credentials: given ?? embedded };
 }
 
 /**
@@ -231,11 +249,17 @@ export async function subscribe(rawUrl: string): Promise<{ feedId: number; alrea
  * refreshes and search until the listener taps Subscribe. Unsubscribed
  * previews are cleared at the next start (`removeStalePreviews`).
  */
-export async function previewFeed(rawUrl: string): Promise<{ feedId: number; subscribed: boolean }> {
-  const feedUrl = normalizeFeedUrl(rawUrl);
+export async function previewFeed(
+  rawUrl: string,
+  given: FeedCredentials | null = null
+): Promise<{ feedId: number; subscribed: boolean }> {
+  const { feedUrl, credentials } = feedAddress(rawUrl, given);
   const existing = await getFeedByUrl(feedUrl);
-  if (existing) return { feedId: existing.id, subscribed: existing.state === 'subscribed' };
-  return { feedId: await insertFeed(feedUrl, 'preview'), subscribed: false };
+  if (existing) {
+    if (credentials) await setFeedCredentials(existing.id, feedUrl, credentials);
+    return { feedId: existing.id, subscribed: existing.state === 'subscribed' };
+  }
+  return { feedId: await insertFeed(feedUrl, 'preview', credentials), subscribed: false };
 }
 
 /**
@@ -263,12 +287,15 @@ export async function refreshFeed(
 }
 
 async function refreshFeedNow(feed: FeedRow, options: { full?: boolean; quiet?: boolean }): Promise<SyncResult> {
+  // Best effort: the embedded credentials keep working where they are.
+  await moveEmbeddedCredentials(feed).catch(() => undefined);
   let fetched: Awaited<ReturnType<typeof fetchFeed>>;
   try {
     // A full refresh ignores the cache validators, so the server can't answer 304.
     fetched = await fetchFeed(
       feed.feed_url,
-      options.full ? {} : { etag: feed.etag, lastModified: feed.last_modified }
+      options.full ? {} : { etag: feed.etag, lastModified: feed.last_modified },
+      await feedCredentialsFor(feed.id, feed.feed_url)
     );
   } catch (error) {
     // Remembered for the podcast page's "Last refresh failed" banner.
@@ -304,14 +331,21 @@ async function refreshFeedNow(feed: FeedRow, options: { full?: boolean; quiet?: 
   );
   await updateFeedRow(feed.id, parsed, etag, lastModified);
 
-  if (subscribed && action === 'queue' && guids.length > 0) {
-    const rows = await getDb().getAllAsync<{ id: number }>(
-      `SELECT id FROM episodes WHERE feed_id = ? AND guid IN (${guids.map(() => '?').join(', ')})
+  const addToQueue = subscribed && action === 'queue';
+  // AntennaPod's per-podcast "Episode notifications".
+  const notify = subscribed && feed.notify === 1;
+  if ((addToQueue || notify) && guids.length > 0) {
+    const rows = await getDb().getAllAsync<{ id: number; title: string }>(
+      `SELECT id, title FROM episodes WHERE feed_id = ? AND guid IN (${guids.map(() => '?').join(', ')})
         ORDER BY published_at ASC, id ASC`,
       feed.id,
       ...guids
     );
-    await enqueueMany(rows.map((row) => row.id));
+    if (addToQueue) await enqueueMany(rows.map((row) => row.id));
+    if (notify) {
+      const newestFirst = rows.map((row) => row.title).reverse();
+      void notifyNewEpisodes(feed.id, feed.custom_title ?? (parsed.title || feed.title), newestFirst);
+    }
   }
 
   const autoDownload = resolveOverride(boolOverride(feed.auto_download_override), settings.autoDownloadNew).value;
@@ -366,7 +400,7 @@ export async function refreshAllFeeds(
         // One unreachable feed must not abort the whole refresh.
         result.failures.push({
           feedId: feed.id,
-          title: feed.title,
+          title: feed.custom_title ?? feed.title,
           message: error instanceof Error ? error.message : String(error),
         });
       } finally {
@@ -378,6 +412,12 @@ export async function refreshAllFeeds(
   await Promise.all(
     Array.from({ length: Math.min(concurrency, feeds.length) }, () => worker())
   );
+
+  // An automatic refresh has no one watching it, so failures become a
+  // notification; one the listener started shows its own result.
+  if (!force && result.failures.length > 0 && getSettings().notifyRefreshErrors) {
+    void notifyRefreshFailed(result.failures);
+  }
 
   return result;
 }
@@ -423,7 +463,11 @@ export async function fetchOlderFeedEpisodes(
     return { newEpisodes: 0, hasMore: false };
   }
 
-  const { feed: parsed } = await fetchFeed(feed.next_page_url);
+  const { feed: parsed } = await fetchFeed(
+    feed.next_page_url,
+    {},
+    await feedCredentialsFor(feedId, feed.next_page_url)
+  );
   const { count: inserted } = await upsertEpisodes(feedId, parsed.episodes, false);
   await db.runAsync(
     'UPDATE feeds SET next_page_url = ? WHERE id = ?',

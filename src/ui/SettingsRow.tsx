@@ -245,18 +245,21 @@ export function SettingsTextInput({
   onSubmit,
   keyboardType = 'default',
   autoCapitalize = 'sentences',
+  secure = false,
 }: BaseProps & {
   value: string;
   placeholder?: string;
   onSubmit: (value: string) => void;
   keyboardType?: 'default' | 'url' | 'number-pad';
   autoCapitalize?: 'none' | 'sentences' | 'words';
+  /** A password: hidden, and kept exactly as typed (spaces included). */
+  secure?: boolean;
 }) {
   const theme = useTheme();
   const [draft, setDraft] = useState(value);
   useEffect(() => setDraft(value), [value]);
   const commit = () => {
-    if (draft !== value) onSubmit(draft.trim());
+    if (draft !== value) onSubmit(secure ? draft : draft.trim());
   };
 
   return (
@@ -277,6 +280,7 @@ export function SettingsTextInput({
         keyboardType={keyboardType}
         autoCapitalize={autoCapitalize}
         autoCorrect={false}
+        secureTextEntry={secure}
         returnKeyType="done"
         style={[styles.input, { color: theme.text, backgroundColor: theme.surfaceAlt }]}
         accessibilityLabel={label}

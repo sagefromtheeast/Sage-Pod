@@ -4,7 +4,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
  * Bump this when adding a migration below. `migrate()` walks from the
  * database's stored `user_version` up to this number, applying each step once.
  */
-export const LATEST_SCHEMA_VERSION = 6;
+export const LATEST_SCHEMA_VERSION = 7;
 
 const V1 = `
 CREATE TABLE IF NOT EXISTS feeds (
@@ -144,7 +144,12 @@ CREATE TABLE IF NOT EXISTS download_log (
 CREATE INDEX IF NOT EXISTS idx_download_log_created ON download_log (created_at);
 `;
 
-const MIGRATIONS: string[] = [V1, V2, V3, V4, V5, V6];
+// Phase 17: AntennaPod's per-podcast "Episode notifications", off by default.
+const V7 = `
+ALTER TABLE feeds ADD COLUMN notify INTEGER NOT NULL DEFAULT 0;
+`;
+
+const MIGRATIONS: string[] = [V1, V2, V3, V4, V5, V6, V7];
 
 /**
  * Applies any pending migrations.
