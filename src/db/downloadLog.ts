@@ -37,5 +37,7 @@ export async function listDownloadLog(limit = MAX_ENTRIES): Promise<DownloadLogR
 }
 
 export async function clearDownloadLog(): Promise<void> {
-  await getDb().runAsync('DELETE FROM download_log');
+  // The WHERE keeps SQLite from truncating the table in one step, which
+  // skips the change notifications the open log sheet listens for.
+  await getDb().runAsync('DELETE FROM download_log WHERE id > 0');
 }

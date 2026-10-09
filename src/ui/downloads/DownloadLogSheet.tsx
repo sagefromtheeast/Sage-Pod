@@ -27,26 +27,86 @@ const when = (ms: number) => {
 export function DownloadLogSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const theme = useTheme();
   const [open, setOpen] = useState<DownloadLogRow | null>(null);
-  const { data: entries = [] } = useQuery(() => listDownloadLog(), ['download_log'], []);
+  // Read only while shown: the sheet stays mounted on the Downloads screen.
+  const { data: entries = [] } = useQuery(
+    () => (visible ? listDownloadLog() : Promise.resolve([])),
+    ['download_log'],
+    [visible]
+  );
+
+  const close = () => {
+    setOpen(null);
+    onClose();
+  };
 
   const retry = async (entry: DownloadLogRow) => {
     const episode = await getEpisode(entry.episode_id);
-    setOpen(null);
     if (!episode) {
       showToast('That episode is no longer on this device');
       return;
     }
-    if (await startDownloads([episode.id])) showToast('Downloading again');
+    if (episode.download_state === 'done') {
+      showToast('Already downloaded');
+      return;
+    }
+    if (episode.download_state === 'queued' || episode.download_state === 'downloading') {
+      showToast('Already downloading');
+      return;
+    }
+    if (await startDownloads([episode.id])) {
+      setOpen(null);
+      showToast('Downloading again');
+    }
   };
 
+  // One sheet whose content switches between the list and an entry's details:
+  // iOS can't present a second modal while the first is still closing.
   return (
-    <>
-      <BottomSheet
-        visible={visible && open === null}
-        title="Download log"
-        subtitle={entries.length === 0 ? undefined : `${entries.length} ${entries.length === 1 ? 'entry' : 'entries'}`}
-        onClose={onClose}
-      >
+    <BottomSheet
+      visible={visible}
+      title={open ? (open.status === 'failed' ? 'Download failed' : 'Downloaded') : 'Download log'}
+      subtitle={
+        open
+          ? open.episode_title
+          : entries.length === 0
+            ? undefined
+            : `${entries.length} ${entries.length === 1 ? 'entry' : 'entries'}`
+      }
+      onClose={close}
+    >
+      {open ? (
+        <View style={styles.details}>
+          <Text selectable style={[styles.detailsText, { color: theme.text, backgroundColor: theme.surfaceAlt }]}>
+            {logDetails(open, when)}
+          </Text>
+          <View style={styles.buttons}>
+            <Pressable
+              onPress={() => {
+                void Clipboard.setStringAsync(logDetails(open, when));
+                showToast('Details copied');
+              }}
+              style={[styles.button, { borderColor: theme.border }]}
+              accessibilityRole="button"
+            >
+              <Ionicons name="copy-outline" size={18} color={theme.text} />
+              <Text style={[styles.buttonLabel, { color: theme.text }]}>Copy details</Text>
+            </Pressable>
+            {open.status === 'failed' ? (
+              <Pressable
+                onPress={() => void retry(open)}
+                style={[styles.button, { backgroundColor: theme.accent, borderColor: theme.accent }]}
+                accessibilityRole="button"
+              >
+                <Ionicons name="refresh" size={18} color={theme.onAccent} />
+                <Text style={[styles.buttonLabel, { color: theme.onAccent }]}>Retry</Text>
+              </Pressable>
+            ) : null}
+          </View>
+          <Pressable onPress={() => setOpen(null)} style={styles.clear} accessibilityRole="button">
+            <Text style={[styles.link, { color: theme.accent }]}>Back to the log</Text>
+          </Pressable>
+        </View>
+      ) : (
         <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
           {entries.length === 0 ? (
             <Text style={[styles.empty, { color: theme.textMuted }]}>Finished and failed downloads are listed here.</Text>
@@ -86,46 +146,8 @@ export function DownloadLogSheet({ visible, onClose }: { visible: boolean; onClo
             </Pressable>
           ) : null}
         </ScrollView>
-      </BottomSheet>
-
-      <BottomSheet
-        visible={visible && open !== null}
-        title={open?.status === 'failed' ? 'Download failed' : 'Downloaded'}
-        subtitle={open?.episode_title}
-        onClose={() => setOpen(null)}
-      >
-        {open ? (
-          <View style={styles.details}>
-            <Text selectable style={[styles.detailsText, { color: theme.text, backgroundColor: theme.surfaceAlt }]}>
-              {logDetails(open, when)}
-            </Text>
-            <View style={styles.buttons}>
-              <Pressable
-                onPress={() => {
-                  void Clipboard.setStringAsync(logDetails(open, when));
-                  showToast('Details copied');
-                }}
-                style={[styles.button, { borderColor: theme.border }]}
-                accessibilityRole="button"
-              >
-                <Ionicons name="copy-outline" size={18} color={theme.text} />
-                <Text style={[styles.buttonLabel, { color: theme.text }]}>Copy details</Text>
-              </Pressable>
-              {open.status === 'failed' ? (
-                <Pressable
-                  onPress={() => void retry(open)}
-                  style={[styles.button, { backgroundColor: theme.accent, borderColor: theme.accent }]}
-                  accessibilityRole="button"
-                >
-                  <Ionicons name="refresh" size={18} color={theme.onAccent} />
-                  <Text style={[styles.buttonLabel, { color: theme.onAccent }]}>Retry</Text>
-                </Pressable>
-              ) : null}
-            </View>
-          </View>
-        ) : null}
-      </BottomSheet>
-    </>
+      )}
+    </BottomSheet>
   );
 }
 

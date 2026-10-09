@@ -16,6 +16,7 @@ import {
   matchesDownloadSearch,
   parseDownloadSort,
   playedToDelete,
+  sizeOf,
   sortDownloads,
 } from '@/player/downloadView';
 import { ActionSheet } from '@/ui/ActionSheet';
@@ -57,7 +58,7 @@ export default function DownloadsScreen() {
     () => (term ? active.filter((episode) => matchesDownloadSearch(episode, term)) : active),
     [active, term]
   );
-  const totalBytes = done.reduce((sum, episode) => sum + (episode.downloaded_bytes ?? episode.media_size ?? 0), 0);
+  const totalBytes = done.reduce((sum, episode) => sum + sizeOf(episode), 0);
 
   const selection = useEpisodeSelection(finished);
   const actionHooks = useMemo(() => ({ onMultiSelect: selection.start }), [selection.start]);
@@ -74,7 +75,7 @@ export default function DownloadsScreen() {
       showToast('No played downloads to delete');
       return;
     }
-    const bytes = targets.reduce((sum, episode) => sum + (episode.downloaded_bytes ?? episode.media_size ?? 0), 0);
+    const bytes = targets.reduce((sum, episode) => sum + sizeOf(episode), 0);
     Alert.alert(
       `Delete ${targets.length} played download${targets.length === 1 ? '' : 's'}?`,
       `Frees ${formatBytes(bytes)}. Favourites are kept.`,
@@ -84,8 +85,18 @@ export default function DownloadsScreen() {
           text: 'Delete',
           style: 'destructive',
           onPress: async () => {
-            for (const episode of targets) await deleteDownload(episode.id);
-            showToast(`${targets.length} download${targets.length === 1 ? '' : 's'} deleted`);
+            let deleted = 0;
+            try {
+              for (const episode of targets) {
+                await deleteDownload(episode.id);
+                deleted += 1;
+              }
+              showToast(`${deleted} download${deleted === 1 ? '' : 's'} deleted`);
+            } catch (error) {
+              showToast(
+                `Deleted ${deleted} of ${targets.length}: ${error instanceof Error ? error.message : String(error)}`
+              );
+            }
           },
         },
       ]
@@ -95,7 +106,7 @@ export default function DownloadsScreen() {
   const sections: Section[] = [
     ...(running.length > 0 ? [{ key: 'active' as const, title: 'IN PROGRESS', data: running }] : []),
     ...(finished.length > 0 || running.length > 0
-      ? [{ key: 'done' as const, title: `DOWNLOADED · ${done.length} · ${formatBytes(totalBytes)}`, data: finished }]
+      ? [{ key: 'done' as const, title: `DOWNLOADED · ${term ? `${finished.length} of ` : ''}${done.length} · ${formatBytes(totalBytes)}`, data: finished }]
       : []),
   ];
 
@@ -168,27 +179,30 @@ export default function DownloadsScreen() {
             <EpisodeRow
               episode={item}
               onPlay={play}
+              // Waiting or running: the row's own button cancels. A failed
+              // download can be retried or dismissed.
               trailing={
                 item.download_state === 'error' ? (
-                  <Pressable
-                    onPress={() => void startDownloads([item.id])}
-                    hitSlop={8}
-                    style={[styles.retry, { borderColor: theme.danger }]}
-                    accessibilityRole="button"
-                    accessibilityLabel="Retry download"
-                  >
-                    <Text style={[styles.retryLabel, { color: theme.danger }]}>Retry</Text>
-                  </Pressable>
-                ) : (
-                  <Pressable
-                    onPress={() => void cancelDownload(item.id)}
-                    hitSlop={8}
-                    accessibilityRole="button"
-                    accessibilityLabel="Cancel download"
-                  >
-                    <Ionicons name="close-circle-outline" size={20} color={theme.textMuted} />
-                  </Pressable>
-                )
+                  <View style={styles.failedActions}>
+                    <Pressable
+                      onPress={() => void startDownloads([item.id])}
+                      hitSlop={8}
+                      style={[styles.retry, { borderColor: theme.danger }]}
+                      accessibilityRole="button"
+                      accessibilityLabel="Retry download"
+                    >
+                      <Text style={[styles.retryLabel, { color: theme.danger }]}>Retry</Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => void cancelDownload(item.id)}
+                      hitSlop={8}
+                      accessibilityRole="button"
+                      accessibilityLabel="Dismiss failed download"
+                    >
+                      <Ionicons name="close" size={18} color={theme.textMuted} />
+                    </Pressable>
+                  </View>
+                ) : null
               }
             />
           ) : (
@@ -257,6 +271,7 @@ const styles = StyleSheet.create({
     paddingTop: space.md,
     paddingBottom: space.xs,
   },
+  failedActions: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
   retry: {
     paddingHorizontal: space.md,
     paddingVertical: space.xs,

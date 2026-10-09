@@ -31,7 +31,8 @@ type Sortable = {
   media_size: number | null;
 };
 
-const sizeOf = (episode: Sortable) => episode.downloaded_bytes ?? episode.media_size ?? 0;
+/** Bytes a download takes: what was written, else what the feed announced. */
+export const sizeOf = (episode: Pick<Sortable, 'downloaded_bytes' | 'media_size'>) => episode.downloaded_bytes ?? episode.media_size ?? 0;
 
 /** A new array in the chosen order; ties keep the newest first. */
 export function sortDownloads<T extends Sortable>(episodes: readonly T[], sort: DownloadSort): T[] {

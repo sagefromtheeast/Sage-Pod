@@ -136,11 +136,6 @@ export function getLocalEpisodePath(episode: EpisodeWithFeed): string | null {
   return null;
 }
 
-/**
- * Validates network connectivity against download constraints.
- * Manual downloads only block when completely disconnected.
- * Automated background downloads respect the user's `downloadOnWifiOnly` setting.
- */
 /** True on a cellular connection while "Download on Wi-Fi only" is on: manual downloads ask first. */
 export async function onMeteredWhileWifiOnly(): Promise<boolean> {
   if (!getSettings().downloadOnWifiOnly) return false;
@@ -152,6 +147,11 @@ export async function onMeteredWhileWifiOnly(): Promise<boolean> {
   }
 }
 
+/**
+ * Validates network connectivity against download constraints.
+ * Manual downloads only block when completely disconnected.
+ * Automated background downloads respect the user's `downloadOnWifiOnly` setting.
+ */
 async function networkAllowsDownload(isAuto = false): Promise<boolean> {
   if (!isAuto) {
     try {
@@ -210,6 +210,18 @@ async function run(episodeId: number, isAuto: boolean, attempt = 0): Promise<voi
   }
 
   if (!(await networkAllowsDownload(isAuto))) {
+    // An automatic download just waits for a connection; a manual one failed.
+    if (!isAuto) {
+      recordLog({
+        episode_id: episodeId,
+        episode_title: episode.title,
+        feed_title: episode.feed_title,
+        url: episode.media_url,
+        status: 'failed',
+        error_code: 'OFFLINE',
+        error_message: 'There was no internet connection.',
+      });
+    }
     await setDownloadState(episodeId, isAuto ? 'none' : 'error');
     emit({ episodeId, progress: null, bytesWritten: 0, totalBytes: null });
     return;
