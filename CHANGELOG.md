@@ -1,3 +1,27 @@
+## [0.15.0](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.14.0...v0.15.0) (2026-10-09)
+
+### 🚀 New Features
+
+* **lists:** swipe actions follow Settings, and Episodes and Downloads swipe too ([65790cd](https://github.com/sagefromtheeast/Sage-Pod/commit/65790cd3df90d7d1be96677570a7569377ba6b93))
+* **settings:** playback, download and display rules for the settings screens ([9dd6179](https://github.com/sagefromtheeast/Sage-Pod/commit/9dd6179e08aeba64655d88bdb1874aa56c63d27c))
+* **settings:** split Settings into AntennaPod's pages ([96099bd](https://github.com/sagefromtheeast/Sage-Pod/commit/96099bd72b245d88df3ac8d00abdb34b85ba997e))
+
+### 🐛 Bug Fixes
+
+* **downloads:** every delete honours "Delete removes from queue"; keep undated plays ([bc2cf4c](https://github.com/sagefromtheeast/Sage-Pod/commit/bc2cf4c6084c511f37605085a743e94d2bfe7568))
+* **lists:** a toggle swipe shows what it will do; steadier queue rows ([d189c18](https://github.com/sagefromtheeast/Sage-Pod/commit/d189c18fdabdbf743433e42065f66464be507583))
+* **player:** smart mark only on stop, keep the reset position, ask before any stream ([92d026a](https://github.com/sagefromtheeast/Sage-Pod/commit/92d026aef0f0e5a771901b0770ba759ebb2d132c))
+* **settings:** a close button on the first Settings page ([8652837](https://github.com/sagefromtheeast/Sage-Pod/commit/86528373f62c0ae5e9c587bd453f7e5ef38a1ef9))
+* **settings:** reset in one write and leave the playing speed alone ([9ad76f3](https://github.com/sagefromtheeast/Sage-Pod/commit/9ad76f317362d94dcfdd00a91c38fd6bbc0d5722))
+
+### 📚 Documentation
+
+* mark Phase 14 done and record D-021 ([fb8a91f](https://github.com/sagefromtheeast/Sage-Pod/commit/fb8a91f529277cffa7d5a178827b0a8749abc315))
+
+### ✅ Tests
+
+* **shots:** settings pages and the swipe choice sheet ([ebef9b4](https://github.com/sagefromtheeast/Sage-Pod/commit/ebef9b46add38c3aebdc47cd6c186e5aca56659a))
+
 ## [0.14.0](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.13.0...v0.14.0) (2026-10-09)
 
 ### 🚀 New Features
