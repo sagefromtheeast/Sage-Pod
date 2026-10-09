@@ -73,6 +73,21 @@ export type Settings = {
   autoDownloadNew: boolean;
   /** Discover's chart and search country (ISO 3166 code, lower case; see src/discover/providers.ts). */
   discoverCountry: string;
+  /** Library order: 'title' | 'updated' | 'unplayed' | 'played' (src/library/libraryView.ts). */
+  librarySort: string;
+  /** The number on Library tiles: 'unplayed' | 'inbox' | 'downloaded' | 'downloaded_unplayed' | 'none'. */
+  libraryCounter: string;
+  /** Library grid columns; 0 follows the window width. */
+  libraryColumns: number;
+  /** Titles under the Library's cover tiles. */
+  libraryShowTitles: boolean;
+  /** Library layout: 'grid' | 'list'. */
+  libraryView: string;
+  /** Library filter, e.g. 'updated,-autoDownload' (libraryView.ts). */
+  libraryFilter: string;
+  /** The Episodes screen's order (an EpisodeSortKey) and filter (episodeFilter.ts). */
+  episodesSort: string;
+  episodesFilter: string;
 };
 
 /** Skip amounts offered by long-pressing the player's rewind / forward buttons (AntennaPod's list). */
@@ -111,6 +126,14 @@ export const DEFAULT_SETTINGS: Settings = {
   newEpisodesAction: 'inbox',
   autoDownloadNew: false,
   discoverCountry: 'us',
+  librarySort: 'title',
+  libraryCounter: 'unplayed',
+  libraryColumns: 0,
+  libraryShowTitles: true,
+  libraryView: 'grid',
+  libraryFilter: '',
+  episodesSort: 'date_desc',
+  episodesFilter: '',
 };
 
 const store = createStore<Settings>({ ...DEFAULT_SETTINGS });

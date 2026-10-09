@@ -22,7 +22,8 @@ export type FeedRow = {
   skip_intro_seconds: number | null;
   next_page_url: string | null;
   /** 'preview' while looking before subscribing; previews are kept out of Library, refresh and search. */
-  state: 'subscribed' | 'preview';
+  /** 'archived' = unsubscribed but kept (AntennaPod's archive): not refreshed, not in the Library. */
+  state: 'subscribed' | 'preview' | 'archived';
   /** Why the last refresh failed, or null if it worked. */
   last_refresh_error: string | null;
   /** Saved podcast-page filter (see src/feed/episodeFilter.ts). */
@@ -92,4 +93,12 @@ export type FeedWithCounts = FeedRow & {
   episode_count: number;
   unplayed_count: number;
   latest_published_at: number | null;
+};
+
+/** A Library tile: the counts its number, sort and filter can use. */
+export type LibraryFeed = FeedWithCounts & {
+  inbox_count: number;
+  downloaded_count: number;
+  downloaded_unplayed_count: number;
+  played_count: number;
 };

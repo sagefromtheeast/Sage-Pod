@@ -263,10 +263,11 @@ export async function refreshFeed(feed: FeedRow, options: { full?: boolean } = {
   }
 
   // What new episodes do (AntennaPod's "New episodes" setting, per podcast or
-  // global): land in the Inbox, join the queue, or nothing. A preview's new
-  // episodes are never "new": only subscriptions feed the Inbox (D-016).
+  // global): land in the Inbox, join the queue, or nothing. A preview's or an
+  // archived podcast's new episodes are never "new": only subscriptions feed
+  // the Inbox (D-016, D-019).
   const settings = getSettings();
-  const subscribed = feed.state !== 'preview';
+  const subscribed = feed.state === 'subscribed';
   const action = parseNewEpisodesAction(feed.new_episodes_action) ?? settings.newEpisodesAction;
   const { count: newEpisodes, guids } = await upsertEpisodes(
     feed.id,

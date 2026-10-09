@@ -17,6 +17,8 @@ import {
 import {
   dismissManyFromInbox,
   EPISODE_SORT_KEYS,
+  EPISODE_SORT_LABELS,
+  parseEpisodeSort,
   getPlaybackSnapshots,
   listEpisodesForFeed,
   listInboxIds,
@@ -48,19 +50,6 @@ import { excerpt } from '@/util/html';
 /** Episodes read from the database per page, as in AntennaPod. */
 const PAGE_SIZE = 150;
 
-const SORT_LABELS: Record<EpisodeSortKey, string> = {
-  date_desc: 'Newest first',
-  date_asc: 'Oldest first',
-  duration_asc: 'Shortest first',
-  duration_desc: 'Longest first',
-  title_asc: 'Title A–Z',
-  title_desc: 'Title Z–A',
-  season_asc: 'Season and episode',
-};
-
-const parseSort = (raw: string | null | undefined): EpisodeSortKey =>
-  EPISODE_SORT_KEYS.includes(raw as EpisodeSortKey) ? (raw as EpisodeSortKey) : 'date_desc';
-
 export default function FeedScreen() {
   const theme = useTheme();
   const dockPadding = useMiniPlayerDockPadding();
@@ -80,7 +69,7 @@ export default function FeedScreen() {
   const { data: inboxIds = [] } = useQuery<number[]>(() => listInboxIds(feedId), ['episodes'], [feedId]);
 
   const preview = feed?.state === 'preview';
-  const sort = parseSort(feed?.episode_sort);
+  const sort = parseEpisodeSort(feed?.episode_sort);
   const filterRaw = feed?.episode_filter ?? null;
   const filter = useMemo(() => parseEpisodeFilter(filterRaw), [filterRaw]);
   const filtered = isFiltered(filter);
@@ -431,14 +420,20 @@ export default function FeedScreen() {
       <SelectionBar selection={selection} />
       <MiniPlayerDock hidden={selection.active} />
 
-      <FeedFilterSheet visible={sheet === 'filter'} feedId={feed.id} value={filterRaw} onClose={() => setSheet(null)} />
+      <FeedFilterSheet
+        visible={sheet === 'filter'}
+        subtitle="Saved for this podcast"
+        value={filterRaw}
+        onChange={(value) => void setFeedViewPrefs(feed.id, { episodeFilter: value })}
+        onClose={() => setSheet(null)}
+      />
       <ActionSheet
         visible={sheet === 'sort'}
         title="Sort episodes"
         subtitle="Saved for this podcast"
         items={EPISODE_SORT_KEYS.map((key) => ({
           key,
-          label: SORT_LABELS[key],
+          label: EPISODE_SORT_LABELS[key],
           icon: key.startsWith('date') ? 'calendar-outline' : key.startsWith('duration') ? 'time-outline' : 'text-outline',
           selected: key === sort,
           onPress: () => void setFeedViewPrefs(feed.id, { episodeSort: key }),

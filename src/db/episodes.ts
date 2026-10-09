@@ -40,6 +40,19 @@ export const EPISODE_SORT_KEYS: readonly EpisodeSortKey[] = [
   'season_asc',
 ];
 
+export const EPISODE_SORT_LABELS: Record<EpisodeSortKey, string> = {
+  date_desc: 'Newest first',
+  date_asc: 'Oldest first',
+  duration_asc: 'Shortest first',
+  duration_desc: 'Longest first',
+  title_asc: 'Title A–Z',
+  title_desc: 'Title Z–A',
+  season_asc: 'Season and episode',
+};
+
+export const parseEpisodeSort = (raw: string | null | undefined): EpisodeSortKey =>
+  EPISODE_SORT_KEYS.includes(raw as EpisodeSortKey) ? (raw as EpisodeSortKey) : 'date_desc';
+
 export type EpisodeFilterOptions = {
   includePlayed?: boolean;
   unplayedOnly?: boolean;
@@ -63,9 +76,22 @@ export async function listEpisodesForFeed(
   feedId: number,
   options: ListEpisodesOptions = {}
 ): Promise<EpisodeWithFeed[]> {
+  return listEpisodesWhere('e.feed_id = ?', [feedId], options);
+}
+
+/** Every subscribed podcast's episodes (the Library's Episodes screen), filtered and sorted. */
+export async function listAllEpisodes(options: ListEpisodesOptions = {}): Promise<EpisodeWithFeed[]> {
+  return listEpisodesWhere("f.state = 'subscribed'", [], options);
+}
+
+async function listEpisodesWhere(
+  scope: string,
+  scopeArgs: (number | string)[],
+  options: ListEpisodesOptions
+): Promise<EpisodeWithFeed[]> {
   const { filters = {}, sort = 'date_desc', limit = 500, includePlayed, episodeFilter, search } = options;
-  const whereClauses = ['e.feed_id = ?'];
-  const args: (number | string)[] = [feedId];
+  const whereClauses = [scope];
+  const args: (number | string)[] = [...scopeArgs];
 
   const hidePlayed = includePlayed === false || filters.unplayedOnly;
   if (hidePlayed) {

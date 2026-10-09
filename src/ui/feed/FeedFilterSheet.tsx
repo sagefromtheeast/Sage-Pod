@@ -1,6 +1,5 @@
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { setFeedViewPrefs } from '@/db/feeds';
 import {
   FILTER_FACETS,
   isFiltered,
@@ -14,25 +13,25 @@ import { useTheme } from '@/ui/useTheme';
 
 type Props = {
   visible: boolean;
-  feedId: number;
-  /** The saved filter string (feeds.episode_filter). */
+  subtitle: string;
+  /** The saved filter string (feeds.episode_filter, or the Episodes screen's setting). */
   value: string | null;
+  onChange: (value: string) => void;
   onClose: () => void;
 };
 
 /**
  * AntennaPod's podcast filter: pairs of opposites (played / unplayed, …).
  * Tap a side to show only those episodes, tap it again to stop filtering on
- * that pair. Saved per podcast, applied as you tap.
+ * that pair. Saved (per podcast, or for the Episodes screen), applied as you tap.
  */
-export function FeedFilterSheet({ visible, feedId, value, onClose }: Props) {
+export function FeedFilterSheet({ visible, subtitle, value, onChange, onClose }: Props) {
   const theme = useTheme();
   const filter = parseEpisodeFilter(value);
-  const save = (next: typeof filter) =>
-    void setFeedViewPrefs(feedId, { episodeFilter: serializeEpisodeFilter(next) });
+  const save = (next: typeof filter) => onChange(serializeEpisodeFilter(next));
 
   return (
-    <BottomSheet visible={visible} title="Filter episodes" subtitle="Saved for this podcast" onClose={onClose}>
+    <BottomSheet visible={visible} title="Filter episodes" subtitle={subtitle} onClose={onClose}>
       <ScrollView bounces={false} contentContainerStyle={styles.body}>
         {FILTER_FACETS.map(({ facet, yes, no }) => (
           <View key={facet} style={styles.row}>
