@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import { Pressable, StyleSheet, Switch, Text, TextInput, View } from 'react-native';
 
+import { ActionSheet, type IconName } from './ActionSheet';
 import { radius, space, type as typography } from './theme';
 import { useTheme } from './useTheme';
 
@@ -139,6 +140,98 @@ export function SettingsAction({
   );
 }
 
+/** A row that opens a sub-screen of settings: icon, title, summary, chevron. */
+export function SettingsLink({
+  label,
+  description,
+  icon,
+  onPress,
+}: BaseProps & { icon: IconName; onPress: () => void }) {
+  const theme = useTheme();
+
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.row,
+        { borderBottomColor: theme.border, backgroundColor: pressed ? theme.surfaceAlt : 'transparent' },
+      ]}
+      accessibilityRole="button"
+    >
+      <View style={[styles.linkIcon, { backgroundColor: theme.surfaceAlt }]}>
+        <Ionicons name={icon} size={20} color={theme.accent} />
+      </View>
+      <View style={styles.rowText}>
+        <Text style={[styles.label, { color: theme.text }]}>{label}</Text>
+        {description ? (
+          <Text style={[styles.description, { color: theme.textMuted }]}>{description}</Text>
+        ) : null}
+      </View>
+      <Ionicons name="chevron-forward" size={18} color={theme.textFaint} />
+    </Pressable>
+  );
+}
+
+/**
+ * A row showing the current choice that opens a sheet of all of them — for
+ * lists too long or too wordy for SettingsOptions' chips.
+ */
+export function SettingsChoice<T extends string | number>({
+  label,
+  description,
+  value,
+  options,
+  format = (option) => String(option),
+  icon = 'radio-button-off',
+  onChange,
+}: BaseProps & {
+  value: T;
+  options: readonly T[];
+  format?: (option: T) => string;
+  /** One icon for every choice, or a function picking one per choice. */
+  icon?: IconName | ((option: T) => IconName);
+  onChange: (value: T) => void;
+}) {
+  const theme = useTheme();
+  const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <Pressable
+        onPress={() => setOpen(true)}
+        style={({ pressed }) => [
+          styles.row,
+          { borderBottomColor: theme.border, backgroundColor: pressed ? theme.surfaceAlt : 'transparent' },
+        ]}
+        accessibilityRole="button"
+        accessibilityLabel={`${label}: ${format(value)}`}
+      >
+        <View style={styles.rowText}>
+          <Text style={[styles.label, { color: theme.text }]}>{label}</Text>
+          {description ? (
+            <Text style={[styles.description, { color: theme.textMuted }]}>{description}</Text>
+          ) : null}
+        </View>
+        <Text style={[styles.value, { color: theme.accent }]} numberOfLines={1}>
+          {format(value)}
+        </Text>
+      </Pressable>
+      <ActionSheet
+        visible={open}
+        title={label}
+        items={options.map((option) => ({
+          key: String(option),
+          label: format(option),
+          icon: typeof icon === 'function' ? icon(option) : icon,
+          selected: option === value,
+          onPress: () => onChange(option),
+        }))}
+        onClose={() => setOpen(false)}
+      />
+    </>
+  );
+}
+
 /**
  * A row with a text field that saves when editing ends (blur or the return
  * key), not on every keystroke. `value` is the saved value; editing starts
@@ -241,6 +334,19 @@ const styles = StyleSheet.create({
   chipLabel: {
     ...typography.caption,
     fontWeight: '600',
+  },
+  linkIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  value: {
+    ...typography.label,
+    fontWeight: '600',
+    maxWidth: '60%',
+    textAlign: 'right',
   },
   input: {
     ...typography.body,
