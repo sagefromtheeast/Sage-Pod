@@ -129,6 +129,9 @@ Conventional Commits are **load-bearing**: they decide the version.
   the PR decide the version and the plain "Merge pull request" commit is
   ignored. A squash would collapse them into the PR title, which isn't a
   Conventional Commit, and no release would be cut.
+- Give phase PRs a `feat:`-style title anyway (e.g. "feat: Phase 10 —
+  per-podcast settings"). The title never reaches `main`, but review bots
+  flag non-conventional titles every time.
 - Never hand-edit versions. `tool/set_app_version.sh` stamps them on release.
 - Don't put bare `#123`-style or `#hex` tokens in commit bodies; the changelog
   turns them into bogus issue links.
@@ -221,10 +224,12 @@ releasing, so a red check on `main` blocks the release.
   Inbox (AntennaPod swipes with undo, search, sort, remove all, paging;
   v0.7.0), Home (configurable sections, library search; v0.8.0), Episode
   details (menu, inline links, timestamps, pager; v0.9.0), and the podcast
-  page (preview, saved filter and sort, banners, info page; v0.10.0).
+  page (preview, saved filter and sort, banners, info page; v0.10.0), and
+  per-podcast settings (rename, tags, skip ending, volume reduction,
+  new-episode action, auto-download rules, auto-delete; v0.11.0).
   Earlier: EAS device builds, stable Surprise Me, tablet layouts.
-- **Next**: Phase 10, per-podcast settings, then the remaining screen-by-screen
-  phases. Schema is at version 4.
+- **Next**: Phase 11, search and discovery, then the remaining screen-by-screen
+  phases. Schema is at version 5.
   Building blocks to reuse: `openEpisodeActions`, `runEpisodeAction`,
   `showToast`, `OverflowMenu`, `BottomSheet` / `ActionSheet`,
   `useEpisodeSelection` + `SelectionBar`, `MiniPlayerDock`, `DraggableList` (see

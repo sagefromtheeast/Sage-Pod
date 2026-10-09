@@ -22,6 +22,7 @@ Format: context → decision → consequences → when to revisit.
 | D-014 | Home: configurable sections; In progress shows only unqueued episodes | Accepted |
 | D-015 | Episode pager swipes through the podcast's episodes | Accepted |
 | D-016 | Previews: stored, kept out of the library, cleared after a day | Accepted |
+| D-017 | Per-podcast settings: overrides fall back to global; feed passwords wait for secure storage | Accepted |
 
 ---
 
@@ -234,3 +235,21 @@ older than 24 hours are deleted unless one of their episodes is queued,
 downloaded, a favourite or being restored by the player. Subscribing flips the
 state and refreshes. *(Shipped in v0.10.0.)*
 
+## D-017 — Per-podcast settings: override or follow global
+
+**Context.** AntennaPod lets each podcast override playback, automation and
+download settings. Some have a global counterpart (speed, new-episode action,
+auto-download, auto-delete), some don't (skip intro / ending, volume
+reduction). Password-protected feeds need the credentials kept somewhere safe.
+
+**Decision.** Every per-podcast value with a global counterpart is nullable:
+`null` means "follow global", and the picker's first choice reads
+"Global (current value)" so the effect is visible. Values without one are
+simply off when unset. Migration 5 adds the columns and carries the old
+per-podcast auto-download flag over as an explicit "on". A custom name is
+stored beside the feed's title and wins everywhere through `COALESCE`, so a
+refresh never overwrites it. The auto-download filter keeps Sage Pod's built-in
+skip of trailers and short clips; a podcast's own minimum replaces the
+3-minute default. Feed usernames and passwords wait for Phase 17, where
+`expo-secure-store` (a native module) arrives with the device build; storing
+them in SQLite in plain text was rejected. *(Shipped in v0.11.0.)*

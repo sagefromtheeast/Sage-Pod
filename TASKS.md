@@ -89,9 +89,13 @@ destructive.
 - [ ] Unsubscribe → Archive (needs Library to show archived podcasts: Phase 12)
 - [ ] Share with an app subscribe link (no deep links until Phase 17; shares the feed address for now)
 
-## Phase 10 — Per-podcast settings
-- [ ] Display/Playback/Automation/Advanced groups with FeedOverride everywhere
-- [ ] Rename, tags, skip ending, volume reduction, auto-delete, new-episodes action, auto-download tri-state, episode filter, auth, edit URL
+## Phase 10 — Per-podcast settings ✅
+- [x] Display/Playback/Automation/Advanced groups; "Global (x)" choice wherever a global value exists (D-017)
+- [x] Rename, tags, skip ending, volume reduction, new-episodes action (inbox / queue / nothing), auto-download tri-state with include/exclude words and a minimum length, auto-delete tri-state, edit feed address (migration 5)
+- [x] Episode filter: already per podcast since Phase 9
+- [x] Shots: podcast settings top and automation
+- [ ] Password-protected feeds → Phase 17 (needs secure storage, a native module; D-017)
+- [ ] On device: skip ending hands over to the next episode; volume reduction level
 
 ## Phase 11 — Search & Discovery
 - [ ] Local search route + entry icons (wire up `searchEpisodes()`); fyyd (D-007); country; subscribed marks; clipboard; autodiscovery; OPML file import
@@ -112,7 +116,7 @@ destructive.
 - [ ] OPML/DB/HTML/favourites export + DB import; OPML import progress
 
 ## Phase 17 — Native (EAS build; ask before each)
-- [ ] Notifications; background refresh + auto backup; deep links; sharing; secure store
+- [ ] Notifications; background refresh + auto backup; deep links; sharing; secure store (+ feed username/password, from Phase 10)
 - [ ] expo-audio gaps via local Expo modules (D-004): lock-screen amounts/buttons, skip silence, volume boost, headset unplug
 
 ## Phase 18 — Optional (one proposal each)
