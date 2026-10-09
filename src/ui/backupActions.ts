@@ -46,6 +46,20 @@ async function contentFor(kind: ExportKind): Promise<string | Uint8Array> {
 }
 
 /**
+ * A new file in the picked folder. Android renames a taken name itself; iOS
+ * refuses it, so a second export on the same day replaces the first there.
+ */
+function createIn(folder: Directory, name: string, mimeType: string): File {
+  try {
+    return folder.createFile(name, mimeType);
+  } catch (error) {
+    const existing = new File(folder, name);
+    if (existing.exists) return existing;
+    throw error;
+  }
+}
+
+/**
  * AntennaPod's exports: the listener picks a folder (the system picker, so
  * Downloads, a cloud drive or a USB stick all work) and the file is written
  * there. Resolves to whether a file was saved.
@@ -60,7 +74,7 @@ export async function exportToFolder(kind: ExportKind): Promise<boolean> {
   }
   try {
     const name = exportFileName(kind, Date.now());
-    const file = folder.createFile(name, exportMimeType(kind));
+    const file = createIn(folder, name, exportMimeType(kind));
     file.write(await contentFor(kind));
     showToast(`Saved ${name}`);
     return true;
