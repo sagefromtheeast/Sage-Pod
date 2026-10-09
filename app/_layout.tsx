@@ -20,8 +20,6 @@ import { palettes, space, type as typography } from '@/ui/theme';
 import type { ThemePreference } from '@/ui/theme';
 import { UndoToastHost } from '@/ui/UndoToast';
 import { ThemeProvider, useTheme } from '@/ui/useTheme';
-// Registers the home-screen widget's handler at bundle load (Android).
-import '@/widget';
 
 // Hold the native splash until migrations have run and the player has restored
 // its last episode, so the first frame is the real UI rather than an empty list.

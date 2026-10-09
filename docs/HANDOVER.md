@@ -143,6 +143,7 @@ Conventional Commits are **load-bearing**: they decide the version.
 ## 6. Architecture in one page
 
 ```
+index.ts             entry: expo-router, plus the headless background task and widget handler
 app/                 expo-router screens (file-based routes)
   (tabs)/            Home, Queue, Inbox, Discover, Library (+ _layout.tsx tab bar & mini player)
   player.tsx         Now Playing (modal)

@@ -552,7 +552,9 @@ pause. The tile needs a native `TileService`.
   plugin). The widget is drawn from React components in
   `src/widget/NowPlayingWidget.tsx` using Sage Pod's palettes (light and
   dark follow the system). Its buttons run a JavaScript task handler in the
-  app's own runtime (`src/widget/index.ts`, registered at bundle load), so
+  app's own runtime (`src/widget/index.ts`, registered from the `index.ts`
+  entry file, as the background task now is: routes load only when the app
+  renders, which a headless start never does), so
   skip back, play/pause and skip forward drive the same `player` as the
   screens. If the app isn't running, Android starts its runtime without a
   screen, the player restores the last episode, then acts. `player.init()`
