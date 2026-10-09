@@ -98,7 +98,26 @@
       ],
       "expo-background-task",
       "expo-sharing",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "react-native-android-widget",
+        {
+          "widgets": [
+            {
+              "name": "NowPlaying",
+              "label": "Sage Pod",
+              "description": "What's playing, with play, pause and skip",
+              "minWidth": "180dp",
+              "minHeight": "60dp",
+              "targetCellWidth": 4,
+              "targetCellHeight": 1,
+              "maxResizeHeight": "140dp",
+              "resizeMode": "horizontal|vertical"
+            }
+          ]
+        }
+      ],
+      "./plugins/playback-tile"
     ],
     "experiments": {
       "typedRoutes": true

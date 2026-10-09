@@ -472,7 +472,9 @@ Stop and ask: new native dependency, schema migration, visible design change, an
 - [x] expo-audio limits (lock-screen amounts, Next, skip silence, boost, headset unplug): patched expo-audio (17b, D-025)
 
 ## Phase 18 — Optional (one proposal each)
-- [ ] Sync, Cast, Auto/Wear, widget/tile, video, Echo, binary chapters, nav customisation, parental control
+- [x] Widget and Quick Settings tile (18a, D-026)
+- [ ] Binary chapters (18b)
+- [ ] Sync, Cast, Auto/Wear, video, Echo, nav customisation, parental control
 ```
 
 ## Conclusion

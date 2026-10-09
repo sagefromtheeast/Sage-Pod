@@ -140,7 +140,7 @@ index 86880d9..28e6af7 100644
  
  enum class InterruptionMode(val value: String) : Enumerable {
 diff --git a/node_modules/expo-audio/android/src/main/java/expo/modules/audio/service/AudioControlsService.kt b/node_modules/expo-audio/android/src/main/java/expo/modules/audio/service/AudioControlsService.kt
-index 196a5d5..0e267f6 100644
+index 196a5d5..ec6726e 100644
 --- a/node_modules/expo-audio/android/src/main/java/expo/modules/audio/service/AudioControlsService.kt
 +++ b/node_modules/expo-audio/android/src/main/java/expo/modules/audio/service/AudioControlsService.kt
 @@ -88,8 +88,9 @@ class AudioControlsService : MediaSessionService() {
@@ -275,7 +275,19 @@ index 196a5d5..0e267f6 100644
            .build()
  
          // Replace the basic media session with a session connected to our playback service.
-@@ -452,7 +516,7 @@ class AudioControlsService : MediaSessionService() {
+@@ -427,7 +491,10 @@ class AudioControlsService : MediaSessionService() {
+   }
+ 
+   override fun onBind(intent: Intent?): IBinder {
+-    super.onBind(intent)
++    val sessionBinder = super.onBind(intent)
++    // Sage Pod: a MediaController (the Quick Settings tile) binds for the
++    // session itself; only the app's own connection gets the local binder.
++    if (intent?.action == SERVICE_INTERFACE && sessionBinder != null) return sessionBinder
+     return binder
+   }
+ 
+@@ -452,7 +519,7 @@ class AudioControlsService : MediaSessionService() {
            updateMetadata(metadata)
          }
          val session = MediaSession.Builder(context, sessionPlayer)
@@ -284,7 +296,7 @@ index 196a5d5..0e267f6 100644
            .build()
  
          player.mediaSession.release()
-@@ -558,6 +622,8 @@ class AudioControlsService : MediaSessionService() {
+@@ -558,6 +625,8 @@ class AudioControlsService : MediaSessionService() {
  
      const val ACTION_SEEK_FORWARD = "expo.modules.audio.action.SEEK_FORWARD"
      const val ACTION_SEEK_BACKWARD = "expo.modules.audio.action.SEEK_BACKWARD"

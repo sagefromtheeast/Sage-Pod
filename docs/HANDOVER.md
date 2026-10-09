@@ -143,6 +143,7 @@ Conventional Commits are **load-bearing**: they decide the version.
 ## 6. Architecture in one page
 
 ```
+index.ts             entry: expo-router, plus the headless background task and widget handler
 app/                 expo-router screens (file-based routes)
   (tabs)/            Home, Queue, Inbox, Discover, Library (+ _layout.tsx tab bar & mini player)
   player.tsx         Now Playing (modal)
@@ -248,9 +249,10 @@ releasing, so a red check on `main` blocks the release.
   refresh, automatic backup, protected feeds, podcast links, file sharing,
   charging-only downloads; v0.18.0; D-024), and Phase 17b (patched
   expo-audio: lock-screen skip amounts and Next, skip silence, volume
-  boost, pause on unplug; v0.19.0; D-025).
+  boost, pause on unplug; v0.19.0; D-025), and Phase 18a (Android
+  home-screen widget and Quick Settings tile; v0.20.0; D-026).
   Earlier: EAS device builds, stable Surprise Me, tablet layouts.
-- **Next**: Phase 18 (optional items, one proposal each; ask the user which). Schema is at version 7; feeds.state can be 'subscribed',
+- **Next**: Phase 18b (embedded ID3/MP4 chapters), then the one device build (ask for the budget first). Other Phase 18 items are optional, one proposal each. Schema is at version 7; feeds.state can be 'subscribed',
   'preview' or 'archived'.
   Building blocks to reuse: `openEpisodeActions`, `runEpisodeAction`,
   `showToast`, `OverflowMenu`, `BottomSheet` / `ActionSheet`,

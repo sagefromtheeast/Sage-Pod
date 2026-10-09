@@ -175,10 +175,21 @@ destructive.
 - [x] Shots: feed-settings, settings-playback
 - [ ] On device: lock-screen skips at 30 s / 15 s; Next from lock screen and notification; skip silence on a talk show; each boost level; unplug wired and Bluetooth headphones; iOS build compiles the patched Swift
 
+## Phase 18a — Widget and Quick Settings tile (D-026) ✅
+- [x] Android home-screen widget: cover, title, podcast, time left, progress; skip back, play/pause, skip forward; tap opens the player
+- [x] Widget buttons work when the app isn't running (the last episode is restored first)
+- [x] Quick Settings tile: play/pause through the media session; opens the app when nothing is loaded
+- [x] Tests: widget model and change check
+- [ ] On device: add the widget, resize it, light and dark; each button with the app open, backgrounded and swiped away; add the tile, toggle it while playing, paused and after a reboot
+
+## Phase 18b — Embedded chapters
+- [ ] ID3 CHAP and MP4 chapters read from the audio file when the feed gives no chapters
+
 ## Phase 18 — Optional (one proposal each)
-- [ ] Sync, Cast, Auto/Wear, widget/tile, video, Echo, binary chapters, nav customisation, parental control
+- [ ] Sync, Cast, Auto/Wear, video, Echo, nav customisation, parental control
 
 ## Discovered (not yet scheduled)
+- [ ] iOS home-screen widget (expo-widgets can show what's playing, but its buttons can't reach the player; D-026)
 - [ ] Hardware headset next/previous buttons seek instead of changing episode (AntennaPod's "Hardware forward button skips" setting)
 - [ ] Skip silence and volume boost on iOS (needs an audio tap; D-025)
 - [ ] `flushPosition` marks an episode played inside the smart-mark tail but doesn't dequeue or delete it like `onFinished` does

@@ -118,6 +118,7 @@ class PlayerService {
   /** Suppresses position writes while a seek is in flight. */
   private seeking = false;
   private audioModeReady = false;
+  private initPromise: Promise<void> | null = null;
 
   // ---------------------------------------------------------------- lifecycle
 
@@ -127,7 +128,16 @@ class PlayerService {
    * The episode is loaded paused, at its saved position, so reopening the app
    * shows the player where the listener left it without any sound starting.
    */
-  async init(): Promise<void> {
+  init(): Promise<void> {
+    // Once per runtime: a widget tap may have started the app before its screens.
+    this.initPromise ??= this.restore().catch((error: unknown) => {
+      this.initPromise = null;
+      throw error;
+    });
+    return this.initPromise;
+  }
+
+  private async restore(): Promise<void> {
     await this.ensureAudioMode();
     subscribeSettings(() => this.applyControlSettings());
 
