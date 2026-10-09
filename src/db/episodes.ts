@@ -491,6 +491,16 @@ export async function getInboxCount(): Promise<number> {
   return row?.count ?? 0;
 }
 
+/** The inbox episodes of some podcasts (for "Remove all from inbox" on a selection). */
+export async function listInboxIdsForFeeds(feedIds: readonly number[]): Promise<number[]> {
+  if (feedIds.length === 0) return [];
+  const rows = await getDb().getAllAsync<{ id: number }>(
+    `SELECT id FROM episodes WHERE is_new = 1 AND is_played = 0 AND feed_id IN (${placeholders(feedIds.length)})`,
+    ...feedIds
+  );
+  return rows.map((row) => row.id);
+}
+
 /**
  * Takes episodes out of the inbox. Only touches rows still marked new, so it
  * writes nothing (and wakes no screens) when they already left.
