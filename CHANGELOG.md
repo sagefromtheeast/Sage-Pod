@@ -1,3 +1,24 @@
+## [0.20.0](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.19.0...v0.20.0) (2026-10-09)
+
+### 🚀 New Features
+
+* **player:** Quick Settings tile to play and pause ([4f28ea2](https://github.com/sagefromtheeast/Sage-Pod/commit/4f28ea26574fb1e39a9eb746660da0dd162be3ce))
+* **widget:** Android home-screen player widget ([c7813d1](https://github.com/sagefromtheeast/Sage-Pod/commit/c7813d138a6525da01fb808f208aeaf06ead7f59))
+
+### 🐛 Bug Fixes
+
+* **player:** let media controllers connect to the playback service ([361808d](https://github.com/sagefromtheeast/Sage-Pod/commit/361808d17e7008bffd5e5d9c2801a158d974c7aa))
+* register the widget and background tasks from the app entry ([ea0e015](https://github.com/sagefromtheeast/Sage-Pod/commit/ea0e0158dc04337dfd236cf29d35e8a590fd0c37))
+* **widget:** fit the controls in a one-row widget ([6b062dd](https://github.com/sagefromtheeast/Sage-Pod/commit/6b062ddc9225f7b035598c34e2f64023b20bfebe))
+
+### 📚 Documentation
+
+* Phase 18a decision (D-026), tasks and handover ([938078b](https://github.com/sagefromtheeast/Sage-Pod/commit/938078bd8d2ec7a344cecf496c7bf2ad44c5822f))
+
+### 📦 Build & Dependencies
+
+* drop Gradle outputs from the expo-audio patch ([3de9a19](https://github.com/sagefromtheeast/Sage-Pod/commit/3de9a19d4bbec4de12ae7d991d91567eaccc49c5))
+
 ## [0.19.0](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.18.0...v0.19.0) (2026-10-09)
 
 ### 🚀 New Features
