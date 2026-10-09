@@ -1,3 +1,21 @@
+## [0.19.0](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.18.0...v0.19.0) (2026-10-09)
+
+### 🚀 New Features
+
+* **player:** lock-screen skip amounts and Next, skip silence, volume boost ([433b7ac](https://github.com/sagefromtheeast/Sage-Pod/commit/433b7acb594fe66067fa0f12851e2d10419c4612))
+
+### 🐛 Bug Fixes
+
+* **player:** bind the volume boost to the player's own audio session ([dcda4be](https://github.com/sagefromtheeast/Sage-Pod/commit/dcda4beff1f318855e0fc678272cdc9e46fb8768))
+
+### 📚 Documentation
+
+* Phase 17b decision (D-025), tasks and handover ([00d2301](https://github.com/sagefromtheeast/Sage-Pod/commit/00d2301dcf3e582b2787372858778b4bb2439fea))
+
+### 📦 Build & Dependencies
+
+* patch expo-audio and build it from source ([530aa4f](https://github.com/sagefromtheeast/Sage-Pod/commit/530aa4fc7dc75935bb7ba708d965a09432954fc2))
+
 ## [0.18.0](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.17.0...v0.18.0) (2026-10-09)
 
 ### 🚀 New Features
