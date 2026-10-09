@@ -11,6 +11,8 @@ import {
   serializeTags,
   shouldAutoDownload,
   shouldSkipEnding,
+  boostMillibels,
+  playerVolume,
   volumeFor,
 } from '../feedPrefs';
 
@@ -33,6 +35,8 @@ describe('feed overrides', () => {
     assert.equal(volumeFor(0.5), 0.5);
     assert.equal(volumeFor(null), 1);
     assert.equal(volumeFor(0.7), 1);
+    assert.equal(volumeFor(2), 2);
+    assert.equal(volumeFor(4), 1);
   });
 });
 
@@ -80,5 +84,16 @@ describe('auto-download filter', () => {
     const rules = { include: [], exclude: [], minMinutes: 30 };
     assert.equal(shouldAutoDownload({ title: 'Twenty minutes', duration: 1200 }, rules), false);
     assert.equal(shouldAutoDownload({ title: 'Forty minutes', duration: 2400 }, rules), true);
+  });
+
+  it('plays boosts at full volume with extra gain, as AntennaPod does', () => {
+    assert.equal(playerVolume(0.5), 0.5);
+    assert.equal(playerVolume(2.5), 1);
+    assert.equal(boostMillibels(1), 0);
+    assert.equal(boostMillibels(0.2), 0);
+    assert.equal(boostMillibels(1.5), 500);
+    assert.equal(boostMillibels(2), 1000);
+    assert.equal(boostMillibels(2.5), 1500);
+    assert.equal(boostMillibels(9), 0);
   });
 });

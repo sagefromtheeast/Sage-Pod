@@ -382,7 +382,7 @@ This phase holds everything that needs native code:
 - file share (`expo-sharing`) and secure credentials (`expo-secure-store`)
 - the expo-audio limits: user skip amounts on the lock screen, a "next" button, notification speed/skip/sleep buttons, skip silence, volume boost, and Android headset-unplug pause
 
-There are three routes for the expo-audio limits, in rising cost: a config plugin or `patch-package` patch to expo-audio's `AudioControlsService.kt` and `MediaController.swift`; a small custom Expo Module; or switching player libraries. Whether `react-native-track-player` supports SDK 57 and the New Architecture is **[UNVERIFIED]**. **Done** means each item works on an installed EAS preview build, with the user taking native screenshots. **Stop and ask** before any library switch, before patching a dependency, and before requesting notification permission flows.
+There are three routes for the expo-audio limits, in rising cost: a config plugin or `patch-package` patch to expo-audio's `AudioControlsService.kt` and `MediaController.swift`; a small custom Expo Module; or switching player libraries. Whether `react-native-track-player` supports SDK 57 and the New Architecture is **[UNVERIFIED]**. *(Decided: the patch route, D-025. Notification speed and sleep buttons were not added.)* **Done** means each item works on an installed EAS preview build, with the user taking native screenshots. **Stop and ask** before any library switch, before patching a dependency, and before requesting notification permission flows.
 
 ### Phase 18: Later or optional, with rationale
 gpodder.net and Nextcloud sync need an episode-action journal the schema lacks, plus account UIs and conflict handling. That is the largest single item, and the value is low for single-device users. Chromecast, Android Auto, Wear OS, widgets and the Quick Settings tile each need native modules and platform testing. Video podcasts need a video view and PiP, while Sage Pod's parser already prefers audio. Echo year-in-review is seasonal and needs about 7 bespoke screens. ID3/Vorbis/M4A chapter extraction needs ranged binary reads. Customisable navigation and a default start page conflict with the fixed glass tab bar. Parental control is little used. Each item should be its own proposal, approved one at a time.
@@ -469,7 +469,7 @@ Stop and ask: new native dependency, schema migration, visible design change, an
 
 ## Phase 17 — Native (EAS build)
 - [x] Notifications; background refresh + auto backup; deep links; sharing; secure store (17a, D-024)
-- [ ] expo-audio limits (lock-screen amounts/buttons, skip silence, boost, headset unplug) — route chosen
+- [x] expo-audio limits (lock-screen amounts, Next, skip silence, boost, headset unplug): patched expo-audio (17b, D-025)
 
 ## Phase 18 — Optional (one proposal each)
 - [ ] Sync, Cast, Auto/Wear, widget/tile, video, Echo, binary chapters, nav customisation, parental control

@@ -1,4 +1,7 @@
+import { Platform } from 'react-native';
+
 import { useSetting } from '@/db/settings';
+import { supportsAudioEffects } from '@/player/audioExtras';
 import { formatSmartMark } from '@/player/playedRules';
 import { clampSpeed, formatSpeed, parsePresets, serializePresets } from '@/player/speed';
 import { ENQUEUE_LOCATION_LABELS, SETTING_OPTIONS } from '@/settings/options';
@@ -19,6 +22,7 @@ export default function PlaybackSettings() {
   const removeFinished = useSetting('removeFromQueueWhenFinished');
   const smartMark = useSetting('smartMarkSeconds');
   const keepSkipped = useSetting('keepSkippedEpisodes');
+  const skipSilence = useSetting('skipSilence');
 
   const presets = parsePresets(presetsRaw);
   // The saved speed may come from the player's slider, so offer it even when it isn't a preset.
@@ -29,6 +33,7 @@ export default function PlaybackSettings() {
       <SettingsSection title="Controls" />
       <SettingsOptions
         label="Skip forward"
+        description="Also used by the lock screen and notification buttons."
         value={skipForward}
         options={SETTING_OPTIONS.skipForward}
         format={(seconds) => `${seconds}s`}
@@ -65,6 +70,14 @@ export default function PlaybackSettings() {
         autoCapitalize="none"
         onSubmit={(text) => void update('speedPresets', serializePresets(parsePresets(text)))}
       />
+      {supportsAudioEffects(Platform.OS) ? (
+        <SettingsSwitch
+          label="Skip silence"
+          description="Shortens the silent parts of episodes. Also in the player's speed sheet."
+          value={skipSilence}
+          onValueChange={(value) => void update('skipSilence', value)}
+        />
+      ) : null}
 
       <SettingsSection title="Queue" />
       <SettingsOptions

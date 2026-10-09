@@ -125,6 +125,8 @@ export type Settings = {
   autoDownloadOnlyCharging: boolean;
   /** AntennaPod's automatic database backup: every 3 days, keeping the newest 5. */
   autoBackup: boolean;
+  /** Skip the silent parts of episodes (Android; AntennaPod keeps it in the speed dialog). */
+  skipSilence: boolean;
 };
 
 /** Skip amounts offered by long-pressing the player's rewind / forward buttons (AntennaPod's list). */
@@ -190,4 +192,5 @@ export const DEFAULT_SETTINGS: Settings = {
   notifyDownloadErrors: true,
   autoDownloadOnlyCharging: false,
   autoBackup: false,
+  skipSilence: false,
 };
