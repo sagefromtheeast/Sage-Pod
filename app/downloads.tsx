@@ -23,6 +23,7 @@ import { ActionSheet } from '@/ui/ActionSheet';
 import { DownloadLogSheet } from '@/ui/downloads/DownloadLogSheet';
 import { EmptyState } from '@/ui/EmptyState';
 import { EpisodeRow } from '@/ui/EpisodeRow';
+import { SwipeableEpisodeRow } from '@/ui/SwipeableEpisodeRow';
 import { MiniPlayerDock, useMiniPlayerDockPadding } from '@/ui/MiniPlayerDock';
 import { NoMatches } from '@/ui/NoMatches';
 import { OverflowMenu } from '@/ui/OverflowMenu';
@@ -206,9 +207,11 @@ export default function DownloadsScreen() {
               }
             />
           ) : (
-            <EpisodeRow
+            <SwipeableEpisodeRow
               episode={item}
+              screen="downloads"
               onPlay={play}
+              swipeEnabled={!selection.active}
               actionHooks={actionHooks}
               selecting={selection.active}
               selected={selection.selected.has(item.id)}

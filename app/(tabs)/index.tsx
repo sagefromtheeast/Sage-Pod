@@ -4,7 +4,6 @@ import { Tabs } from 'expo-router/js-tabs';
 import { useCallback, useMemo, useState, useSyncExternalStore, type ReactElement, type ReactNode } from 'react';
 import { FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 
-import { runEpisodeAction } from '@/actions/runEpisodeAction';
 import {
   getInboxCount,
   listDownloaded,
@@ -317,8 +316,6 @@ export default function HomeScreen() {
     if (current.episode?.id === episode.id) player.togglePlayPause();
     else void player.playEpisode(episode);
   }, []);
-  const dismiss = useCallback((episode: EpisodeWithFeed) => void runEpisodeAction('removeFromInbox', [episode]), []);
-  const enqueue = useCallback((episode: EpisodeWithFeed) => void runEpisodeAction('addToQueue', [episode]), []);
 
   const refresh = useCallback(async () => {
     setRefreshing(true);
@@ -367,7 +364,7 @@ export default function HomeScreen() {
           >
             <View>
               {newEpisodes.map((episode) => (
-                <SwipeableEpisodeRow key={episode.id} episode={episode} onPlay={play} onDismiss={dismiss} onQueue={enqueue} />
+                <SwipeableEpisodeRow key={episode.id} episode={episode} screen="inbox" onPlay={play} />
               ))}
             </View>
           </HomeSection>
