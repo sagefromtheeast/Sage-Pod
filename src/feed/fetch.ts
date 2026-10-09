@@ -1,3 +1,4 @@
+import { findFeedLinks, looksLikeHtml, type FeedLink } from './autodiscovery';
 import { parseFeed, type ParsedFeed } from './parser';
 
 /** A feed body plus the cache validators to send on the next refresh. */
@@ -15,12 +16,20 @@ const REQUEST_TIMEOUT_MS = 60_000;
 const MAX_FEED_BYTES = 35 * 1024 * 1024;
 
 export class FeedError extends Error {
+  /** The HTTP status, when the server answered with an error. */
+  readonly status: number | null;
+  /** Feeds a web page advertises, when the address was a page rather than a feed. */
+  readonly feedLinks: FeedLink[];
+
   constructor(
     message: string,
-    readonly cause?: unknown
+    readonly cause?: unknown,
+    details: { status?: number; feedLinks?: FeedLink[] } = {}
   ) {
     super(message);
     this.name = 'FeedError';
+    this.status = details.status ?? null;
+    this.feedLinks = details.feedLinks ?? [];
   }
 }
 
@@ -112,8 +121,11 @@ export async function fetchFeed(
     };
   }
 
+  if (response.status === 401 || response.status === 403) {
+    throw new FeedError('This feed needs a username and password.', undefined, { status: response.status });
+  }
   if (!response.ok) {
-    throw new FeedError(`The feed returned HTTP ${response.status}.`);
+    throw new FeedError(`The feed returned HTTP ${response.status}.`, undefined, { status: response.status });
   }
 
   const declaredLength = Number(response.headers.get('content-length'));
@@ -124,6 +136,18 @@ export async function fetchFeed(
   const body = await response.text();
   if (body.length > MAX_FEED_BYTES) {
     throw new FeedError('That feed is too large to load.');
+  }
+
+  // A website address: offer the feeds the page links to (autodiscovery).
+  if (looksLikeHtml(body, response.headers.get('content-type'))) {
+    const feedLinks = findFeedLinks(body, response.url || fetchUrl);
+    throw new FeedError(
+      feedLinks.length > 0
+        ? 'That address is a web page. Pick its feed below.'
+        : "That address is a web page, and it doesn't link to a podcast feed.",
+      undefined,
+      { feedLinks }
+    );
   }
 
   let feed: ParsedFeed;

@@ -55,6 +55,20 @@ function SettingsButton() {
   );
 }
 
+/** Library's header: local search (AntennaPod's Subscriptions search icon), then Settings. */
+function LibraryHeaderButtons() {
+  const router = useRouter();
+  const theme = useTheme();
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 20 }}>
+      <Pressable onPress={() => router.push('/search')} hitSlop={12} accessibilityRole="button" accessibilityLabel="Search">
+        <Ionicons name="search" size={22} color={theme.text} />
+      </Pressable>
+      <SettingsButton />
+    </View>
+  );
+}
+
 export default function TabsLayout() {
   const theme = useTheme();
 
@@ -98,7 +112,11 @@ export default function TabsLayout() {
               tabBarBadge: badgeValue,
               tabBarBadgeStyle: { backgroundColor: theme.danger, color: '#fff' },
               headerRight:
-                name === 'index' || name === 'library' ? () => <SettingsButton /> : undefined,
+                name === 'library'
+                  ? () => <LibraryHeaderButtons />
+                  : name === 'index'
+                    ? () => <SettingsButton />
+                    : undefined,
             }}
           />
         );

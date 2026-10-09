@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
 import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -49,6 +49,7 @@ const VIEWS: Record<
 /** Shared screen for the library's three saved views. */
 export default function ListScreen() {
   const theme = useTheme();
+  const router = useRouter();
   const dockPadding = useMiniPlayerDockPadding();
   const { kind } = useLocalSearchParams<{ kind: string }>();
   const [downloadSort, setDownloadSort] = useState<DownloadSortKey>('date');
@@ -77,7 +78,21 @@ export default function ListScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: view.title }} />
+      <Stack.Screen
+        options={{
+          title: view.title,
+          headerRight: () => (
+            <Pressable
+              onPress={() => router.push('/search')}
+              hitSlop={12}
+              accessibilityRole="button"
+              accessibilityLabel="Search"
+            >
+              <Ionicons name="search" size={22} color={theme.text} />
+            </Pressable>
+          ),
+        }}
+      />
       <FlatList
         data={episodes}
         keyExtractor={(episode) => String(episode.id)}

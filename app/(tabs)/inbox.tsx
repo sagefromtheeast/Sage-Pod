@@ -33,6 +33,7 @@ import { player } from '@/player';
 import { ActionSheet } from '@/ui/ActionSheet';
 import { EmptyState } from '@/ui/EmptyState';
 import { triggerHaptic } from '@/ui/haptics';
+import { NoMatches } from '@/ui/NoMatches';
 import { OverflowMenu } from '@/ui/OverflowMenu';
 import { SELECTION_BAR_HEIGHT, SelectionBar } from '@/ui/SelectionBar';
 import { SwipeableEpisodeRow } from '@/ui/SwipeableEpisodeRow';
@@ -267,7 +268,7 @@ export default function InboxScreen() {
         }}
         ListEmptyComponent={
           loading ? null : term ? (
-            <Text style={[styles.noMatches, { color: theme.textMuted }]}>No inbox episodes match “{term}”.</Text>
+            <NoMatches message={`No inbox episodes match “${term}”.`} term={term} />
           ) : (
             <EmptyState
               icon="filter-outline"
@@ -347,10 +348,5 @@ const styles = StyleSheet.create({
   chipText: {
     ...typography.caption,
     fontWeight: '600',
-  },
-  noMatches: {
-    ...typography.body,
-    textAlign: 'center',
-    padding: space.xl,
   },
 });

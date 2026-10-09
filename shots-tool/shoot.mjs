@@ -112,6 +112,27 @@ const ROUTES = [
     await page.getByPlaceholder('Search podcasts and episodes').fill('quiet');
     await page.getByText('PODCASTS').waitFor({ timeout: 10000 });
   }],
+  ['search-select', '/search', async (page) => {
+    await page.getByPlaceholder('Search podcasts and episodes').fill('interview');
+    await longPressFirstEpisode(page, /Interview: a lighthouse keeper/);
+    await page.getByText('Select multiple').first().click();
+    await page.getByText('1 selected').waitFor({ timeout: 10000 });
+  }],
+  ['discover-search', '/discover', async (page) => {
+    await page.getByPlaceholder('Search podcasts').fill('history');
+    await page.getByText('Results from Apple Podcasts and fyyd').waitFor({ timeout: 10000 });
+  }],
+  ['discover-country', '/discover', async (page) => {
+    await page.getByLabel(/Chart country/).click();
+    await page.getByText("For the charts and Apple's search results").waitFor({ timeout: 10000 });
+  }],
+  ['add-feed', '/add-feed'],
+  ['opml-import', '/settings', async (page) => {
+    await page.context().grantPermissions(['clipboard-read', 'clipboard-write'], { origin: base });
+    await page.evaluate((xml) => navigator.clipboard.writeText(xml), OPML);
+    await page.getByText('Import OPML from clipboard').click();
+    await page.getByText('Import 3 podcasts').waitFor({ timeout: 10000 });
+  }],
   ['episode-menu', '/episode/3', async (page) => {
     await page.getByRole('button', { name: 'More options' }).first().click();
     await page.getByText('Share audio file link').first().waitFor({ timeout: 10000 });
@@ -180,9 +201,25 @@ const ROUTES = [
 
 const CHART = Array.from({ length: 12 }, (_, i) => ({
   collectionId: 1000 + i, collectionName: ['Morning Brief', 'Tiny Histories', 'The Long Read', 'Science Hour', 'Comedy Bang', 'Startup Diaries'][i % 6] + (i >= 6 ? ' II' : ''),
-  artistName: 'Demo Network', feedUrl: `https://feeds.sagepod.test/chart-${i}.xml`,
+  // The first two are podcasts the seed already follows: hidden from the charts, marked in search.
+  artistName: 'Demo Network', feedUrl: i < 2 ? `https://feeds.sagepod.test/${i + 1}.xml` : `https://feeds.sagepod.test/chart-${i}.xml`,
   artworkUrl600: `https://art.sagepod.test/${(i % 6) + 1}.svg`, primaryGenreName: 'Society & Culture', trackCount: 100 + i,
 }));
+
+// fyyd's extra finds: one copy of an Apple result (merged away) and one podcast only fyyd knows.
+const FYYD = { status: 1, msg: 'ok', data: [
+  { id: 1, title: 'Science Hour', author: 'Demo Network', xmlURL: 'http://feeds.sagepod.test/chart-3.xml/', imgURL: 'https://art.sagepod.test/4.svg', episode_count: 101 },
+  { id: 2, title: 'Allotment Radio', author: 'Small Garden Co.', xmlURL: 'https://feeds.sagepod.test/fyyd-2.xml', imgURL: 'https://art.sagepod.test/4.svg', episode_count: 64 },
+] };
+
+const OPML = `<?xml version="1.0"?><opml version="2.0"><head><title>Export</title></head><body>
+<outline text="Podcasts">
+  <outline type="rss" text="Morning Brief" xmlUrl="https://feeds.sagepod.test/chart-2.xml"/>
+  <outline type="rss" text="The Long Read" xmlUrl="https://feeds.sagepod.test/chart-3.xml"/>
+  <outline type="rss" text="Allotment Radio" xmlUrl="https://feeds.sagepod.test/fyyd-2.xml"/>
+</outline>
+<outline type="rss" text="Already followed" xmlUrl="https://feeds.sagepod.test/1.xml"/>
+</body></opml>`;
 
 // Silent 8-bit mono WAV whose length matches the episode's seeded duration (?d=seconds), so the
 // player's restored position/remaining time match the DB instead of "Playback error" or "0:00 / -0:01".
@@ -218,6 +255,7 @@ async function routeNetwork(context) {
     }
     if (url.hostname === 'media.sagepod.test') return route.fulfill(wavSlice(Number(url.searchParams.get('d')) || 60, route.request().headers()['range']));
     if (url.hostname === 'itunes.apple.com') return route.fulfill({ json: { resultCount: CHART.length, results: CHART } });
+    if (url.hostname === 'api.fyyd.de') return route.fulfill({ json: FYYD });
     return route.abort(); // feeds, audio, anything else: never touch the real network
   });
 }

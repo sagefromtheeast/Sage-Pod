@@ -24,6 +24,7 @@ import { queueTimeLeft } from '@/player/queueSorting';
 import { DraggableList } from '@/ui/DraggableList';
 import { EmptyState } from '@/ui/EmptyState';
 import { triggerHaptic } from '@/ui/haptics';
+import { NoMatches } from '@/ui/NoMatches';
 import { OverflowMenu } from '@/ui/OverflowMenu';
 import { QueueSortSheet } from '@/ui/queue/QueueSortSheet';
 import { SELECTION_BAR_HEIGHT, SelectionBar } from '@/ui/SelectionBar';
@@ -235,7 +236,7 @@ export default function QueueScreen() {
         }}
         ListEmptyComponent={
           term ? (
-            <Text style={[styles.noMatches, { color: theme.textMuted }]}>No queued episodes match “{search}”.</Text>
+            <NoMatches message={`No queued episodes match “${search}”.`} term={search ?? ''} />
           ) : null
         }
         renderItem={(item, _index, handle) => (
@@ -311,10 +312,5 @@ const styles = StyleSheet.create({
     ...typography.body,
     flex: 1,
     paddingVertical: space.sm,
-  },
-  noMatches: {
-    ...typography.body,
-    textAlign: 'center',
-    padding: space.xl,
   },
 });
