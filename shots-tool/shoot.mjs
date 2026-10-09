@@ -203,6 +203,14 @@ const ROUTES = [
   ['settings-downloads', '/settings/downloads'],
   ['settings-import-export', '/settings/import-export'],
   ['settings-about', '/settings/about'],
+  ['settings-notifications', '/settings/notifications'],
+  ['settings-downloads-auto', '/settings/downloads', async (page) => {
+    await page.getByText('Only while charging').first().scrollIntoViewIfNeeded();
+  }],
+  ['feed-settings-auth', '/feed/settings/1', async (page) => {
+    await page.getByText('AUTHENTICATION').first().scrollIntoViewIfNeeded();
+    await page.getByText('Password').first().waitFor({ timeout: 10000 });
+  }],
   ['stats-years', '/stats', async (page) => {
     await page.getByRole('tab', { name: 'Years' }).click();
     await page.getByText('BY YEAR').waitFor({ timeout: 10000 });
