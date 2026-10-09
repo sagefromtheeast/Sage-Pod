@@ -1,3 +1,24 @@
+## [0.16.0](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.15.0...v0.16.0) (2026-10-09)
+
+### 🚀 New Features
+
+* **feed:** show the guessed release schedule on the podcast info page ([03da09b](https://github.com/sagefromtheeast/Sage-Pod/commit/03da09bed4858ae8215efc0fa34105c074463a55))
+* **stats:** statistics grouping, release schedule guess and queries ([2d85a87](https://github.com/sagefromtheeast/Sage-Pod/commit/2d85a87dd0e13469993316ea2588f1c1a80be446))
+* **stats:** Subscriptions, Years and Downloads tabs with charts ([802d984](https://github.com/sagefromtheeast/Sage-Pod/commit/802d984ced4832d05d781e244da477238863fcc5))
+
+### 🐛 Bug Fixes
+
+* **stats:** keep history on reset and count by local day ([d02f1e9](https://github.com/sagefromtheeast/Sage-Pod/commit/d02f1e9f79a35a08fcfbecb93d60cee962f25593))
+
+### ♻️ Refactoring
+
+* **ui:** share one Chip between the podcast page and Statistics ([e2fd6b4](https://github.com/sagefromtheeast/Sage-Pod/commit/e2fd6b43d24c6ef0b4ea066db729ea7890c5f58a))
+
+### 📚 Documentation
+
+* record Phase 15 statistics decisions (D-022) and progress ([7eeda14](https://github.com/sagefromtheeast/Sage-Pod/commit/7eeda14ed11fd449227814fac27d639f4cb92bd1))
+* update D-022 after review ([51ad730](https://github.com/sagefromtheeast/Sage-Pod/commit/51ad730a0e25bc260d0ba64a39d737980bb861fb))
+
 ## [0.15.0](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.14.0...v0.15.0) (2026-10-09)
 
 ### 🚀 New Features
