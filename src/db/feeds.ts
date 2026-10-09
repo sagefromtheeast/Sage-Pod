@@ -303,6 +303,10 @@ export async function removeStalePreviews(
 export type FeedStats = {
   total: number;
   played: number;
+  /** Played, or listened to part of the way. */
+  started: number;
+  /** The length of every episode, in seconds. */
+  totalDuration: number;
   downloaded: number;
   downloadedBytes: number;
   firstPublished: number | null;
@@ -316,6 +320,8 @@ export async function getFeedStats(feedId: number): Promise<FeedStats> {
   const row = await db.getFirstAsync<Omit<FeedStats, 'listenedSeconds'>>(
     `SELECT COUNT(*) AS total,
             COALESCE(SUM(is_played), 0) AS played,
+            COALESCE(SUM(CASE WHEN is_played = 1 OR position > 0 THEN 1 ELSE 0 END), 0) AS started,
+            COALESCE(SUM(duration), 0) AS totalDuration,
             COALESCE(SUM(CASE WHEN download_state = 'done' THEN 1 ELSE 0 END), 0) AS downloaded,
             COALESCE(SUM(CASE WHEN download_state = 'done'
                               THEN COALESCE(downloaded_bytes, media_size, 0) ELSE 0 END), 0) AS downloadedBytes,
@@ -331,6 +337,8 @@ export async function getFeedStats(feedId: number): Promise<FeedStats> {
   return {
     total: row?.total ?? 0,
     played: row?.played ?? 0,
+    started: row?.started ?? 0,
+    totalDuration: row?.totalDuration ?? 0,
     downloaded: row?.downloaded ?? 0,
     downloadedBytes: row?.downloadedBytes ?? 0,
     firstPublished: row?.firstPublished ?? null,

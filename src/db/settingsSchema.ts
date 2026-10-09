@@ -113,6 +113,10 @@ export type Settings = {
   mobileRefresh: boolean;
   /** Stream over mobile data without asking first. */
   mobileStreaming: boolean;
+  /** Statistics › Subscriptions: the date range shown (a StatsRange). */
+  statsRange: string;
+  /** Statistics count episodes marked played as listened to in full. */
+  statsIncludeMarkedPlayed: boolean;
 };
 
 /** Skip amounts offered by long-pressing the player's rewind / forward buttons (AntennaPod's list). */
@@ -172,4 +176,6 @@ export const DEFAULT_SETTINGS: Settings = {
   deleteRemovesFromQueue: false,
   mobileRefresh: true,
   mobileStreaming: true,
+  statsRange: 'all',
+  statsIncludeMarkedPlayed: false,
 };
