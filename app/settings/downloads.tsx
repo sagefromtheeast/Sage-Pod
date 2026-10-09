@@ -51,7 +51,7 @@ export default function DownloadSettings() {
       <SettingsSection title="Updates" />
       <SettingsOptions
         label="Refresh interval"
-        description="How stale a feed must be before it is checked again when the app opens."
+        description="How often podcasts are checked for new episodes, in the background and when the app opens. The system decides the exact time."
         value={refreshInterval}
         options={SETTING_OPTIONS.refreshIntervalMinutes}
         format={formatRefresh}

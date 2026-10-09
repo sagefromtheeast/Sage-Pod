@@ -1,21 +1,42 @@
 import * as Clipboard from 'expo-clipboard';
-import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { useCallback, useState } from 'react';
+import { Alert } from 'react-native';
 
+import {
+  autoBackupFolderIsPicked,
+  autoBackupFolderUri,
+  lastAutoBackupAt,
+  pickAutoBackupFolder,
+  runAutoBackupIfDue,
+} from '@/backup/files';
 import type { ExportKind } from '@/backup/formats';
+import { AUTO_BACKUP_KEEP, fileNameFromUri } from '@/backup/schedule';
+import { useSetting } from '@/db/settings';
 import { exportOpml } from '@/feed/opml';
 import { exportToFolder, importDatabase } from '@/ui/backupActions';
 import { importOpmlFile, importOpmlFromClipboard } from '@/ui/opmlImport';
 import { SettingsNote, SettingsScreen } from '@/ui/settings/SettingsScreen';
-import { SettingsAction, SettingsSection } from '@/ui/SettingsRow';
+import { useUpdateSetting } from '@/ui/settings/useUpdateSetting';
+import { SettingsAction, SettingsSection, SettingsSwitch } from '@/ui/SettingsRow';
 import { showToast } from '@/ui/UndoToast';
 
-type Busy = ExportKind | 'clipboard' | 'restore' | null;
+type Busy = ExportKind | 'clipboard' | 'restore' | 'auto' | null;
 
 /** AntennaPod's Settings › Import/Export: OPML, HTML and favourites exports, and database backup and restore. */
 export default function ImportExportSettings() {
   const router = useRouter();
   const [busy, setBusy] = useState<Busy>(null);
+  const update = useUpdateSetting();
+  const autoBackup = useSetting('autoBackup');
+  const [folderUri, setFolderUri] = useState<string | null>(null);
+  const [lastBackup, setLastBackup] = useState<number | null>(null);
+
+  const readAutoBackup = useCallback(() => {
+    void autoBackupFolderUri().then(setFolderUri);
+    void lastAutoBackupAt().then(setLastBackup);
+  }, []);
+  useFocusEffect(readAutoBackup);
 
   const run = async (what: Exclude<Busy, null>, task: () => Promise<unknown>) => {
     setBusy(what);
@@ -30,6 +51,34 @@ export default function ImportExportSettings() {
     await Clipboard.setStringAsync(await exportOpml());
     showToast('Subscriptions copied as OPML');
   };
+
+  const chooseFolder = async (): Promise<boolean> => {
+    try {
+      await pickAutoBackupFolder();
+      return true;
+    } catch (error) {
+      if (!(error instanceof Error && /cancel/i.test(error.message))) {
+        Alert.alert("Couldn't open the folder picker", error instanceof Error ? error.message : String(error));
+      }
+      return false;
+    } finally {
+      readAutoBackup();
+    }
+  };
+
+  const setAutoBackup = (on: boolean) =>
+    void run('auto', async () => {
+      if (on && autoBackupFolderIsPicked && !folderUri && !(await chooseFolder())) return;
+      await update('autoBackup', on);
+      if (!on) return;
+      // The first one now, so the listener sees where it goes.
+      try {
+        if (await runAutoBackupIfDue()) showToast('Backup saved');
+      } catch (error) {
+        Alert.alert("Couldn't write the backup", error instanceof Error ? error.message : String(error));
+      }
+      readAutoBackup();
+    });
 
   const exportRow = (kind: ExportKind, label: string, description: string) => (
     <SettingsAction
@@ -58,6 +107,26 @@ export default function ImportExportSettings() {
       <SettingsNote>
         Audio files aren’t in the backup: restored on another phone, episodes show as not downloaded.
       </SettingsNote>
+
+      <SettingsSection title="Automatic backup" />
+      <SettingsSwitch
+        label="Automatic database backup"
+        description={`A database export every 3 days. The newest ${AUTO_BACKUP_KEEP} are kept.${
+          lastBackup ? ` Last: ${new Date(lastBackup).toLocaleDateString()}.` : ''
+        }`}
+        value={autoBackup}
+        onValueChange={setAutoBackup}
+      />
+      {autoBackupFolderIsPicked ? (
+        <SettingsAction
+          label="Backup folder"
+          description={folderUri ? fileNameFromUri(folderUri) || 'Chosen folder' : 'Not chosen yet'}
+          onPress={() => void run('auto', chooseFolder)}
+          busy={busy === 'auto'}
+        />
+      ) : (
+        <SettingsNote>Backups are saved in the Files app, under On My iPhone › Sage Pod › Backups.</SettingsNote>
+      )}
 
       <SettingsSection title="Export" />
       {exportRow('opml', 'OPML export', 'Your subscriptions, for another podcast app.')}

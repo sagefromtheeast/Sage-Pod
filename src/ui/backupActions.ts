@@ -2,6 +2,7 @@ import { reloadAppAsync } from 'expo';
 import { Directory, File } from 'expo-file-system';
 import { Alert } from 'react-native';
 
+import { createIn } from '@/backup/files';
 import { exportFileName, exportMimeType, favouritesHtml, subscriptionsHtml, type ExportKind } from '@/backup/formats';
 import {
   discardStagedBackup,
@@ -36,20 +37,6 @@ async function contentFor(kind: ExportKind): Promise<string | Uint8Array> {
       return favouritesHtml(await listFavouritesForExport());
     case 'database':
       return exportDatabaseBytes();
-  }
-}
-
-/**
- * A new file in the picked folder. Android renames a taken name itself; iOS
- * refuses it, so a second export on the same day replaces the first there.
- */
-function createIn(folder: Directory, name: string, mimeType: string): File {
-  try {
-    return folder.createFile(name, mimeType);
-  } catch (error) {
-    const existing = new File(folder, name);
-    if (existing.exists) return existing;
-    throw error;
   }
 }
 

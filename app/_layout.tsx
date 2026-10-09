@@ -6,6 +6,8 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { useBackgroundRefresh } from '@/background';
+import { runAutoBackupIfDue } from '@/backup/files';
 import { initDb } from '@/db';
 import { removeStalePreviews } from '@/db/feeds';
 import { getMeta, getSettings, loadSettings } from '@/db/settings';
@@ -50,9 +52,12 @@ export default function RootLayout() {
           // A failed background refresh is not worth interrupting startup for;
           // per-feed failures surface on the feed's own screen.
         });
-        
+
         // Also manage auto downloads and cleanup
         void manageAutoDownloads().catch(() => {});
+        // The background task writes automatic backups too, but the system
+        // may rarely wake it; opening the app catches one that's due.
+        void runAutoBackupIfDue().catch(() => false);
       } catch (error) {
         if (!cancelled) {
           setStartupError(error instanceof Error ? error.message : String(error));
@@ -97,6 +102,7 @@ export default function RootLayout() {
 function AppShell() {
   const theme = useTheme();
   useNotificationTaps();
+  useBackgroundRefresh();
 
   return (
     <GestureHandlerRootView style={styles.root}>
