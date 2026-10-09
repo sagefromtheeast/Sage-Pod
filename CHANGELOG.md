@@ -1,3 +1,31 @@
+## [0.18.0](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.17.0...v0.18.0) (2026-10-09)
+
+### 🚀 New Features
+
+* **background:** background refresh and automatic backup every 3 days keeping 5 ([65d9f71](https://github.com/sagefromtheeast/Sage-Pod/commit/65d9f7187dc966a40583bb60c5bfa37cfae5a0b2))
+* **downloads:** automatic downloads only while charging ([69bbb35](https://github.com/sagefromtheeast/Sage-Pod/commit/69bbb35dbc61c17411a26077d0a7f7b247542e72))
+* **episode:** share a downloaded episode's audio file ([aa986d2](https://github.com/sagefromtheeast/Sage-Pod/commit/aa986d2d4206bb85f8d3126befb578126ec36ef3))
+* **feeds:** username and password for protected feeds, kept in secure storage ([384792f](https://github.com/sagefromtheeast/Sage-Pod/commit/384792f32a2fe966130be246b70c7d1de6583ec1))
+* **links:** open itpc, pcast, feed and podcast links in Add podcast ([4e63955](https://github.com/sagefromtheeast/Sage-Pod/commit/4e639558d3e6f73720b5a72ddfdde684dbf48f43))
+* **notify:** new-episode, refresh-error and download-error notifications ([682dd73](https://github.com/sagefromtheeast/Sage-Pod/commit/682dd7335a9cf903167cf66adedb61903ab6cae5))
+
+### 🐛 Bug Fixes
+
+* **downloads:** retry automatic downloads held back for Wi-Fi or charging ([f791b73](https://github.com/sagefromtheeast/Sage-Pod/commit/f791b73f55e591a0842a5517b88a82ef2e8a54d3))
+* **feeds:** send a typed login only to the host that asked for it ([7551f2b](https://github.com/sagefromtheeast/Sage-Pod/commit/7551f2bd9b2b238949e60ca235ed62213775a1d1))
+
+### 📚 Documentation
+
+* Phase 17a decisions (D-024), tasks and handover ([1d7d309](https://github.com/sagefromtheeast/Sage-Pod/commit/1d7d3091f0fbd710339cfce655b6db51e70fa451))
+
+### ✅ Tests
+
+* **shots:** notifications, charging and podcast login screens ([f2e8eb7](https://github.com/sagefromtheeast/Sage-Pod/commit/f2e8eb777a9c729e2bf15bcbf75b51349e8c5df8))
+
+### 📦 Build & Dependencies
+
+* **deps:** add Expo notifications, background task, sharing, secure store and battery ([4b5dca3](https://github.com/sagefromtheeast/Sage-Pod/commit/4b5dca301bd68bc480a90a69283ca235cfa72bea))
+
 ## [0.17.0](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.16.0...v0.17.0) (2026-10-09)
 
 ### 🚀 New Features
