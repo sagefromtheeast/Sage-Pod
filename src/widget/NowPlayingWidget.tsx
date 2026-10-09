@@ -11,6 +11,8 @@ export const WIDGET_ACTIONS = { toggle: 'TOGGLE', back: 'SKIP_BACK', forward: 'S
 const ICON = require('../../assets/icon.png');
 /** Below this width (dp) the skip buttons give way to the title. */
 const COMPACT_WIDTH = 250;
+/** Below this height (dp) the padding tightens, and art and buttons shrink to fit. */
+const SHORT_HEIGHT = 76;
 
 type Props = { model: WidgetModel; palette: Palette; width: number; height: number };
 
@@ -20,7 +22,9 @@ type Props = { model: WidgetModel; palette: Palette; width: number; height: numb
  */
 export function NowPlayingWidget({ model, palette, width, height }: Props) {
   const color = (value: string) => value as ColorProp;
-  const art = Math.max(40, Math.min(height - 24, 96));
+  const padding = height < SHORT_HEIGHT ? 6 : 12;
+  const inner = Math.max(28, height - 2 * padding);
+  const art = Math.min(inner, 96);
   const compact = width < COMPACT_WIDTH;
   const loaded = model.episodeId != null;
 
@@ -36,7 +40,7 @@ export function NowPlayingWidget({ model, palette, width, height }: Props) {
         alignItems: 'center',
         backgroundColor: color(palette.surface),
         borderRadius: 20,
-        padding: 12,
+        padding,
         flexGap: 12,
       }}
     >
@@ -64,16 +68,31 @@ export function NowPlayingWidget({ model, palette, width, height }: Props) {
       </FlexWidget>
       {loaded ? (
         <FlexWidget style={{ flexDirection: 'row', alignItems: 'center', flexGap: 4 }}>
-          {compact ? null : <Button action={WIDGET_ACTIONS.back} svg={SKIP_BACK} label="Skip back" palette={palette} />}
+          {compact ? null : (
+            <Button
+              action={WIDGET_ACTIONS.back}
+              svg={SKIP_BACK}
+              label="Skip back"
+              palette={palette}
+              size={Math.min(36, inner)}
+            />
+          )}
           <Button
             action={WIDGET_ACTIONS.toggle}
             svg={model.playing ? PAUSE : PLAY}
             label={model.playing ? 'Pause' : 'Play'}
             palette={palette}
+            size={Math.min(44, inner)}
             primary
           />
           {compact ? null : (
-            <Button action={WIDGET_ACTIONS.forward} svg={SKIP_FORWARD} label="Skip forward" palette={palette} />
+            <Button
+              action={WIDGET_ACTIONS.forward}
+              svg={SKIP_FORWARD}
+              label="Skip forward"
+              palette={palette}
+              size={Math.min(36, inner)}
+            />
           )}
         </FlexWidget>
       ) : null}
@@ -113,15 +132,17 @@ function Button({
   svg,
   label,
   palette,
+  size,
   primary = false,
 }: {
   action: string;
   svg: (fill: string) => string;
   label: string;
   palette: Palette;
+  size: number;
   primary?: boolean;
 }) {
-  const size = primary ? 44 : 36;
+  const icon = Math.round(size / 2);
   return (
     <FlexWidget
       clickAction={action}
@@ -135,7 +156,7 @@ function Button({
         backgroundColor: (primary ? palette.accent : palette.surfaceAlt) as ColorProp,
       }}
     >
-      <SvgWidget svg={svg(primary ? palette.onAccent : palette.text)} style={{ width: 22, height: 22 }} />
+      <SvgWidget svg={svg(primary ? palette.onAccent : palette.text)} style={{ width: icon, height: icon }} />
     </FlexWidget>
   );
 }
