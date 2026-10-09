@@ -9,7 +9,7 @@ Format: context → decision → consequences → when to revisit.
 | D-001 | Goal: AntennaPod feature parity, keeping Sage Pod's design | Accepted |
 | D-002 | One phase = one PR = one release | Accepted |
 | D-003 | Approved behaviour changes to match AntennaPod | Accepted |
-| D-004 | Audio engine: stay on expo-audio | Accepted |
+| D-004 | Audio engine: stay on expo-audio | Accepted (route amended by D-025) |
 | D-005 | Schema migrations: one per phase that needs it | Accepted |
 | D-006 | Screenshots: web export + Playwright harness | Accepted |
 | D-007 | Discovery providers: keyless only (iTunes, then fyyd) | Accepted |
@@ -27,6 +27,10 @@ Format: context → decision → consequences → when to revisit.
 | D-019 | Library: options in ⋯, tags in the chip row, archive on unsubscribe, Statistics and Settings in the menu | Accepted |
 | D-020 | Downloads: own screen, log in SQLite, ask before mobile data, no download upkeep on web | Accepted |
 | D-021 | Settings: AntennaPod's sub-pages, swipe pairs per list, smart mark 30 s, no "only when charging" | Accepted |
+| D-022 | Statistics: three tabs, svg charts, a reset that keeps history | Accepted |
+| D-023 | Backup: save to a picked folder, restore through SQLite's backup API | Accepted |
+| D-024 | Phase 17a: Expo's own native modules, no patched code | Accepted |
+| D-025 | Phase 17b: patch expo-audio with patch-package, build it from source | Accepted |
 
 ---
 
@@ -104,6 +108,11 @@ Skip silence and volume boost are Phase 17 items, not earlier.
 **Revisit** if Chromecast or Android Auto become priorities (they need a full
 Media3/MediaSession integration, at which point a library may be cheaper than
 a custom module), or if a future Expo SDK adds custom lock-screen commands.
+
+*Amended by D-025:* the gaps were closed with a patch to expo-audio itself
+rather than a local module, since the lock-screen controls live inside
+expo-audio's own media session and a separate module can't reach them.
+expo-audio stays the engine.
 
 ## D-005 — One migration per phase
 
@@ -473,3 +482,59 @@ and ships now; 17b is the expo-audio work, decided separately.
   while the phone is unplugged; an unknown battery state never holds them.
 
 *(Ships as v0.18.0. Needs a device build to try; nothing here runs on web.)*
+
+## D-025 — Phase 17b: patch expo-audio, build it from source
+
+**Context.** D-004 kept expo-audio and planned a local module for the gaps.
+The gaps (the listener's skip amounts and a next button on the lock screen,
+skip silence, volume boost, pause on headset unplug) all sit inside
+expo-audio's own player and media session (`AudioControlsService.kt`,
+`AudioPlayer.kt`, `MediaController.swift`), which a separate module can't
+reach. Expo 57 also ships expo-audio's Android side prebuilt, so a patch to
+its sources does nothing unless it is compiled.
+
+**Decision (lead developer).**
+- **patch-package** on an exactly pinned `expo-audio@57.0.5`
+  (`patches/expo-audio+57.0.5.patch`, applied by `postinstall`), and
+  `expo.autolinking.buildFromSource: ["expo-audio"]` in `package.json` so
+  Android compiles the patched sources. iOS compiles from source already.
+- **What the patch adds:**
+  - Lock-screen options `seekForwardSeconds`, `seekBackwardSeconds`,
+    `showNext`. Android: the session's seek commands and the 5/10/15/30 s
+    icons follow them, and a Next button sits in the notification's
+    overflow slot (expanded view on Android 12 and older). iOS:
+    `preferredIntervals` and the next-track command. Next emits a
+    `remoteNext` event; JS plays the next queued episode.
+  - Android only: `setSkipSilence` (ExoPlayer's `skipSilenceEnabled`),
+    `setVolumeBoost(millibels)` (a `LoudnessEnhancer` on the player's audio
+    session), and `setHandleAudioBecomingNoisy(true)` (pause on unplug).
+  - iOS fix: remote-command targets were added on every load and never
+    removed (`removeTarget(self)` matches nothing for closure targets); now
+    every target is cleared before adding.
+- **Skip silence and volume boost are Android only**, as the switches show:
+  AVPlayer has no equivalent without an audio-tap rewrite. iOS keeps the
+  three reductions. iOS pauses on unplug through AVPlayer's own route-change
+  handling *[UNVERIFIED on device]*.
+- **Volume adaptation** follows AntennaPod: Off, light/heavy reduction
+  (0.5, 0.2), light/medium/heavy boost (1.5, 2, 2.5). A boost keeps the
+  player volume at 1 and adds 1000 × (factor − 1) mB of gain
+  *[UNVERIFIED against AntennaPod's exact gains]*.
+- **Skip silence** is a global setting, in the speed sheet (as AntennaPod)
+  and Settings › Playback. Changing it, or the skip amounts, re-applies to
+  the loaded episode at once.
+- **`src/player/audioExtras.ts`** is the only place that calls the patched
+  functions, and each call checks the function exists, so web and an
+  unpatched build degrade to plain expo-audio.
+
+**Not done.** Hardware headset next/previous buttons (Media3 maps them to
+seek, not to the queue); notification speed and sleep buttons.
+
+**Consequences.** Every expo-audio upgrade must re-apply the patch (bump
+the pin, regenerate the patch, compile Android locally, check iOS in the
+EAS build). Android compiles locally (see HANDOVER); the Swift half is
+checked only by the EAS build.
+
+**Revisit** when an Expo SDK upgrade breaks the patch, or if expo-audio
+gains custom lock-screen commands upstream.
+
+*(Ships as v0.19.0. Needs a device build to try.)*

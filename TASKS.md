@@ -164,13 +164,23 @@ destructive.
 - [x] Shots: settings, settings-notifications, settings-downloads-auto, settings-import-export, feed-settings-auth
 - [ ] On device: each notification and its tap; a background refresh overnight; automatic backup lands and prunes; a protected feed (add, refresh, stream, download); an itpc:// link from a browser; share a file; unplug and check auto-downloads wait
 
-## Phase 17b — expo-audio gaps (route to decide)
-- [ ] Lock-screen skip amounts and a next button, skip silence, volume boost, headset unplug (D-004)
+## Phase 17b — expo-audio patch (D-025) ✅
+- [x] Route: patch-package on expo-audio 57.0.5, built from source on Android
+- [x] Lock screen and notification use the listener's skip amounts; a Next button plays the next queued episode
+- [x] Skip silence (speed sheet and Settings › Playback; Android)
+- [x] Volume adaptation: light/medium/heavy boost besides the reductions (Android)
+- [x] Pause when headphones are unplugged (Android)
+- [x] iOS: remote-command targets no longer pile up on each load
+- [x] Tests: volume factors, boost gains
+- [x] Shots: feed-settings, settings-playback
+- [ ] On device: lock-screen skips at 30 s / 15 s; Next from lock screen and notification; skip silence on a talk show; each boost level; unplug wired and Bluetooth headphones; iOS build compiles the patched Swift
 
 ## Phase 18 — Optional (one proposal each)
 - [ ] Sync, Cast, Auto/Wear, widget/tile, video, Echo, binary chapters, nav customisation, parental control
 
 ## Discovered (not yet scheduled)
+- [ ] Hardware headset next/previous buttons seek instead of changing episode (AntennaPod's "Hardware forward button skips" setting)
+- [ ] Skip silence and volume boost on iOS (needs an audio tap; D-025)
 - [ ] `flushPosition` marks an episode played inside the smart-mark tail but doesn't dequeue or delete it like `onFinished` does
 - [x] A speed chosen in the player isn't saved (fixed by Phase 4's speed sheet)
 - [x] Refresh interval is only checked when the app opens (fixed by Phase 17a's background refresh)

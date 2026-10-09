@@ -246,9 +246,11 @@ releasing, so a red check on `main` blocks the release.
   (database export and restore, OPML / HTML / favourites exports to a
   picked folder; v0.17.0), and Phase 17a (notifications, background
   refresh, automatic backup, protected feeds, podcast links, file sharing,
-  charging-only downloads; v0.18.0; D-024).
+  charging-only downloads; v0.18.0; D-024), and Phase 17b (patched
+  expo-audio: lock-screen skip amounts and Next, skip silence, volume
+  boost, pause on unplug; v0.19.0; D-025).
   Earlier: EAS device builds, stable Surprise Me, tablet layouts.
-- **Next**: Phase 17b (the expo-audio gaps; choose the route first, D-004 and D-024). Schema is at version 7; feeds.state can be 'subscribed',
+- **Next**: Phase 18 (optional items, one proposal each; ask the user which). Schema is at version 7; feeds.state can be 'subscribed',
   'preview' or 'archived'.
   Building blocks to reuse: `openEpisodeActions`, `runEpisodeAction`,
   `showToast`, `OverflowMenu`, `BottomSheet` / `ActionSheet`,
@@ -258,6 +260,17 @@ releasing, so a red check on `main` blocks the release.
   `src/actions/` and `src/ui/`). New settings go in `src/db/settingsSchema.ts`;
   multiple-choice ones also list their choices in `src/settings/options.ts`.
 - **Device build**: one EAS build at the end (D-011).
+- **expo-audio is patched** (D-025, `patches/expo-audio+57.0.5.patch`).
+  To change the patch: edit `node_modules/expo-audio`, then
+  `npx patch-package expo-audio`. To compile the Android half locally:
+  install the Android SDK (platform 36, build-tools 36.0.0 and 35.0.0),
+  `npx expo prebuild --platform android --no-install`, put
+  `sdk.dir=/path/to/sdk` in `android/local.properties`, then
+  `cd android && ./gradlew :expo-audio:compileReleaseKotlin`. If Maven
+  Central answers 429, a Gradle init script in `~/.gradle/init.d/` that
+  puts Google's Maven Central mirror first (and keeps `google()` and
+  `gradlePluginPortal()`) gets round it. The log must not show expo-audio
+  as prebuilt. The Swift half is only compiled by the EAS build.
 - **The owner's preferences** (learned): keep the existing design; match
   AntennaPod's placement; release per phase, merged by you; show before/after screenshots;
   explain results in plain language with clear next steps; ask before spending
