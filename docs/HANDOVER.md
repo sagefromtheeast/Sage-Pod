@@ -48,6 +48,9 @@ sections, the Queue toolbar, the Now Playing layout); the look stays Sage Pod's
 - **Merging to `main` is delegated to you** (D-002): merge each phase PR once
   the Checks workflow is green and every review thread is addressed, with a
   merge commit (never squash), then confirm the release tag appeared.
+  The Codex bot reviews each PR when it is opened. If it is out of quota (it
+  says so in a comment), run `/code-review high origin/main...HEAD` yourself,
+  fix what is real, and merge only then.
 - A **new native dependency** (anything that needs a new EAS build), or a
   change to the audio engine (see decision D-004).
 - A **visible design change** beyond moving features into AntennaPod's places
@@ -233,13 +236,16 @@ releasing, so a red check on `main` blocks the release.
   per-podcast settings (rename, tags, skip ending, volume reduction,
   new-episode action, auto-download rules, auto-delete; v0.11.0), and
   search and discovery (fyyd, chart country, subscribed marks, feed
-  autodiscovery, OPML file import with a checklist; v0.12.0).
+  autodiscovery, OPML file import with a checklist; v0.12.0), and the
+  Library (display, sort, filter, tags, archive, multi-select, Episodes
+  screen; v0.13.0).
   Earlier: EAS device builds, stable Surprise Me, tablet layouts.
-- **Next**: Phase 12, the Library, then the remaining screen-by-screen
-  phases. Schema is at version 5.
+- **Next**: Phase 13, Downloads, then the remaining screen-by-screen
+  phases. Schema is at version 5; feeds.state can be 'subscribed',
+  'preview' or 'archived'.
   Building blocks to reuse: `openEpisodeActions`, `runEpisodeAction`,
   `showToast`, `OverflowMenu`, `BottomSheet` / `ActionSheet`,
-  `useEpisodeSelection` + `SelectionBar`, `MiniPlayerDock`, `DraggableList`, `NoMatches` (see
+  `useEpisodeSelection` + `SelectionBar`, `MiniPlayerDock`, `DraggableList`, `NoMatches`, `TextPromptSheet`, `askToUnsubscribe` (see
   `src/actions/` and `src/ui/`).
 - **Device build**: one EAS build at the end (D-011).
 - **The owner's preferences** (learned): keep the existing design; match

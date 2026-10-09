@@ -61,6 +61,17 @@ export function seedSql() {
       VALUES (${id}, 7, 'ep-${id}', ${q(`${3 - n}. ${['Night train to Lisbon', 'The sleeper car', 'Platform nine'][n]}`)},
       '<p>A preview episode.</p>', ${NOW - n * 7 * DAY}, ${1800 + n * 300}, 'https://media.sagepod.test/${id}.wav?d=${1800 + n * 300}', 'audio/wav', 0, ${NOW});`);
   }
+  // Library tags, and an archived podcast (unsubscribed with "Archive") with two episodes.
+  s.push(`UPDATE feeds SET tags = 'Tech' WHERE id = 2;`, `UPDATE feeds SET tags = 'Science' WHERE id IN (3, 4);`);
+  s.push(`INSERT INTO feeds (id, feed_url, title, author, description, image_url, link, language, last_refreshed_at, created_at, state)
+    VALUES (8, 'https://feeds.sagepod.test/8.xml', 'Old Radio Hour', 'Iris Bell', 'Vintage radio drama, restored.',
+    'https://art.sagepod.test/5.svg', 'https://sagepod.test/8', 'en', ${NOW - 30 * DAY}, ${NOW - 200 * DAY}, 'archived');`);
+  for (let n = 0; n < 2; n++) {
+    const id = 52 + n;
+    s.push(`INSERT INTO episodes (id, feed_id, guid, title, description, published_at, duration, media_url, media_type, is_new, created_at)
+      VALUES (${id}, 8, 'ep-${id}', ${q(`${2 - n}. ${['The last broadcast', 'Static'][n]}`)},
+      '<p>An archived episode.</p>', ${NOW - (40 + n * 7) * DAY}, 2400, 'https://media.sagepod.test/${id}.wav?d=2400', 'audio/wav', 0, ${NOW});`);
+  }
   // Chapters for the Now Playing episode (served by shoot.mjs from CHAPTERS).
   s.push(`UPDATE episodes SET chapters_url = 'https://chapters.sagepod.test/3.json' WHERE id = 3;`);
   // Now Playing: the player restores this episode (paused) on startup.

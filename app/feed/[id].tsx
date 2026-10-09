@@ -17,6 +17,8 @@ import {
 import {
   dismissManyFromInbox,
   EPISODE_SORT_KEYS,
+  EPISODE_SORT_LABELS,
+  parseEpisodeSort,
   getPlaybackSnapshots,
   listEpisodesForFeed,
   listInboxIds,
@@ -36,6 +38,7 @@ import { Artwork } from '@/ui/Artwork';
 import { EmptyState } from '@/ui/EmptyState';
 import { EpisodeRow } from '@/ui/EpisodeRow';
 import { FeedFilterSheet } from '@/ui/feed/FeedFilterSheet';
+import { askToUnsubscribe } from '@/ui/library/unsubscribe';
 import { MiniPlayerDock, useMiniPlayerDockPadding } from '@/ui/MiniPlayerDock';
 import { OverflowMenu } from '@/ui/OverflowMenu';
 import { SELECTION_BAR_HEIGHT, SelectionBar } from '@/ui/SelectionBar';
@@ -47,19 +50,6 @@ import { excerpt } from '@/util/html';
 
 /** Episodes read from the database per page, as in AntennaPod. */
 const PAGE_SIZE = 150;
-
-const SORT_LABELS: Record<EpisodeSortKey, string> = {
-  date_desc: 'Newest first',
-  date_asc: 'Oldest first',
-  duration_asc: 'Shortest first',
-  duration_desc: 'Longest first',
-  title_asc: 'Title A–Z',
-  title_desc: 'Title Z–A',
-  season_asc: 'Season and episode',
-};
-
-const parseSort = (raw: string | null | undefined): EpisodeSortKey =>
-  EPISODE_SORT_KEYS.includes(raw as EpisodeSortKey) ? (raw as EpisodeSortKey) : 'date_desc';
 
 export default function FeedScreen() {
   const theme = useTheme();
@@ -79,8 +69,11 @@ export default function FeedScreen() {
   const { data: feed } = useQuery<FeedWithCounts | null>(() => getFeed(feedId), ['feeds', 'episodes'], [feedId]);
   const { data: inboxIds = [] } = useQuery<number[]>(() => listInboxIds(feedId), ['episodes'], [feedId]);
 
-  const preview = feed?.state === 'preview';
-  const sort = parseSort(feed?.episode_sort);
+  // Previews and archived podcasts aren't subscriptions: no refresh, inbox or
+  // settings, and a Subscribe button instead.
+  const archived = feed?.state === 'archived';
+  const preview = feed?.state === 'preview' || archived;
+  const sort = parseEpisodeSort(feed?.episode_sort);
   const filterRaw = feed?.episode_filter ?? null;
   const filter = useMemo(() => parseEpisodeFilter(filterRaw), [filterRaw]);
   const filtered = isFiltered(filter);
@@ -171,22 +164,7 @@ export default function FeedScreen() {
   }, [inboxIds]);
 
   const confirmUnsubscribe = useCallback(() => {
-    if (!feed) return;
-    Alert.alert(
-      `Unsubscribe from ${feed.title}?`,
-      'Its episodes, your progress, and any downloads are removed from this device.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Unsubscribe',
-          style: 'destructive',
-          onPress: async () => {
-            await deleteFeed(feed.id);
-            router.back();
-          },
-        },
-      ]
-    );
+    if (feed) askToUnsubscribe([feed], () => router.back());
   }, [feed, router]);
 
   if (!feed) {
@@ -214,6 +192,28 @@ export default function FeedScreen() {
       ? [{ key: 'website', label: 'Visit website', icon: 'globe-outline' as IconName, onPress: () => void Linking.openURL(feed.link!) }]
       : []),
     { key: 'share', label: 'Share podcast', icon: 'share-outline' as IconName, onPress: share },
+    ...(archived
+      ? [
+          {
+            key: 'delete',
+            label: 'Delete podcast',
+            icon: 'trash-outline' as IconName,
+            destructive: true,
+            onPress: () =>
+              Alert.alert(`Delete ${feed.title}?`, 'Its episodes, your progress, and any downloads are removed from this device.', [
+                { text: 'Cancel', style: 'cancel' },
+                {
+                  text: 'Delete',
+                  style: 'destructive',
+                  onPress: async () => {
+                    await deleteFeed(feed.id);
+                    router.back();
+                  },
+                },
+              ]),
+          },
+        ]
+      : []),
     ...(preview
       ? []
       : [
@@ -312,11 +312,13 @@ export default function FeedScreen() {
                 >
                   <Ionicons name="add" size={20} color={theme.onAccent} />
                   <Text style={[styles.subscribeLabel, { color: theme.onAccent }]}>
-                    {subscribing ? 'Subscribing…' : 'Subscribe'}
+                    {subscribing ? 'Subscribing…' : archived ? 'Subscribe again' : 'Subscribe'}
                   </Text>
                 </Pressable>
                 <Text style={[styles.previewNote, { color: theme.textFaint }]}>
-                  Previewing. You can play episodes now; the podcast joins your library when you subscribe.
+                  {archived
+                    ? "Archived. It isn't refreshed and stays out of your Library; your episodes and progress are kept."
+                    : 'Previewing. You can play episodes now; the podcast joins your library when you subscribe.'}
                 </Text>
               </View>
             ) : (
@@ -431,14 +433,20 @@ export default function FeedScreen() {
       <SelectionBar selection={selection} />
       <MiniPlayerDock hidden={selection.active} />
 
-      <FeedFilterSheet visible={sheet === 'filter'} feedId={feed.id} value={filterRaw} onClose={() => setSheet(null)} />
+      <FeedFilterSheet
+        visible={sheet === 'filter'}
+        subtitle="Saved for this podcast"
+        value={filterRaw}
+        onChange={(value) => void setFeedViewPrefs(feed.id, { episodeFilter: value })}
+        onClose={() => setSheet(null)}
+      />
       <ActionSheet
         visible={sheet === 'sort'}
         title="Sort episodes"
         subtitle="Saved for this podcast"
         items={EPISODE_SORT_KEYS.map((key) => ({
           key,
-          label: SORT_LABELS[key],
+          label: EPISODE_SORT_LABELS[key],
           icon: key.startsWith('date') ? 'calendar-outline' : key.startsWith('duration') ? 'time-outline' : 'text-outline',
           selected: key === sort,
           onPress: () => void setFeedViewPrefs(feed.id, { episodeSort: key }),

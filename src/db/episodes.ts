@@ -11,6 +11,9 @@ import type { DownloadState, EpisodeRow, EpisodeWithFeed } from './types';
  */
 export const COMPLETION_TAIL_SECONDS = 20;
 
+/** For queries on `episodes` alone: the episode's podcast is a subscription. */
+const SUBSCRIBED_FEED = "feed_id IN (SELECT id FROM feeds WHERE state = 'subscribed')";
+
 const EPISODE_WITH_FEED = `
   SELECT ${EPISODE_WITH_FEED_COLUMNS}
     FROM episodes e
@@ -40,6 +43,19 @@ export const EPISODE_SORT_KEYS: readonly EpisodeSortKey[] = [
   'season_asc',
 ];
 
+export const EPISODE_SORT_LABELS: Record<EpisodeSortKey, string> = {
+  date_desc: 'Newest first',
+  date_asc: 'Oldest first',
+  duration_asc: 'Shortest first',
+  duration_desc: 'Longest first',
+  title_asc: 'Title A–Z',
+  title_desc: 'Title Z–A',
+  season_asc: 'Season and episode',
+};
+
+export const parseEpisodeSort = (raw: string | null | undefined): EpisodeSortKey =>
+  EPISODE_SORT_KEYS.includes(raw as EpisodeSortKey) ? (raw as EpisodeSortKey) : 'date_desc';
+
 export type EpisodeFilterOptions = {
   includePlayed?: boolean;
   unplayedOnly?: boolean;
@@ -63,9 +79,22 @@ export async function listEpisodesForFeed(
   feedId: number,
   options: ListEpisodesOptions = {}
 ): Promise<EpisodeWithFeed[]> {
+  return listEpisodesWhere('e.feed_id = ?', [feedId], options);
+}
+
+/** Every subscribed podcast's episodes (the Library's Episodes screen), filtered and sorted. */
+export async function listAllEpisodes(options: ListEpisodesOptions = {}): Promise<EpisodeWithFeed[]> {
+  return listEpisodesWhere("f.state = 'subscribed'", [], options);
+}
+
+async function listEpisodesWhere(
+  scope: string,
+  scopeArgs: (number | string)[],
+  options: ListEpisodesOptions
+): Promise<EpisodeWithFeed[]> {
   const { filters = {}, sort = 'date_desc', limit = 500, includePlayed, episodeFilter, search } = options;
-  const whereClauses = ['e.feed_id = ?'];
-  const args: (number | string)[] = [feedId];
+  const whereClauses = [scope];
+  const args: (number | string)[] = [...scopeArgs];
 
   const hidePlayed = includePlayed === false || filters.unplayedOnly;
   if (hidePlayed) {
@@ -412,7 +441,8 @@ export async function listInboxEpisodes(
   // Whitelisted: the ORDER BY can't take a bound parameter.
   const order = INBOX_ORDER[opts.sort ?? 'date:desc'] ?? INBOX_ORDER['date:desc'];
 
-  const where = ['e.is_new = 1', 'e.is_played = 0'];
+  // Only subscriptions feed the Inbox (D-016, D-019), whatever is_new says.
+  const where = ['e.is_new = 1', 'e.is_played = 0', "f.state = 'subscribed'"];
   const params: (string | number)[] = [];
   if (opts.feedId != null) {
     where.push('e.feed_id = ?');
@@ -440,8 +470,8 @@ export async function listInboxEpisodes(
 export async function listInboxIds(feedId: number | null = null): Promise<number[]> {
   const rows = await getDb().getAllAsync<{ id: number }>(
     feedId === null
-      ? 'SELECT id FROM episodes WHERE is_new = 1 AND is_played = 0'
-      : 'SELECT id FROM episodes WHERE is_new = 1 AND is_played = 0 AND feed_id = ?',
+      ? `SELECT id FROM episodes WHERE is_new = 1 AND is_played = 0 AND ${SUBSCRIBED_FEED}`
+      : `SELECT id FROM episodes WHERE is_new = 1 AND is_played = 0 AND ${SUBSCRIBED_FEED} AND feed_id = ?`,
     ...(feedId === null ? [] : [feedId])
   );
   return rows.map((row) => row.id);
@@ -452,7 +482,7 @@ export async function listInboxFeeds(): Promise<InboxFeedInfo[]> {
     `SELECT f.id, COALESCE(f.custom_title, f.title) AS title, f.image_url, COUNT(e.id) AS unplayed_count
        FROM feeds f
        JOIN episodes e ON e.feed_id = f.id
-      WHERE e.is_new = 1 AND e.is_played = 0
+      WHERE e.is_new = 1 AND e.is_played = 0 AND f.state = 'subscribed'
       GROUP BY f.id
       ORDER BY COALESCE(f.custom_title, f.title) COLLATE NOCASE ASC`
   );
@@ -460,9 +490,19 @@ export async function listInboxFeeds(): Promise<InboxFeedInfo[]> {
 
 export async function getInboxCount(): Promise<number> {
   const row = await getDb().getFirstAsync<{ count: number }>(
-    `SELECT COUNT(*) AS count FROM episodes WHERE is_new = 1 AND is_played = 0`
+    `SELECT COUNT(*) AS count FROM episodes WHERE is_new = 1 AND is_played = 0 AND ${SUBSCRIBED_FEED}`
   );
   return row?.count ?? 0;
+}
+
+/** The inbox episodes of some podcasts (for "Remove all from inbox" on a selection). */
+export async function listInboxIdsForFeeds(feedIds: readonly number[]): Promise<number[]> {
+  if (feedIds.length === 0) return [];
+  const rows = await getDb().getAllAsync<{ id: number }>(
+    `SELECT id FROM episodes WHERE is_new = 1 AND is_played = 0 AND feed_id IN (${placeholders(feedIds.length)})`,
+    ...feedIds
+  );
+  return rows.map((row) => row.id);
 }
 
 /**

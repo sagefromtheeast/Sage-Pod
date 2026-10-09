@@ -213,7 +213,12 @@ export async function subscribe(rawUrl: string): Promise<{ feedId: number; alrea
       return { feedId: existing.id, alreadySubscribed: true };
     }
     await subscribeFeed(existing.id);
-    await refreshFeed({ ...existing, state: 'subscribed' }).catch(() => undefined);
+    // Coming back from the archive: what came out meanwhile is back catalogue,
+    // not new, so it doesn't flood the Inbox, the queue or the downloads.
+    await refreshFeed(
+      { ...existing, state: 'subscribed' },
+      { quiet: existing.state === 'archived' }
+    ).catch(() => undefined);
     return { feedId: existing.id, alreadySubscribed: false };
   }
 
@@ -233,8 +238,15 @@ export async function previewFeed(rawUrl: string): Promise<{ feedId: number; sub
   return { feedId: await insertFeed(feedUrl, 'preview'), subscribed: false };
 }
 
-/** Re-fetches one feed. Returns without writing if the server says 304. */
-export async function refreshFeed(feed: FeedRow, options: { full?: boolean } = {}): Promise<SyncResult> {
+/**
+ * Re-fetches one feed. Returns without writing if the server says 304.
+ * `quiet` stores new episodes without the new-episodes action (Inbox, queue)
+ * or auto-download.
+ */
+export async function refreshFeed(
+  feed: FeedRow,
+  options: { full?: boolean; quiet?: boolean } = {}
+): Promise<SyncResult> {
   let fetched: Awaited<ReturnType<typeof fetchFeed>>;
   try {
     // A full refresh ignores the cache validators, so the server can't answer 304.
@@ -263,10 +275,11 @@ export async function refreshFeed(feed: FeedRow, options: { full?: boolean } = {
   }
 
   // What new episodes do (AntennaPod's "New episodes" setting, per podcast or
-  // global): land in the Inbox, join the queue, or nothing. A preview's new
-  // episodes are never "new": only subscriptions feed the Inbox (D-016).
+  // global): land in the Inbox, join the queue, or nothing. A preview's or an
+  // archived podcast's new episodes are never "new": only subscriptions feed
+  // the Inbox (D-016, D-019).
   const settings = getSettings();
-  const subscribed = feed.state !== 'preview';
+  const subscribed = feed.state === 'subscribed' && !options.quiet;
   const action = parseNewEpisodesAction(feed.new_episodes_action) ?? settings.newEpisodesAction;
   const { count: newEpisodes, guids } = await upsertEpisodes(
     feed.id,

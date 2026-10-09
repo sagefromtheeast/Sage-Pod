@@ -133,6 +133,32 @@ const ROUTES = [
     await page.getByText('Import OPML from clipboard').click();
     await page.getByText('Import 3 podcasts').waitFor({ timeout: 10000 });
   }],
+  ['library-display', '/library', async (page) => {
+    await page.getByLabel('More options').click();
+    await page.getByText('Display…').click();
+    await page.getByText('NUMBER ON EACH PODCAST').waitFor({ timeout: 10000 });
+  }],
+  ['library-tag', '/library', async (page) => {
+    await page.getByText('Science', { exact: true }).click();
+    await page.getByText('Deep Time').waitFor({ timeout: 10000 });
+  }],
+  ['library-select', '/library', async (page) => {
+    const tile = page.getByLabel(/^Deep Time/).first();
+    const box = await tile.boundingBox();
+    await page.mouse.move(box.x + box.width / 2, box.y + box.width / 2);
+    await page.mouse.down();
+    await page.waitForTimeout(700);
+    await page.mouse.up();
+    await page.getByText('1 selected').waitFor({ timeout: 10000 });
+  }],
+  ['archive', '/archive'],
+  ['feed-archived', '/feed/8'],
+  ['episodes', '/episodes'],
+  ['episodes-filter', '/episodes', async (page) => {
+    await page.getByLabel('More options').click();
+    await page.getByText('Filter…').click();
+    await page.getByText('Saved for this screen').waitFor({ timeout: 10000 });
+  }],
   ['episode-menu', '/episode/3', async (page) => {
     await page.getByRole('button', { name: 'More options' }).first().click();
     await page.getByText('Share audio file link').first().waitFor({ timeout: 10000 });

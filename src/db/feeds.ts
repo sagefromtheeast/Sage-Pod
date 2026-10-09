@@ -1,7 +1,9 @@
 import { deleteFeedDownloads } from '@/player/downloads';
 import { getDb } from './index';
 import { searchWords } from './search';
-import type { FeedRow, FeedWithCounts } from './types';
+import { parseTags } from '@/feed/feedPrefs';
+import { addTagTo, renameTagIn } from '@/library/libraryView';
+import type { FeedRow, FeedWithCounts, LibraryFeed } from './types';
 
 /** Columns shared by every feed select, so joins and plain reads stay in sync. */
 // title is the listener's name for the podcast when they set one (Rename).
@@ -27,6 +29,26 @@ export async function listFeeds(): Promise<FeedWithCounts[]> {
       WHERE f.state = 'subscribed'
       GROUP BY f.id
       ORDER BY COALESCE(f.custom_title, f.title) COLLATE NOCASE ASC`
+  );
+}
+
+/** The Library's podcasts (or the archive's) with every count a tile can show. */
+export async function listLibraryFeeds(state: 'subscribed' | 'archived' = 'subscribed'): Promise<LibraryFeed[]> {
+  return getDb().getAllAsync<LibraryFeed>(
+    `SELECT ${FEED_COLUMNS},
+            COUNT(e.id) AS episode_count,
+            COALESCE(SUM(e.is_played = 0), 0) AS unplayed_count,
+            COALESCE(SUM(e.is_new = 1 AND e.is_played = 0), 0) AS inbox_count,
+            COALESCE(SUM(e.download_state = 'done'), 0) AS downloaded_count,
+            COALESCE(SUM(e.download_state = 'done' AND e.is_played = 0), 0) AS downloaded_unplayed_count,
+            COALESCE(SUM(e.is_played = 1), 0) AS played_count,
+            MAX(e.published_at) AS latest_published_at
+       FROM feeds f
+       LEFT JOIN episodes e ON e.feed_id = f.id
+      WHERE f.state = ?
+      GROUP BY f.id
+      ORDER BY COALESCE(f.custom_title, f.title) COLLATE NOCASE ASC`,
+    state
   );
 }
 
@@ -182,7 +204,67 @@ export async function setFeedViewPrefs(
   }
 }
 
-/** Turns a preview into a subscription. */
+/**
+ * Unsubscribes but keeps the podcast, its episodes, progress and downloads
+ * (AntennaPod's archive). It stops refreshing and leaves the Library and the
+ * Inbox; Subscribe on its page brings it back.
+ */
+export async function archiveFeed(id: number): Promise<void> {
+  await archiveFeeds([id]);
+}
+
+/** Renames a tag on every podcast that has it; an empty name deletes it. */
+export async function renameTag(from: string, to: string): Promise<void> {
+  const db = getDb();
+  const key = from.toLowerCase();
+  await db.withTransactionAsync(async () => {
+    const rows = await db.getAllAsync<{ id: number; tags: string }>('SELECT id, tags FROM feeds WHERE tags IS NOT NULL');
+    for (const row of rows) {
+      if (!parseTags(row.tags).some((tag) => tag.toLowerCase() === key)) continue;
+      await db.runAsync('UPDATE feeds SET tags = ? WHERE id = ?', renameTagIn(row.tags, from, to), row.id);
+    }
+  });
+}
+
+/** The given podcasts' tags, to put back with `restoreTags` (undo). */
+export async function getTags(ids: readonly number[]): Promise<{ id: number; tags: string | null }[]> {
+  if (ids.length === 0) return [];
+  return getDb().getAllAsync<{ id: number; tags: string | null }>(
+    `SELECT id, tags FROM feeds WHERE id IN (${ids.map(() => '?').join(',')})`,
+    ...ids
+  );
+}
+
+export async function restoreTags(rows: readonly { id: number; tags: string | null }[]): Promise<void> {
+  const db = getDb();
+  await db.withTransactionAsync(async () => {
+    for (const row of rows) await db.runAsync('UPDATE feeds SET tags = ? WHERE id = ?', row.tags, row.id);
+  });
+}
+
+/** Adds one tag to several podcasts. */
+export async function addTagToFeeds(ids: readonly number[], tag: string): Promise<void> {
+  if (!tag.trim() || ids.length === 0) return;
+  const db = getDb();
+  await db.withTransactionAsync(async () => {
+    for (const row of await getTags(ids)) {
+      await db.runAsync('UPDATE feeds SET tags = ? WHERE id = ?', addTagTo(row.tags, tag), row.id);
+    }
+  });
+}
+
+/** Archives several podcasts at once (see `archiveFeed`). */
+export async function archiveFeeds(ids: readonly number[]): Promise<void> {
+  if (ids.length === 0) return;
+  const db = getDb();
+  const list = ids.map(() => '?').join(',');
+  await db.withTransactionAsync(async () => {
+    await db.runAsync(`UPDATE feeds SET state = 'archived' WHERE id IN (${list})`, ...ids);
+    await db.runAsync(`UPDATE episodes SET is_new = 0 WHERE is_new = 1 AND feed_id IN (${list})`, ...ids);
+  });
+}
+
+/** Turns a preview (or an archived podcast) into a subscription. */
 export async function subscribeFeed(id: number): Promise<void> {
   await getDb().runAsync("UPDATE feeds SET state = 'subscribed' WHERE id = ?", id);
 }
@@ -290,10 +372,11 @@ export type FeedPrefs = {
   autoDelete: boolean | null;
 };
 
-/** Saves any of a podcast's settings in one statement (only the keys given). */
-export async function setFeedPrefs(id: number, prefs: Partial<FeedPrefs>): Promise<void> {
+/** Saves any of a podcast's settings (or several podcasts') in one statement, only the keys given. */
+export async function setFeedPrefs(id: number | readonly number[], prefs: Partial<FeedPrefs>): Promise<void> {
+  const ids = typeof id === 'number' ? [id] : id;
   const entries = (Object.keys(prefs) as (keyof FeedPrefs)[]).filter((key) => key in PREF_COLUMNS);
-  if (entries.length === 0) return;
+  if (entries.length === 0 || ids.length === 0) return;
   const values = entries.map((key) => {
     const value = prefs[key];
     if (typeof value === 'boolean') return value ? 1 : 0;
@@ -302,9 +385,10 @@ export async function setFeedPrefs(id: number, prefs: Partial<FeedPrefs>): Promi
     return value ?? null;
   });
   await getDb().runAsync(
-    `UPDATE feeds SET ${entries.map((key) => `${PREF_COLUMNS[key]} = ?`).join(', ')} WHERE id = ?`,
+    `UPDATE feeds SET ${entries.map((key) => `${PREF_COLUMNS[key]} = ?`).join(', ')}
+      WHERE id IN (${ids.map(() => '?').join(',')})`,
     ...values,
-    id
+    ...ids
   );
 }
 
