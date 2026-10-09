@@ -159,6 +159,23 @@ const ROUTES = [
     await page.getByText('Filter…').click();
     await page.getByText('Saved for this screen').waitFor({ timeout: 10000 });
   }],
+  ['downloads', '/downloads'],
+  ['downloads-log', '/downloads', async (page) => {
+    await page.getByLabel('More options').click();
+    await page.getByText('Download log').click();
+    await page.getByText('4 entries').waitFor({ timeout: 10000 });
+  }],
+  ['downloads-log-entry', '/downloads', async (page) => {
+    await page.getByLabel('More options').click();
+    await page.getByText('Download log').click();
+    await page.getByText('The podcast file was not found on the server (404/410).').first().click();
+    await page.getByText('Copy details').waitFor({ timeout: 10000 });
+  }],
+  ['downloads-search', '/downloads', async (page) => {
+    await page.getByLabel('Search downloads').click();
+    await page.getByPlaceholder('Search downloads').fill('signal');
+    await page.getByText('DOWNLOADED · 2 of 5', { exact: false }).waitFor({ timeout: 10000 });
+  }],
   ['episode-menu', '/episode/3', async (page) => {
     await page.getByRole('button', { name: 'More options' }).first().click();
     await page.getByText('Share audio file link').first().waitFor({ timeout: 10000 });
