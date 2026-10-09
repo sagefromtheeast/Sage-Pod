@@ -238,10 +238,11 @@ releasing, so a red check on `main` blocks the release.
   search and discovery (fyyd, chart country, subscribed marks, feed
   autodiscovery, OPML file import with a checklist; v0.12.0), and the
   Library (display, sort, filter, tags, archive, multi-select, Episodes
-  screen; v0.13.0).
+  screen; v0.13.0), and Downloads (in progress, sort, search, delete
+  played, a stored download log; v0.14.0).
   Earlier: EAS device builds, stable Surprise Me, tablet layouts.
-- **Next**: Phase 13, Downloads, then the remaining screen-by-screen
-  phases. Schema is at version 5; feeds.state can be 'subscribed',
+- **Next**: Phase 14, Settings, then the remaining screen-by-screen
+  phases. Schema is at version 6; feeds.state can be 'subscribed',
   'preview' or 'archived'.
   Building blocks to reuse: `openEpisodeActions`, `runEpisodeAction`,
   `showToast`, `OverflowMenu`, `BottomSheet` / `ActionSheet`,
