@@ -14,12 +14,13 @@ import { dequeue, enqueueFront, enqueueMany, getQueueSlots, moveToBottom, restor
 import { isQueuedNow } from '@/db/queueMembership';
 import type { EpisodeWithFeed } from '@/db/types';
 import { player } from '@/player';
-import { cancelDownload, deleteDownload, queueDownload } from '@/player/downloads';
+import { cancelDownload, deleteDownload } from '@/player/downloads';
 import type { IconName } from '@/ui/ActionSheet';
 import { showToast } from '@/ui/UndoToast';
 import { shareEpisode } from '@/util/share';
 
 import { appliesTo, subjectFor, type EpisodeAction } from './episodeActions';
+import { startDownloads } from './startDownloads';
 
 /** Label and icon for every action; a Record so a new action can't ship unlabelled. */
 export const ACTION_META: Record<EpisodeAction, { label: string; icon: IconName; destructive?: boolean }> = {
@@ -154,8 +155,7 @@ export async function runEpisodeAction(
     }
 
     case 'download':
-      for (const episode of targets) await queueDownload(episode.id);
-      showToast(count(n, 'Downloading', 'downloading'));
+      if (await startDownloads(ids(targets))) showToast(count(n, 'Downloading', 'downloading'));
       return;
 
     case 'delete':

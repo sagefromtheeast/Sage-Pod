@@ -115,8 +115,13 @@ destructive.
 - [x] Shots: library, library-display, library-tag, library-select, archive, feed-archived, episodes, episodes-filter
 - [ ] On device: long-press on tiles vs scrolling; tag chip long-press
 
-## Phase 13 — Downloads
-- [ ] Running + completed; saved sort; search; delete played (confirm); multi-select; persisted download log with retry; Wi-Fi rule for manual downloads
+## Phase 13 — Downloads ✅
+- [x] Own screen (D-020): in progress (waiting, running, failed with Retry) above finished; saved sort (date, title, duration, size, both ways); search; size total; multi-select
+- [x] Delete played (confirm, keeps favourites); delete confirmation on each row (existing action)
+- [x] Download log kept across restarts (migration 6, newest 200), details copyable, Retry for failed entries
+- [x] Manual downloads on mobile data ask first when "Download on Wi-Fi only" is on
+- [x] Shots: downloads, downloads-search, downloads-log, downloads-log-entry
+- [ ] On device: progress while downloading; the mobile-data prompt; retry from the log
 
 ## Phase 14 — Settings
 - [ ] UI, Playback, Downloads, About sections; swipe-action config per screen

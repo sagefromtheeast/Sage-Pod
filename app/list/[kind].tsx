@@ -1,42 +1,33 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useMemo, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Redirect, Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import { useCallback, useMemo } from 'react';
+import { FlatList, Pressable, StyleSheet } from 'react-native';
 
-import { DownloadSortKey, listDownloaded, listFavorites, listHistory } from '@/db/episodes';
+import { listFavorites, listHistory } from '@/db/episodes';
 import { enqueue } from '@/db/queue';
 import type { EpisodeWithFeed } from '@/db/types';
 import { useQuery } from '@/db/useQuery';
-import { runEpisodeAction } from '@/actions/runEpisodeAction';
 import { player } from '@/player';
-import { formatBytes } from '@/player/downloads';
 import { EmptyState } from '@/ui/EmptyState';
 import { EpisodeRow } from '@/ui/EpisodeRow';
 import { SELECTION_BAR_HEIGHT, SelectionBar } from '@/ui/SelectionBar';
 import { useEpisodeSelection } from '@/ui/useEpisodeSelection';
-import { triggerHaptic } from '@/ui/haptics';
-import { GlassSegmentedControl } from '@/ui/glass';
-import { MINI_PLAYER_HEIGHT, radius, space, type as typography } from '@/ui/theme';
+import { MINI_PLAYER_HEIGHT, space } from '@/ui/theme';
 import { MiniPlayerDock, useMiniPlayerDockPadding } from '@/ui/MiniPlayerDock';
 import { useTheme } from '@/ui/useTheme';
 
-type Kind = 'favorites' | 'downloads' | 'history';
+// Downloads has its own screen (app/downloads.tsx); an old link still lands there.
+type Kind = 'favorites' | 'history';
 
 const VIEWS: Record<
   Kind,
-  { title: string; load: () => Promise<EpisodeWithFeed[]>; empty: string; icon: 'heart-outline' | 'arrow-down-circle-outline' | 'time-outline' }
+  { title: string; load: () => Promise<EpisodeWithFeed[]>; empty: string; icon: 'heart-outline' | 'time-outline' }
 > = {
   favorites: {
     title: 'Favourites',
     load: () => listFavorites(),
     empty: 'Episodes you mark with a heart collect here.',
     icon: 'heart-outline',
-  },
-  downloads: {
-    title: 'Downloads',
-    load: () => listDownloaded(),
-    empty: 'Downloaded episodes play without a connection and appear here.',
-    icon: 'arrow-down-circle-outline',
   },
   history: {
     title: 'History',
@@ -46,21 +37,16 @@ const VIEWS: Record<
   },
 };
 
-/** Shared screen for the library's three saved views. */
+/** Shared screen for the library's saved views: Favourites and History. */
 export default function ListScreen() {
   const theme = useTheme();
   const router = useRouter();
   const dockPadding = useMiniPlayerDockPadding();
   const { kind } = useLocalSearchParams<{ kind: string }>();
-  const [downloadSort, setDownloadSort] = useState<DownloadSortKey>('date');
 
   const view = VIEWS[(kind as Kind) in VIEWS ? (kind as Kind) : 'favorites'];
 
-  const { data: episodes = [], loading } = useQuery<EpisodeWithFeed[]>(
-    () => (kind === 'downloads' ? listDownloaded(downloadSort) : view.load()),
-    ['episodes', 'feeds'],
-    [kind, downloadSort]
-  );
+  const { data: episodes = [], loading } = useQuery<EpisodeWithFeed[]>(() => view.load(), ['episodes', 'feeds'], [kind]);
 
   const play = useCallback((episode: EpisodeWithFeed) => {
     const current = player.getState();
@@ -71,10 +57,7 @@ export default function ListScreen() {
   const selection = useEpisodeSelection(episodes);
   const actionHooks = useMemo(() => ({ onMultiSelect: selection.start }), [selection.start]);
 
-  const totalBytes =
-    kind === 'downloads'
-      ? episodes.reduce((acc, ep) => acc + (ep.downloaded_bytes ?? ep.media_size ?? 0), 0)
-      : 0;
+  if (kind === 'downloads') return <Redirect href="/downloads" />;
 
   return (
     <>
@@ -101,32 +84,6 @@ export default function ListScreen() {
           styles.content,
           { paddingBottom: selection.active ? SELECTION_BAR_HEIGHT + space.xl : dockPadding },
         ]}
-        ListHeaderComponent={
-          kind === 'downloads' && episodes.length > 0 ? (
-            <View
-              style={[
-                styles.downloadHeader,
-                { borderBottomColor: theme.border },
-              ]}
-            >
-              <Text style={[styles.downloadMetaText, { color: theme.textMuted }]}>
-                {episodes.length} {episodes.length === 1 ? 'episode' : 'episodes'} ·{' '}
-                {formatBytes(totalBytes)}
-              </Text>
-              <GlassSegmentedControl
-                segments={[
-                  { key: 'date', label: 'Date' },
-                  { key: 'size', label: 'Size' },
-                  { key: 'duration', label: 'Duration' },
-                ]}
-                selectedKey={downloadSort}
-                onSelect={(key) => setDownloadSort(key)}
-                style={styles.downloadSegmented}
-                accessibilityLabel="Sort downloads"
-              />
-            </View>
-          ) : null
-        }
         ListEmptyComponent={
           loading ? null : <EmptyState icon={view.icon} title={view.title} message={view.empty} />
         }
@@ -140,26 +97,14 @@ export default function ListScreen() {
             onToggleSelect={selection.toggle}
             onSelectRange={selection.openRangeMenu}
             trailing={
-              kind === 'downloads' ? (
-                <Pressable
-                  // Same confirmed delete as the long-press menu.
-                  onPress={() => void runEpisodeAction('delete', [item])}
-                  hitSlop={8}
-                  accessibilityRole="button"
-                  accessibilityLabel="Delete download"
-                >
-                  <Ionicons name="trash-outline" size={19} color={theme.textFaint} />
-                </Pressable>
-              ) : (
-                <Pressable
-                  onPress={() => void enqueue(item.id)}
-                  hitSlop={8}
-                  accessibilityRole="button"
-                  accessibilityLabel="Add to queue"
-                >
-                  <Ionicons name="add-circle-outline" size={20} color={theme.textMuted} />
-                </Pressable>
-              )
+              <Pressable
+                onPress={() => void enqueue(item.id)}
+                hitSlop={8}
+                accessibilityRole="button"
+                accessibilityLabel="Add to queue"
+              >
+                <Ionicons name="add-circle-outline" size={20} color={theme.textMuted} />
+              </Pressable>
             }
           />
         )}
@@ -173,20 +118,5 @@ export default function ListScreen() {
 const styles = StyleSheet.create({
   content: {
     paddingBottom: MINI_PLAYER_HEIGHT + space.xl,
-  },
-  downloadHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: space.lg,
-    paddingVertical: space.md,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  downloadMetaText: {
-    ...typography.caption,
-    fontWeight: '600',
-  },
-  downloadSegmented: {
-    width: 200,
   },
 });

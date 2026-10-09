@@ -15,7 +15,12 @@ const TOPICS = ['The art of doing less', 'Inside the chip shortage', 'Following 
   'Listener questions', 'The comet that came back', 'Interview: a lighthouse keeper', 'Season finale'];
 export function seedSql() {
   const s = [];
-  s.push('DELETE FROM queue;', 'DELETE FROM playback_history;', 'DELETE FROM episodes;', 'DELETE FROM feeds;',
+  // The table only exists from schema 6; creating it here lets a "before" run on
+  // an older build take the same seed (same columns as migration 6).
+  s.push(`CREATE TABLE IF NOT EXISTS download_log (id INTEGER PRIMARY KEY AUTOINCREMENT, episode_id INTEGER NOT NULL,
+    episode_title TEXT NOT NULL, feed_title TEXT, url TEXT NOT NULL, status TEXT NOT NULL, error_code TEXT,
+    error_message TEXT, created_at INTEGER NOT NULL);`);
+  s.push('DELETE FROM download_log;', 'DELETE FROM queue;', 'DELETE FROM playback_history;', 'DELETE FROM episodes;', 'DELETE FROM feeds;',
     "DELETE FROM settings WHERE key LIKE 'meta:%';", "DELETE FROM sqlite_sequence WHERE name IN ('feeds','episodes','playback_history');");
   let epId = 0;
   FEEDS.forEach(([title, author, , desc], fi) => {
@@ -72,6 +77,15 @@ export function seedSql() {
       VALUES (${id}, 8, 'ep-${id}', ${q(`${2 - n}. ${['The last broadcast', 'Static'][n]}`)},
       '<p>An archived episode.</p>', ${NOW - (40 + n * 7) * DAY}, 2400, 'https://media.sagepod.test/${id}.wav?d=2400', 'audio/wav', 0, ${NOW});`);
   }
+  // Downloads: five finished (two played), one waiting, one failed, and their log.
+  [[2, 41], [10, 38], [18, 52], [7, 33], [15, 29]].forEach(([e, mb]) => s.push(`UPDATE episodes SET download_state = 'done',
+    local_path = 'file:///episodes/${e}.wav', downloaded_bytes = ${mb * 1048576} WHERE id = ${e};`));
+  s.push(`UPDATE episodes SET download_state = 'queued' WHERE id = 26;`, `UPDATE episodes SET download_state = 'error' WHERE id = 34;`);
+  [[34, 'failed', 'NOT_FOUND', 'The podcast file was not found on the server (404/410).', 2], [15, 'success', null, null, 5],
+   [7, 'success', null, null, 9], [18, 'success', null, null, 26]].forEach(([e, status, code, message, hoursAgo]) =>
+    s.push(`INSERT INTO download_log (episode_id, episode_title, feed_title, url, status, error_code, error_message, created_at)
+      SELECT e.id, e.title, f.title, e.media_url, '${status}', ${q(code)}, ${q(message)}, ${NOW - hoursAgo * 3600000}
+        FROM episodes e JOIN feeds f ON f.id = e.feed_id WHERE e.id = ${e};`));
   // Chapters for the Now Playing episode (served by shoot.mjs from CHAPTERS).
   s.push(`UPDATE episodes SET chapters_url = 'https://chapters.sagepod.test/3.json' WHERE id = 3;`);
   // Now Playing: the player restores this episode (paused) on startup.

@@ -5,12 +5,13 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { rowButtonFor, subjectFor, type RowButton } from '@/actions/episodeActions';
 import type { ActionHooks } from '@/actions/runEpisodeAction';
+import { startDownloads } from '@/actions/startDownloads';
 import { markPlayed } from '@/db/episodes';
 import { useIsQueued } from '@/db/queueMembership';
 import { useSetting } from '@/db/settings';
 import type { EpisodeWithFeed } from '@/db/types';
 import { useEpisodePlayback } from '@/player';
-import { cancelDownload, formatBytes, queueDownload, useDownloadProgress } from '@/player/downloads';
+import { cancelDownload, formatBytes, useDownloadProgress } from '@/player/downloads';
 import { formatDuration, formatPublishDate, formatRemaining } from '@/util/time';
 
 import { Artwork } from './Artwork';
@@ -112,7 +113,7 @@ export const EpisodeRow = memo(function EpisodeRow({
         void cancelDownload(episode.id);
         return;
       case 'download':
-        void queueDownload(episode.id);
+        void startDownloads([episode.id]);
         return;
       case 'markPlayed':
         void markPlayed(episode.id, true);

@@ -25,6 +25,7 @@ Format: context → decision → consequences → when to revisit.
 | D-017 | Per-podcast settings: overrides fall back to global; feed passwords wait for secure storage | Accepted |
 | D-018 | Search: screens keep their own search, with a way out to the library search; online search merges Apple and fyyd | Accepted |
 | D-019 | Library: options in ⋯, tags in the chip row, archive on unsubscribe, Statistics and Settings in the menu | Accepted |
+| D-020 | Downloads: own screen, log in SQLite, ask before mobile data, no download upkeep on web | Accepted |
 
 ---
 
@@ -291,3 +292,20 @@ Settings shortcut. Unsubscribing asks Archive or Delete. An archived
 podcast keeps its episodes, progress and downloads, isn't refreshed, and
 stays out of the Library and the Inbox; its page offers Subscribe again or
 Delete. *(Shipped in v0.13.0.)*
+
+## D-020 — Downloads: own screen, a stored log, mobile data
+
+**Context.** Downloads were one of the shared Library lists. AntennaPod's
+Downloads screen shows running downloads, a log of finished and failed ones,
+and "Delete played". The log only lived in memory, so it was empty after a
+restart. The plan asked what to do if startup download upkeep fought the
+screenshot harness's seeded downloads.
+
+**Decision.** Downloads get their own screen (old `/list/downloads` links
+redirect). The log is a SQLite table (migration 6) holding the newest 200
+entries, with no foreign key, so an entry outlives its episode. "Delete
+played" keeps favourites. A manual download on mobile data with "Download on
+Wi-Fi only" on asks first; automatic downloads keep waiting for Wi-Fi.
+Startup download upkeep (reconcile, resume, clean up) is skipped on web: the
+web build has no files, so it would only wipe the harness's seeded
+downloads. *(Shipped in v0.14.0.)*

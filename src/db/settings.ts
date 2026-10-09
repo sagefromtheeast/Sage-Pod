@@ -88,6 +88,8 @@ export type Settings = {
   /** The Episodes screen's order (an EpisodeSortKey) and filter (episodeFilter.ts). */
   episodesSort: string;
   episodesFilter: string;
+  /** The Downloads screen's order, e.g. 'date:desc' (src/player/downloadView.ts). */
+  downloadsSort: string;
 };
 
 /** Skip amounts offered by long-pressing the player's rewind / forward buttons (AntennaPod's list). */
@@ -134,6 +136,7 @@ export const DEFAULT_SETTINGS: Settings = {
   libraryFilter: '',
   episodesSort: 'date_desc',
   episodesFilter: '',
+  downloadsSort: 'date:desc',
 };
 
 const store = createStore<Settings>({ ...DEFAULT_SETTINGS });
