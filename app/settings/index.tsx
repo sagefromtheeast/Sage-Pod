@@ -51,7 +51,7 @@ export default function SettingsIndex() {
       <SettingsLink
         icon="swap-horizontal-outline"
         label="Import and export"
-        description="OPML subscription lists"
+        description="Database backup, OPML, HTML and favourites"
         onPress={() => router.push('/settings/import-export')}
       />
       <SettingsLink
