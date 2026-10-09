@@ -125,6 +125,8 @@ function AppShell() {
           <Stack.Screen name="episode/[id]" options={{ title: '' }} />
           <Stack.Screen name="search" options={{ title: 'Search' }} />
           <Stack.Screen name="opml-import" options={{ title: 'Import podcasts' }} />
+          {/* Has its own title and close button. */}
+          <Stack.Screen name="add-feed" options={{ headerShown: false, presentation: 'modal' }} />
           <Stack.Screen name="settings" options={{ title: 'Settings', presentation: 'modal' }} />
           <Stack.Screen name="stats" options={{ title: 'Statistics', presentation: 'modal' }} />
         </Stack>
