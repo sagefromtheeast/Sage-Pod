@@ -362,15 +362,23 @@ plan said to stop and ask before adding a charting library.
   months, this year, last year) rather than AntennaPod's month pickers. It
   and "include marked played" are saved as settings.
 - "Include marked played" adds the part of each played episode that was not
-  heard in the app, dated the day it was marked played.
-- Reset statistics records the time and counts from then on. It deletes only
-  the reset day's history rows, so the totals read zero at once; older
-  history stays because Home's "Check your classics" reads it.
+  heard in the app, dated by when the episode was last played (`played_at`;
+  there is no separate "marked" time, and AntennaPod also uses the last
+  played time).
+- Reset statistics deletes nothing. It saves the time and the newest history
+  row, and statistics count only later rows and plays; a listen that carries
+  on past the reset starts a new row. History stays for Home's "Check your
+  classics" and the info page's lifetime "Listened".
+- Days, months and years are the device's local ones (history used to be
+  stored by UTC day; older rows keep their UTC dates).
+- The release guess treats episodes within 12 hours of each other as one
+  release, so two-part episodes and whole seasons dropped at once don't read
+  as a daily show.
 - Tabs use a new solid `SegmentedTabs`, not `GlassSegmentedControl`: off
   iOS 26 the glass thumb drops the accent fill and the selected label loses
   its contrast.
 - The release schedule (daily, weekdays, set days, weekly, fortnightly,
-  monthly, or none) is guessed from the latest 20 publish dates and shown
+  monthly, or none) is guessed from the latest 20 releases and shown
   on the podcast's statistics and info pages.
 
 *(Shipped in v0.16.0.)*
