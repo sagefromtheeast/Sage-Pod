@@ -33,7 +33,10 @@ export function formatCleanup(raw: string): string {
 
 type Downloaded = { id: number; is_played: number; is_favorite: number; played_at: number | null };
 
-/** Deletable downloads under the rule, oldest played first. `now` and `played_at` are epoch ms. */
+/**
+ * Deletable downloads under the rule, oldest played first (an unknown play
+ * time sorts first). `now` and `played_at` are epoch ms.
+ */
 export function cleanupCandidates<T extends Downloaded>(
   rule: CleanupRule,
   downloaded: readonly T[],
@@ -48,7 +51,8 @@ export function cleanupCandidates<T extends Downloaded>(
         episode.is_played === 1 &&
         episode.is_favorite === 0 &&
         !queuedIds.has(episode.id) &&
-        (episode.played_at ?? 0) <= cutoff
+        // Under a time rule, an unknown play time never counts as long ago.
+        (rule.kind === 'after' ? episode.played_at !== null && episode.played_at <= cutoff : true)
     )
     .sort((a, b) => (a.played_at ?? 0) - (b.played_at ?? 0));
 }

@@ -4,13 +4,14 @@ import { useCallback, useMemo, useState } from 'react';
 import { Alert, Pressable, SectionList, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { runEpisodeAction } from '@/actions/runEpisodeAction';
+import { deleteDownloadByUser } from '@/actions/deleteDownloads';
 import { startDownloads } from '@/actions/startDownloads';
 import { listActiveDownloads, listDownloaded } from '@/db/episodes';
 import { setSetting, useSetting } from '@/db/settings';
 import type { EpisodeWithFeed } from '@/db/types';
 import { useQuery } from '@/db/useQuery';
 import { player } from '@/player';
-import { cancelDownload, deleteDownload, formatBytes } from '@/player/downloads';
+import { cancelDownload, formatBytes } from '@/player/downloads';
 import {
   DOWNLOAD_SORTS,
   matchesDownloadSearch,
@@ -89,7 +90,7 @@ export default function DownloadsScreen() {
             let deleted = 0;
             try {
               for (const episode of targets) {
-                await deleteDownload(episode.id);
+                await deleteDownloadByUser(episode.id);
                 deleted += 1;
               }
               showToast(`${deleted} download${deleted === 1 ? '' : 's'} deleted`);

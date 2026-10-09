@@ -123,6 +123,7 @@ describe('episode cleanup', () => {
     { id: 3, is_played: 1, is_favorite: 1, played_at: now - 90 * hour },
     { id: 4, is_played: 0, is_favorite: 0, played_at: null },
     { id: 5, is_played: 1, is_favorite: 0, played_at: now - 80 * hour },
+    { id: 6, is_played: 1, is_favorite: 0, played_at: null },
   ];
 
   it('parses rules, falling back to the queue rule', () => {
@@ -136,7 +137,8 @@ describe('episode cleanup', () => {
 
   it('picks played, unstarred, unqueued downloads, oldest first', () => {
     const ids = (list: { id: number }[]) => list.map((row) => row.id);
-    assert.deepEqual(ids(cleanupCandidates({ kind: 'queue' }, rows, new Set([1]), now)), [5, 2]);
+    assert.deepEqual(ids(cleanupCandidates({ kind: 'queue' }, rows, new Set([1]), now)), [6, 5, 2]);
+    // Played at an unknown time: not "a day ago", so kept.
     assert.deepEqual(ids(cleanupCandidates({ kind: 'after', hours: 24 }, rows, new Set(), now)), [5, 1]);
     assert.deepEqual(cleanupCandidates({ kind: 'never' }, rows, new Set(), now), []);
   });
