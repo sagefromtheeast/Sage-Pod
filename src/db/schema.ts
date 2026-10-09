@@ -4,7 +4,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
  * Bump this when adding a migration below. `migrate()` walks from the
  * database's stored `user_version` up to this number, applying each step once.
  */
-export const LATEST_SCHEMA_VERSION = 5;
+export const LATEST_SCHEMA_VERSION = 6;
 
 const V1 = `
 CREATE TABLE IF NOT EXISTS feeds (
@@ -127,7 +127,24 @@ ALTER TABLE feeds ADD COLUMN download_min_minutes INTEGER;
 UPDATE feeds SET auto_download_override = 1 WHERE auto_download = 1;
 `;
 
-const MIGRATIONS: string[] = [V1, V2, V3, V4, V5];
+// Phase 13: the download log (AntennaPod's), kept across restarts. No foreign
+// key: an entry outlives the episode or podcast it is about.
+const V6 = `
+CREATE TABLE IF NOT EXISTS download_log (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  episode_id    INTEGER NOT NULL,
+  episode_title TEXT    NOT NULL,
+  feed_title    TEXT,
+  url           TEXT    NOT NULL,
+  status        TEXT    NOT NULL,
+  error_code    TEXT,
+  error_message TEXT,
+  created_at    INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_download_log_created ON download_log (created_at);
+`;
+
+const MIGRATIONS: string[] = [V1, V2, V3, V4, V5, V6];
 
 /**
  * Applies any pending migrations.

@@ -3,6 +3,9 @@ import { Directory, File, Paths } from 'expo-file-system';
 import * as Network from 'expo-network';
 import { useEffect, useState } from 'react';
 
+import { Platform } from 'react-native';
+
+import { addDownloadLog, type NewDownloadLogEntry } from '@/db/downloadLog';
 import { getEpisode, listDownloaded, listPendingDownloads, setDownloadState } from '@/db/episodes';
 import { listQueue, onEpisodeQueued } from '@/db/queue';
 import { getSettings } from '@/db/settings';
@@ -16,11 +19,7 @@ import {
   KNOWN_AUDIO_EXTENSIONS,
   shouldAutoDownloadEpisode,
 } from './downloadRules';
-import {
-  classifyDownloadError,
-  type DownloadFailure,
-  type DownloadLogEntry,
-} from './types';
+import { classifyDownloadError } from './types';
 
 /**
  * Episode download manager.
@@ -32,22 +31,10 @@ import {
 const DOWNLOAD_DIRECTORY = 'episodes';
 /** Concurrent downloads. Phones throttle hard above a handful of transfers. */
 const MAX_CONCURRENT = 2;
-const MAX_LOGS = 50;
 
-const downloadLogs: DownloadLogEntry[] = [];
-
-/** Recent download history / error logs for user diagnostics. */
-export function getDownloadLogs(): DownloadLogEntry[] {
-  return [...downloadLogs];
-}
-
-export function clearDownloadLogs(): void {
-  downloadLogs.length = 0;
-}
-
-function recordLog(entry: DownloadLogEntry): void {
-  downloadLogs.unshift(entry);
-  if (downloadLogs.length > MAX_LOGS) downloadLogs.pop();
+/** Records a finished or failed download in the persisted log (best effort). */
+function recordLog(entry: NewDownloadLogEntry): void {
+  void addDownloadLog(entry).catch((error) => console.warn('[downloads] Could not write the download log:', error));
 }
 
 // Reactive queue auto-download (AntennaPod prefEnableAutoDlQueue)
@@ -154,6 +141,17 @@ export function getLocalEpisodePath(episode: EpisodeWithFeed): string | null {
  * Manual downloads only block when completely disconnected.
  * Automated background downloads respect the user's `downloadOnWifiOnly` setting.
  */
+/** True on a cellular connection while "Download on Wi-Fi only" is on: manual downloads ask first. */
+export async function onMeteredWhileWifiOnly(): Promise<boolean> {
+  if (!getSettings().downloadOnWifiOnly) return false;
+  try {
+    const state = await Network.getNetworkStateAsync();
+    return state.type === Network.NetworkStateType.CELLULAR;
+  } catch {
+    return false;
+  }
+}
+
 async function networkAllowsDownload(isAuto = false): Promise<boolean> {
   if (!isAuto) {
     try {
@@ -280,12 +278,13 @@ async function run(episodeId: number, isAuto: boolean, attempt = 0): Promise<voi
     }
 
     recordLog({
-      id: `${episodeId}-${Date.now()}`,
-      episodeId,
-      episodeTitle: episode.title,
+      episode_id: episodeId,
+      episode_title: episode.title,
+      feed_title: episode.feed_title,
       url: episode.media_url,
       status: 'success',
-      timestamp: Date.now(),
+      error_code: null,
+      error_message: null,
     });
 
     await setDownloadState(episodeId, 'done', file.uri, file.size ?? null);
@@ -321,14 +320,13 @@ async function run(episodeId: number, isAuto: boolean, attempt = 0): Promise<voi
 
     console.warn(`[downloads] Download failed for episode ${episodeId} (${failure.code}):`, error);
     recordLog({
-      id: `${episodeId}-${Date.now()}`,
-      episodeId,
-      episodeTitle: episode.title,
+      episode_id: episodeId,
+      episode_title: episode.title,
+      feed_title: episode.feed_title,
       url: episode.media_url,
       status: 'failed',
-      errorCode: failure.code,
-      errorMessage: failure.message,
-      timestamp: Date.now(),
+      error_code: failure.code,
+      error_message: failure.message,
     });
     await setDownloadState(episodeId, 'error');
   } finally {
@@ -443,6 +441,9 @@ export async function pruneOldEpisodesForStorage(episodesNeeded = 1): Promise<nu
 
 /** Run auto-cleanup, stale reconciliation, and auto-downloads (called from app startup). */
 export async function manageAutoDownloads(): Promise<void> {
+  // Downloads are native-only: the web build (the screenshot harness) has no
+  // files, and reconciling would wipe its seeded downloads.
+  if (Platform.OS === 'web') return;
   const settings = getSettings();
 
   // 1. Reconcile stale downloads (disk vs SQLite, AntennaPod #8428)

@@ -5,6 +5,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { useCallback, useMemo, useState } from 'react';
 import { Alert, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 
+import { startDownloads } from '@/actions/startDownloads';
 import { getEpisode, markPlayed, toggleFavorite } from '@/db/episodes';
 import { dequeue, enqueue, isQueued } from '@/db/queue';
 import type { EpisodeWithFeed } from '@/db/types';
@@ -14,7 +15,6 @@ import {
   cancelDownload,
   deleteDownload,
   formatBytes,
-  queueDownload,
   useDownloadProgress,
 } from '@/player/downloads';
 import { Artwork } from '@/ui/Artwork';
@@ -177,7 +177,7 @@ export function EpisodeDetails({ episodeId }: { episodeId: number }) {
             onPress={() => {
               if (downloaded) void deleteDownload(episode.id);
               else if (downloading) void cancelDownload(episode.id);
-              else void queueDownload(episode.id);
+              else void startDownloads([episode.id]);
             }}
           />
           <IconAction

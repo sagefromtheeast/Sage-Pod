@@ -391,6 +391,15 @@ export async function setDownloadState(
 }
 
 /** Episodes queued for download, oldest queued first. */
+/** Downloads waiting, running or failed (the Downloads screen's top section), oldest first. */
+export async function listActiveDownloads(): Promise<EpisodeWithFeed[]> {
+  return getDb().getAllAsync<EpisodeWithFeed>(
+    `${EPISODE_WITH_FEED}
+      WHERE e.download_state IN ('queued', 'downloading', 'error')
+      ORDER BY e.download_state = 'error', e.published_at ASC`
+  );
+}
+
 export async function listPendingDownloads(): Promise<EpisodeWithFeed[]> {
   return getDb().getAllAsync<EpisodeWithFeed>(
     `${EPISODE_WITH_FEED}

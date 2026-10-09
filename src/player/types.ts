@@ -20,17 +20,6 @@ export interface DownloadFailure {
   isRetryable: boolean;
 }
 
-export interface DownloadLogEntry {
-  id: string;
-  episodeId: number;
-  episodeTitle: string;
-  url: string;
-  status: 'success' | 'failed';
-  errorCode?: DownloadErrorCode;
-  errorMessage?: string;
-  timestamp: number;
-}
-
 /** Helper for compile-time exhaustive switch checks. */
 export function assertNever(x: never): never {
   throw new Error(`Unhandled download state: ${JSON.stringify(x)}`);
