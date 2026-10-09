@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -35,6 +35,8 @@ export default function AddFeedScreen() {
   const theme = useTheme();
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  // A podcast link from another app (itpc://, feed://…) arrives as ?url=.
+  const { url: linked } = useLocalSearchParams<{ url?: string }>();
 
   const [url, setUrl] = useState('');
   const [busy, setBusy] = useState(false);
@@ -44,13 +46,22 @@ export default function AddFeedScreen() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
+  // A linked feed opens straight away, as a tap on Subscribe would.
+  useEffect(() => {
+    if (!linked) return;
+    setUrl(linked);
+    void submit(linked);
+    // Only when a link arrives, not as the form changes.
+  }, [linked]);
+
   // Prefill from the clipboard when it holds a web address.
   useEffect(() => {
+    if (linked) return;
     let current = true;
     Clipboard.getStringAsync()
       .then((text) => {
         const candidate = text.trim();
-        if (current && /^(?:https?|feed|itpc|podcast):\/\/\S+$/i.test(candidate)) {
+        if (current && /^(?:https?|feed|itpc|pcast|podcast):\/\/\S+$/i.test(candidate)) {
           setUrl((value) => value || candidate);
         }
       })
@@ -58,7 +69,7 @@ export default function AddFeedScreen() {
     return () => {
       current = false;
     };
-  }, []);
+  }, [linked]);
 
   async function submit(address = url) {
     let value = address.trim();
@@ -113,7 +124,8 @@ export default function AddFeedScreen() {
         <View style={styles.header}>
           <Text style={[styles.title, { color: theme.text }]}>Add by RSS URL</Text>
           <Pressable
-            onPress={() => router.back()}
+            // Opened from a link, there may be nothing behind it to go back to.
+            onPress={() => (router.canGoBack() ? router.back() : router.replace('/'))}
             hitSlop={10}
             accessibilityRole="button"
             accessibilityLabel="Close"
