@@ -31,6 +31,7 @@ Format: context → decision → consequences → when to revisit.
 | D-023 | Backup: save to a picked folder, restore through SQLite's backup API | Accepted |
 | D-024 | Phase 17a: Expo's own native modules, no patched code | Accepted |
 | D-025 | Phase 17b: patch expo-audio with patch-package, build it from source | Accepted |
+| D-026 | Phase 18a: Android widget with react-native-android-widget, tile through the media session, no iOS widget yet | Accepted |
 
 ---
 
@@ -538,3 +539,46 @@ checked only by the EAS build.
 gains custom lock-screen commands upstream.
 
 *(Ships as v0.19.0. Needs a device build to try.)*
+
+## D-026 — Phase 18a: home-screen widget and Quick Settings tile
+
+**Context.** AntennaPod has a player widget and a Quick Settings tile, both
+Android. Expo's own `expo-widgets` is iOS only, and its buttons change the
+widget's own data rather than calling into the app, so they can't play or
+pause. The tile needs a native `TileService`.
+
+**Decision (lead developer).**
+- **Widget: `react-native-android-widget`** (0.22.1, pinned; config
+  plugin). The widget is drawn from React components in
+  `src/widget/NowPlayingWidget.tsx` using Sage Pod's palettes (light and
+  dark follow the system). Its buttons run a JavaScript task handler in the
+  app's own runtime (`src/widget/index.ts`, registered at bundle load), so
+  skip back, play/pause and skip forward drive the same `player` as the
+  screens. If the app isn't running, Android starts its runtime without a
+  screen, the player restores the last episode, then acts. `player.init()`
+  is now once per runtime so the screens don't restore it twice.
+- **Redraws** happen only on a visible change (`widgetKey`): episode, play
+  state, artwork, or the minutes left, so about once a minute while
+  playing. Artwork must be http(s) for the launcher to fetch it; otherwise
+  the app icon.
+- **Tile: a local config plugin** (`plugins/playback-tile`) adds a Kotlin
+  `TileService` that connects a Media3 `MediaController` to expo-audio's
+  `AudioControlsService` session and plays or pauses, as the lock screen
+  does; the player already follows those changes. With no session (nothing
+  loaded since the app started) a tap opens the app. Adds
+  `androidx.media3:media3-session` to the app module at expo-audio's
+  version. expo-audio's `onBind` always returned its private binder, so no
+  MediaController could connect; the patch (D-025) now returns Media3's
+  session binder when the bind asks for it.
+- **No iOS widget for now**: expo-widgets could show what's playing, but
+  not control it, and an app extension adds signing work to the one device
+  build. iOS has Now Playing on the lock screen and in Control Center.
+
+**Consequences.** Both run only in a device build. The tile's Kotlin is
+compiled locally (see HANDOVER); the widget's look is checked on the
+device, since web screenshots can't render it.
+
+**Revisit** if expo-widgets gains app intents (then an iOS widget), or if
+the widget library falls behind an Expo SDK.
+
+*(Ships as v0.20.0.)*
