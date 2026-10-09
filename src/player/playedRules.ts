@@ -8,9 +8,13 @@
 /** Offered thresholds in seconds (AntennaPod's 0–600 range; 0 turns it off). */
 export const SMART_MARK_OPTIONS = [0, 15, 30, 60, 120, 300, 600] as const;
 
-/** Within the last `smartMarkSeconds` of a known length. */
+/**
+ * Within the last `smartMarkSeconds` of a known length. An episode no longer
+ * than the threshold never qualifies, or pausing a short clip anywhere would
+ * mark it played.
+ */
 export function almostEnded(position: number, duration: number, smartMarkSeconds: number): boolean {
-  return duration > 0 && smartMarkSeconds > 0 && position >= duration - smartMarkSeconds;
+  return smartMarkSeconds > 0 && duration > smartMarkSeconds && position >= duration - smartMarkSeconds;
 }
 
 /** What skipping the playing episode does to it. */

@@ -96,6 +96,8 @@ describe('played rules', () => {
     assert.equal(almostEnded(960, 1000, 30), false);
     assert.equal(almostEnded(999, 1000, 0), false);
     assert.equal(almostEnded(10, 0, 30), false);
+    // A clip no longer than the threshold never counts: pausing it anywhere would.
+    assert.equal(almostEnded(10, 180, 300), false);
   });
 
   it('keeps a skipped episode unless told not to', () => {
