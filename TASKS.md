@@ -135,8 +135,14 @@ destructive.
 - [ ] Download only when charging: needs expo-battery (native), moved to Phase 17
 - [ ] On device: swipe each list's pairs; the streaming prompt on mobile data; skipping near the end marks played
 
-## Phase 15 — Statistics
-- [ ] Subscriptions / Years / Downloads tabs; filter; reset; per-feed detail + release guess
+## Phase 15 — Statistics ✅
+- [x] Subscriptions / Years / Downloads tabs (D-022), charts drawn with react-native-svg
+- [x] Date range filter and "include marked played", saved as settings
+- [x] Reset statistics with a confirmation (counts from the reset; history kept for Home)
+- [x] Per-podcast statistics with a release schedule guess, also on the podcast info page
+- [x] Tests: grouping by podcast, month and year; ranges; donut slices; release schedule
+- [x] Shots: stats, stats-years, stats-downloads, stats-range, stats-marked, stats-feed
+- [ ] On device: listen for a while and check the totals; reset and check they read zero
 
 ## Phase 16 — Backup
 - [ ] OPML/DB/HTML/favourites export + DB import; OPML import progress

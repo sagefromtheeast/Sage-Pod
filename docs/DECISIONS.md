@@ -344,3 +344,33 @@ when charging".
   needs `expo-battery`, a new native module, so it belongs with Phase 17.
 
 *(Shipped in v0.15.0.)*
+
+## D-022 — Statistics: three tabs, svg charts, a reset that keeps history
+
+**Context.** Phase 15 asks for AntennaPod's Statistics: Subscriptions,
+Years and Downloads tabs, a date filter with "include marked played",
+Reset statistics, and a per-podcast view with a release schedule guess. The
+plan said to stop and ask before adding a charting library.
+
+**Decision.**
+- No charting library. The donut and bar charts are a few `react-native-svg`
+  paths (already installed); the geometry and every total come from pure
+  helpers in `src/stats/` with tests. SQL returns per-podcast-per-month rows.
+- Slices use the accent at falling strengths, with "other" in the faint text
+  colour, so the charts stay in Sage Pod's palette. Six slices at most.
+- The date filter is a short list of ranges (all time, last 30 days, last 12
+  months, this year, last year) rather than AntennaPod's month pickers. It
+  and "include marked played" are saved as settings.
+- "Include marked played" adds the part of each played episode that was not
+  heard in the app, dated the day it was marked played.
+- Reset statistics records the time and counts from then on. It deletes only
+  the reset day's history rows, so the totals read zero at once; older
+  history stays because Home's "Check your classics" reads it.
+- Tabs use a new solid `SegmentedTabs`, not `GlassSegmentedControl`: off
+  iOS 26 the glass thumb drops the accent fill and the selected label loses
+  its contrast.
+- The release schedule (daily, weekdays, set days, weekly, fortnightly,
+  monthly, or none) is guessed from the latest 20 publish dates and shown
+  on the podcast's statistics and info pages.
+
+*(Shipped in v0.16.0.)*

@@ -240,15 +240,18 @@ releasing, so a red check on `main` blocks the release.
   Library (display, sort, filter, tags, archive, multi-select, Episodes
   screen; v0.13.0), and Downloads (in progress, sort, search, delete
   played, a stored download log; v0.14.0), and Settings (sub-pages, swipe
-  actions per list, smart mark as played, cleanup, mobile data; v0.15.0).
+  actions per list, smart mark as played, cleanup, mobile data; v0.15.0),
+  and Statistics (Subscriptions / Years / Downloads tabs, filter, reset,
+  per-podcast numbers, release schedule guess; v0.16.0).
   Earlier: EAS device builds, stable Surprise Me, tablet layouts.
-- **Next**: Phase 15, Statistics, then the remaining screen-by-screen
-  phases. Schema is at version 6; feeds.state can be 'subscribed',
+- **Next**: Phase 16, Backup and import/export, then Phase 17 (native,
+  needs an EAS build). Schema is at version 6; feeds.state can be 'subscribed',
   'preview' or 'archived'.
   Building blocks to reuse: `openEpisodeActions`, `runEpisodeAction`,
   `showToast`, `OverflowMenu`, `BottomSheet` / `ActionSheet`,
   `useEpisodeSelection` + `SelectionBar`, `MiniPlayerDock`, `DraggableList`, `NoMatches`, `TextPromptSheet`, `askToUnsubscribe`,
-  `SwipeableEpisodeRow` (pass a `screen`), `SettingsLink` / `SettingsChoice` (see
+  `SwipeableEpisodeRow` (pass a `screen`), `SettingsLink` / `SettingsChoice`,
+  `SegmentedTabs`, `DonutChart` / `BarChart` (`src/ui/stats/charts.tsx`) (see
   `src/actions/` and `src/ui/`). New settings go in `src/db/settingsSchema.ts`;
   multiple-choice ones also list their choices in `src/settings/options.ts`.
 - **Device build**: one EAS build at the end (D-011).
