@@ -38,7 +38,7 @@ import { useTheme } from '@/ui/useTheme';
 
 type Shortcut = {
   label: string;
-  icon: 'heart' | 'arrow-down-circle' | 'time' | 'albums' | 'bar-chart';
+  icon: 'heart' | 'arrow-down-circle' | 'time' | 'albums';
   href: Href;
 };
 
@@ -47,7 +47,6 @@ const SHORTCUTS: Shortcut[] = [
   { label: 'Downloads', icon: 'arrow-down-circle', href: '/list/downloads' },
   { label: 'History', icon: 'time', href: '/list/history' },
   { label: 'Episodes', icon: 'albums', href: '/episodes' as Href },
-  { label: 'Stats', icon: 'bar-chart', href: '/stats' as Href },
 ];
 
 type Sheet = 'display' | 'sort' | 'filter' | null;
@@ -139,6 +138,7 @@ export default function LibraryScreen() {
                   { key: 'filter', label: 'Filter…', icon: 'funnel-outline', onPress: () => setSheet('filter') },
                   { key: 'refresh', label: 'Refresh podcasts', icon: 'refresh', onPress: () => void refresh() },
                   { key: 'archive', label: 'Archived podcasts', icon: 'archive-outline', onPress: () => router.push('/archive' as Href) },
+                  { key: 'stats', label: 'Statistics', icon: 'bar-chart-outline', onPress: () => router.push('/stats' as Href) },
                   { key: 'settings', label: 'Settings', icon: 'settings-outline', onPress: () => router.push('/settings') },
                 ]}
               />
