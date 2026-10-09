@@ -28,6 +28,7 @@ import {
 } from '@/db/episodes';
 import { deleteFeed, getFeed, setFeedFlags, setFeedViewPrefs } from '@/db/feeds';
 import { enqueue } from '@/db/queue';
+import { useSetting } from '@/db/settings';
 import type { EpisodeWithFeed, FeedWithCounts } from '@/db/types';
 import { useQuery } from '@/db/useQuery';
 import { describeFilter, isFiltered, parseEpisodeFilter } from '@/feed/episodeFilter';
@@ -73,7 +74,9 @@ export default function FeedScreen() {
   // settings, and a Subscribe button instead.
   const archived = feed?.state === 'archived';
   const preview = feed?.state === 'preview' || archived;
-  const sort = parseEpisodeSort(feed?.episode_sort);
+  // The podcast's saved order, else Settings › User interface › default order.
+  const defaultSort = useSetting('defaultEpisodeSort');
+  const sort = parseEpisodeSort(feed?.episode_sort || defaultSort);
   const filterRaw = feed?.episode_filter ?? null;
   const filter = useMemo(() => parseEpisodeFilter(filterRaw), [filterRaw]);
   const filtered = isFiltered(filter);

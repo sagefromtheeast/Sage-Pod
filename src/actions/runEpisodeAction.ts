@@ -12,6 +12,7 @@ import {
 } from '@/db/episodes';
 import { dequeue, enqueueFront, enqueueMany, getQueueSlots, moveToBottom, restoreQueueSlots } from '@/db/queue';
 import { isQueuedNow } from '@/db/queueMembership';
+import { getSettings } from '@/db/settings';
 import type { EpisodeWithFeed } from '@/db/types';
 import { player } from '@/player';
 import { cancelDownload, deleteDownload } from '@/player/downloads';
@@ -177,6 +178,8 @@ export async function runEpisodeAction(
                   else if (fresh?.download_state === 'queued' || fresh?.download_state === 'downloading') {
                     await cancelDownload(id);
                   }
+                  // Settings › Downloads › "Delete removes from queue".
+                  if (getSettings().deleteRemovesFromQueue && isQueuedNow(id)) await dequeue(id);
                 }
               })(),
           },
@@ -185,9 +188,15 @@ export async function runEpisodeAction(
       return;
 
     case 'addToFavorites':
-    case 'removeFromFavorites':
-      await setFavoriteMany(ids(targets), action === 'addToFavorites');
+    case 'removeFromFavorites': {
+      const adding = action === 'addToFavorites';
+      await setFavoriteMany(ids(targets), adding);
+      showToast(
+        adding ? count(n, 'Added to favourites', 'added to favourites') : count(n, 'Removed from favourites', 'removed from favourites'),
+        () => setFavoriteMany(ids(targets), !adding)
+      );
       return;
+    }
 
     case 'resetPosition': {
       const saved = await getPlaybackSnapshots(ids(targets));

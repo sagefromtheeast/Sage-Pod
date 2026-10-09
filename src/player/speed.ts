@@ -43,3 +43,9 @@ export function togglePreset(presets: readonly number[], speed: number): number[
   const next = presets.includes(value) ? presets.filter((preset) => preset !== value) : [...presets, value];
   return next.sort((a, b) => a - b);
 }
+
+/** A length as listening time at this speed ("Adjust times to speed"); unchanged when off. */
+export function adjustForSpeed(seconds: number, rate: number, enabled: boolean): number {
+  if (!enabled || !Number.isFinite(rate) || rate <= 0) return seconds;
+  return seconds / rate;
+}

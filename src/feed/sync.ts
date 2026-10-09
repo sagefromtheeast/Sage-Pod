@@ -4,7 +4,7 @@ import { getFeedByUrl, listFeedsToRefresh, subscribeFeed } from '@/db/feeds';
 import { getSettings } from '@/db/settings';
 import type { FeedRow } from '@/db/types';
 import { enqueueMany } from '@/db/queue';
-import { queueDownload } from '@/player/downloads';
+import { onCellular, queueDownload } from '@/player/downloads';
 
 import {
   boolOverride,
@@ -328,9 +328,12 @@ export async function refreshAllFeeds(
 ): Promise<RefreshAllResult> {
   const { force = false, concurrency = 4, onProgress } = options;
   const staleAfterMs = force ? 0 : getSettings().refreshIntervalMinutes * 60_000;
+  const result: RefreshAllResult = { refreshed: 0, newEpisodes: 0, failures: [] };
+  // Automatic refreshes respect "Refresh over mobile data"; one the listener
+  // asks for (force) always runs.
+  if (!force && !getSettings().mobileRefresh && (await onCellular())) return result;
 
   const feeds = await listFeedsToRefresh(staleAfterMs);
-  const result: RefreshAllResult = { refreshed: 0, newEpisodes: 0, failures: [] };
   if (feeds.length === 0) return result;
 
   let cursor = 0;

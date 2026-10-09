@@ -229,7 +229,7 @@ export default function PlayerScreen() {
 
         {error ? <Text style={[styles.error, { color: theme.danger }]}>{error}</Text> : null}
 
-        <SeekBar position={position} duration={duration} chapters={chapters} onSeek={seek} onScrub={setScrub} />
+        <SeekBar position={position} duration={duration} rate={rate} chapters={chapters} onSeek={seek} onScrub={setScrub} />
 
         <View style={styles.transport}>
           <Pressable

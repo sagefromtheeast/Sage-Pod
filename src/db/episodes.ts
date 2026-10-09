@@ -5,12 +5,6 @@ import { searchWords } from './search';
 import { filterClauses, type EpisodeFilter } from '@/feed/episodeFilter';
 import type { DownloadState, EpisodeRow, EpisodeWithFeed } from './types';
 
-/**
- * An episode counts as finished once the listener is within this many seconds
- * of the end — most podcasts close with credits nobody sits through.
- */
-export const COMPLETION_TAIL_SECONDS = 20;
-
 /** For queries on `episodes` alone: the episode's podcast is a subscription. */
 const SUBSCRIBED_FEED = "feed_id IN (SELECT id FROM feeds WHERE state = 'subscribed')";
 

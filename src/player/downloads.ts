@@ -19,6 +19,7 @@ import {
   KNOWN_AUDIO_EXTENSIONS,
   shouldAutoDownloadEpisode,
 } from './downloadRules';
+import { cleanupCandidates, parseCleanup } from './cleanup';
 import { classifyDownloadError } from './types';
 
 /**
@@ -136,15 +137,20 @@ export function getLocalEpisodePath(episode: EpisodeWithFeed): string | null {
   return null;
 }
 
-/** True on a cellular connection while "Download on Wi-Fi only" is on: manual downloads ask first. */
-export async function onMeteredWhileWifiOnly(): Promise<boolean> {
-  if (!getSettings().downloadOnWifiOnly) return false;
+/** True on a cellular connection; false when it can't be told (simulators, web). */
+export async function onCellular(): Promise<boolean> {
   try {
     const state = await Network.getNetworkStateAsync();
     return state.type === Network.NetworkStateType.CELLULAR;
   } catch {
     return false;
   }
+}
+
+/** True on a cellular connection while "Download on Wi-Fi only" is on: manual downloads ask first. */
+export async function onMeteredWhileWifiOnly(): Promise<boolean> {
+  if (!getSettings().downloadOnWifiOnly) return false;
+  return onCellular();
 }
 
 /**
@@ -426,21 +432,15 @@ export async function reconcileStaleDownloads(): Promise<number> {
 }
 
 /**
- * Prunes played, unstarred episodes not currently in the queue
- * to make room for new downloads when storage cap is reached.
- * Implements AntennaPod's APCleanupAlgorithm.
+ * Deletes played downloads to make room for new ones when the storage limit
+ * is reached, choosing them by Settings › Downloads › Episode cleanup
+ * (src/player/cleanup.ts). "Never" frees nothing.
  */
 export async function pruneOldEpisodesForStorage(episodesNeeded = 1): Promise<number> {
   if (episodesNeeded <= 0) return 0;
-
-  const downloaded = await listDownloaded();
-  const queue = await listQueue();
-  const queuedIds = new Set(queue.map((q) => q.id));
-
-  // Candidates for eviction: played, not favorited, not in queue
-  const candidates = downloaded
-    .filter((ep) => ep.is_played === 1 && ep.is_favorite === 0 && !queuedIds.has(ep.id))
-    .sort((a, b) => (a.played_at ?? 0) - (b.played_at ?? 0)); // Oldest played first
+  const rule = parseCleanup(getSettings().episodeCleanup);
+  const queuedIds = new Set((await listQueue()).map((q) => q.id));
+  const candidates = cleanupCandidates(rule, await listDownloaded(), queuedIds, Date.now());
 
   let pruned = 0;
   for (const candidate of candidates) {
@@ -472,6 +472,15 @@ export async function manageAutoDownloads(): Promise<void> {
   for (const ep of await listDownloaded()) {
     const autoDelete = resolveOverride(boolOverride(ep.feed_auto_delete), settings.deleteAfterFinished).value;
     if (ep.is_played === 1 && autoDelete) await deleteDownload(ep.id);
+  }
+
+  // 3b. "N hours after played" cleanup deletes whether or not room is needed.
+  const rule = parseCleanup(settings.episodeCleanup);
+  if (rule.kind === 'after') {
+    const queuedIds = new Set((await listQueue()).map((q) => q.id));
+    for (const ep of cleanupCandidates(rule, await listDownloaded(), queuedIds, Date.now())) {
+      await deleteDownload(ep.id);
+    }
   }
 
   // 4. Enforce storage cap if configured (AntennaPod #5236)

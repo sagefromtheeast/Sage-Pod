@@ -9,7 +9,6 @@ import * as Haptics from 'expo-haptics';
 import { Accelerometer } from 'expo-sensors';
 
 import {
-  COMPLETION_TAIL_SECONDS,
   getEpisode,
   markPlayed,
   savePosition,
@@ -19,6 +18,8 @@ import { dequeue, enqueueFront, nextInQueue } from '@/db/queue';
 import { deleteDownload, getLocalEpisodePath } from '@/player/downloads';
 import { getMeta, getSettings, setMeta, setSetting } from '@/db/settings';
 import type { EpisodeWithFeed } from '@/db/types';
+import { confirmMeteredStreaming } from '@/player/meteredGuard';
+import { afterSkip, almostEnded } from '@/player/playedRules';
 import { positionAfterPause } from '@/player/resumeRewind';
 import { clampSpeed } from '@/player/speed';
 import { boolOverride, resolveOverride, shouldSkipEnding, volumeFor } from '@/feed/feedPrefs';
@@ -250,6 +251,7 @@ class PlayerService {
 
   /** Plays an episode, moving it to the front of the queue first. */
   async playEpisode(episode: EpisodeWithFeed): Promise<void> {
+    if (!(await confirmMeteredStreaming(episode))) return;
     await enqueueFront(episode.id);
     await this.load(episode, { autoPlay: true });
   }
@@ -523,10 +525,26 @@ class PlayerService {
     }
   }
 
-  /** Skips the current episode without marking it played. */
+  /**
+   * Skips to the next queued episode. The skipped one stays unplayed and
+   * queued, unless it was nearly over ("Smart mark as played") or "Keep
+   * skipped episodes" is off — then it is marked played and may leave the queue.
+   */
   async skipToNext(): Promise<void> {
     const current = this.state.episode;
     const next = await nextInQueue(current?.id ?? null);
+    if (current) {
+      const settings = getSettings();
+      const outcome = afterSkip({
+        position: this.state.position,
+        duration: this.state.duration,
+        smartMarkSeconds: settings.smartMarkSeconds,
+        keepSkipped: settings.keepSkippedEpisodes,
+        removeFinishedFromQueue: settings.removeFromQueueWhenFinished,
+      });
+      if (outcome.markPlayed) await markPlayed(current.id, true);
+      if (outcome.dequeue) await dequeue(current.id);
+    }
     if (next) {
       await this.load(next, { autoPlay: true });
     } else {
@@ -573,9 +591,9 @@ class PlayerService {
       await addListenedSeconds(episode.feed_id, episode.id, listenedSeconds);
     }
 
-    // Treat "almost the end" as finished so the episode does not linger in
-    // Continue Listening with 8 seconds of outro left.
-    if (duration > 0 && position >= duration - COMPLETION_TAIL_SECONDS) {
+    // "Smart mark as played": the last few seconds count as finished, so the
+    // episode does not linger in Continue Listening with only an outro left.
+    if (almostEnded(position, duration, getSettings().smartMarkSeconds)) {
       await markPlayed(episode.id, true);
       return;
     }
