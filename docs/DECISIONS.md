@@ -24,6 +24,7 @@ Format: context → decision → consequences → when to revisit.
 | D-016 | Previews: stored, kept out of the library, cleared after a day | Accepted |
 | D-017 | Per-podcast settings: overrides fall back to global; feed passwords wait for secure storage | Accepted |
 | D-018 | Search: screens keep their own search, with a way out to the library search; online search merges Apple and fyyd | Accepted |
+| D-019 | Library: options in ⋯, tags in the chip row, archive on unsubscribe, Statistics and Settings in the menu | Accepted |
 
 ---
 
@@ -273,3 +274,20 @@ results and left out of the charts. A website address is searched for feed
 links. A feed that needs a password gets an explanation, not a prompt: putting
 the password in the stored address was rejected for the same reason as in
 D-017. *(Shipped in v0.12.0.)*
+
+## D-019 — Library: options in the menu, tags in the chip row, archive
+
+**Context.** AntennaPod's Subscriptions screen has display, sort and filter
+options, tag folders, multi-select and an archive. Sage Pod's Library had
+sort chips, a layout toggle and four shortcuts (Favourites, Downloads,
+History, Stats). The plan asked whether Settings should join the shortcuts.
+
+**Decision.** Display, Sort and Filter live in the header's ⋯ and are saved.
+The chip row now holds tags (All plus each tag), because tags change what is
+shown, and the sort is a set-and-forget choice. The shortcuts become
+Favourites, Downloads, History and Episodes; four whole labels fit on a
+phone, five didn't. Statistics and Settings move into ⋯, as on Home, so no
+Settings shortcut. Unsubscribing asks Archive or Delete. An archived
+podcast keeps its episodes, progress and downloads, isn't refreshed, and
+stays out of the Library and the Inbox; its page offers Subscribe again or
+Delete. *(Shipped in v0.13.0.)*

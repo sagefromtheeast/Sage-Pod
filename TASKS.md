@@ -105,8 +105,15 @@ destructive.
 - [x] Shots: discover, discover-search, discover-country, search, search-select, add-feed, opml-import
 - [ ] On device: the system file picker for .opml files on Android and iOS; clipboard prefill (iOS shows a paste prompt)
 
-## Phase 12 — Library
-- [ ] Display ⋯ (columns, titles, counter, sort); filter; tags; archive; error badge; multi-select; "+"; Episodes screen
+## Phase 12 — Library ✅
+- [x] Header: Search, Add, ⋯ (Display, Sort, Filter, Refresh, Archived podcasts, Statistics, Settings) (D-019)
+- [x] Display: grid or list, columns (Auto, 2–5), titles, the number on each podcast (unplayed, inbox, downloaded, downloaded and unplayed, none); saved sort including most played; saved filter
+- [x] Tag row (replaces the sort chips); long-press a tag to rename or delete it everywhere; refresh-failed mark on tiles
+- [x] Long-press multi-select: keep updated, auto-download, auto-delete, speed, add tag, remove from inbox, unsubscribe
+- [x] Unsubscribe asks Archive or Delete; Archived podcasts screen; archived podcast page with Subscribe again and Delete
+- [x] Episodes screen (shortcut): every subscribed episode, saved filter and order, multi-select, paging
+- [x] Shots: library, library-display, library-tag, library-select, archive, feed-archived, episodes, episodes-filter
+- [ ] On device: long-press on tiles vs scrolling; tag chip long-press
 
 ## Phase 13 — Downloads
 - [ ] Running + completed; saved sort; search; delete played (confirm); multi-select; persisted download log with retry; Wi-Fi rule for manual downloads

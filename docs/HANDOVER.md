@@ -233,13 +233,16 @@ releasing, so a red check on `main` blocks the release.
   per-podcast settings (rename, tags, skip ending, volume reduction,
   new-episode action, auto-download rules, auto-delete; v0.11.0), and
   search and discovery (fyyd, chart country, subscribed marks, feed
-  autodiscovery, OPML file import with a checklist; v0.12.0).
+  autodiscovery, OPML file import with a checklist; v0.12.0), and the
+  Library (display, sort, filter, tags, archive, multi-select, Episodes
+  screen; v0.13.0).
   Earlier: EAS device builds, stable Surprise Me, tablet layouts.
-- **Next**: Phase 12, the Library, then the remaining screen-by-screen
-  phases. Schema is at version 5.
+- **Next**: Phase 13, Downloads, then the remaining screen-by-screen
+  phases. Schema is at version 5; feeds.state can be 'subscribed',
+  'preview' or 'archived'.
   Building blocks to reuse: `openEpisodeActions`, `runEpisodeAction`,
   `showToast`, `OverflowMenu`, `BottomSheet` / `ActionSheet`,
-  `useEpisodeSelection` + `SelectionBar`, `MiniPlayerDock`, `DraggableList`, `NoMatches` (see
+  `useEpisodeSelection` + `SelectionBar`, `MiniPlayerDock`, `DraggableList`, `NoMatches`, `TextPromptSheet`, `askToUnsubscribe` (see
   `src/actions/` and `src/ui/`).
 - **Device build**: one EAS build at the end (D-011).
 - **The owner's preferences** (learned): keep the existing design; match
