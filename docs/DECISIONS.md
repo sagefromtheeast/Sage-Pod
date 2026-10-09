@@ -382,3 +382,43 @@ plan said to stop and ask before adding a charting library.
   on the podcast's statistics and info pages.
 
 *(Shipped in v0.16.0.)*
+
+## D-023 — Backup: save to a picked folder, restore through SQLite's backup API
+
+**Context.** Phase 16 asks for AntennaPod's Import/Export: OPML, HTML and
+favourites exports, and database export and import. The plan said to stop
+and ask before adding `expo-sharing` (a native module, so a new build) and
+before any import that overwrites the live database.
+
+**Decision.**
+- No `expo-sharing`. Every export asks for a folder with the system picker
+  (`Directory.pickDirectoryAsync`, already in expo-file-system) and writes
+  the file there, which is also how AntennaPod saves its exports. Downloads,
+  a cloud drive or a USB stick all work. Copy OPML stays for the clipboard.
+- Files are named like AntennaPod's, dated by the local day:
+  `sagepod-feeds-2026-10-09.opml`, `sagepod-feeds-….html`,
+  `sagepod-favourites-….html`, `sagepod-backup-….db`.
+- Database export uses SQLite's backup API into a scratch database, switched
+  out of WAL mode so one file carries everything; a raw file copy could miss
+  writes still in the WAL.
+- Database import is allowed to replace the live data, with safeguards: the
+  picked file is staged beside the app's database and checked first (a Sage
+  Pod database, `quick_check` ok, not from a newer schema), then migrated on
+  that scratch copy and checked to have every table and column the app's own
+  database has. The warning says how many podcasts and episodes it holds and
+  what it replaces, and suggests exporting first. A restore waits until no
+  feed refresh or download is running, since their writes would land in the
+  restored data. On confirmation the player saves and lets go of its
+  episode, the backup API copies the file over in one step (nothing changes
+  if it fails), and the app restarts with `reloadAppAsync` (in the installed
+  `expo` package).
+- No hidden "before restore" copy: there would be no way to use it. The
+  warning points to Export database instead.
+- Audio files are not in the backup. On the same phone the restored episodes
+  find their files; elsewhere the startup reconciliation marks them not
+  downloaded.
+- An AntennaPod database can't be imported (different tables); the message
+  points to OPML.
+- OPML import progress already existed (the checklist screen, Phase 11).
+
+*(Shipped in v0.17.0.)*

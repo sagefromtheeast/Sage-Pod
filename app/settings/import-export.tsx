@@ -1,53 +1,87 @@
 import * as Clipboard from 'expo-clipboard';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Alert } from 'react-native';
 
+import type { ExportKind } from '@/backup/formats';
 import { exportOpml } from '@/feed/opml';
+import { exportToFolder, importDatabase } from '@/ui/backupActions';
 import { importOpmlFile, importOpmlFromClipboard } from '@/ui/opmlImport';
 import { SettingsNote, SettingsScreen } from '@/ui/settings/SettingsScreen';
 import { SettingsAction, SettingsSection } from '@/ui/SettingsRow';
+import { showToast } from '@/ui/UndoToast';
 
-/** AntennaPod's Settings › Import/Export. File export and database backup come in Phase 16. */
+type Busy = ExportKind | 'clipboard' | 'restore' | null;
+
+/** AntennaPod's Settings › Import/Export: OPML, HTML and favourites exports, and database backup and restore. */
 export default function ImportExportSettings() {
   const router = useRouter();
-  const [busy, setBusy] = useState(false);
+  const [busy, setBusy] = useState<Busy>(null);
 
-  const copyOpml = async () => {
-    setBusy(true);
+  const run = async (what: Exclude<Busy, null>, task: () => Promise<unknown>) => {
+    setBusy(what);
     try {
-      await Clipboard.setStringAsync(await exportOpml());
-      Alert.alert(
-        'Subscriptions copied',
-        'Your OPML subscription list is on the clipboard — paste it into a file or another podcast app.'
-      );
+      await task();
     } finally {
-      setBusy(false);
+      setBusy(null);
     }
   };
 
+  const copyOpml = async () => {
+    await Clipboard.setStringAsync(await exportOpml());
+    showToast('Subscriptions copied as OPML');
+  };
+
+  const exportRow = (kind: ExportKind, label: string, description: string) => (
+    <SettingsAction
+      label={label}
+      description={description}
+      onPress={() => void run(kind, () => exportToFolder(kind))}
+      busy={busy === kind}
+    />
+  );
+
   return (
     <SettingsScreen>
-      <SettingsSection title="Export" />
+      <SettingsSection title="Database" />
+      {exportRow(
+        'database',
+        'Export database',
+        'Everything in one file: podcasts, episodes, queue, progress, history and settings.'
+      )}
       <SettingsAction
-        label="Export subscriptions (OPML)"
-        description="Copy your subscription list to the clipboard."
-        onPress={() => void copyOpml()}
-        busy={busy}
+        label="Import database"
+        description="Restore a database export. Replaces everything in Sage Pod."
+        onPress={() => void run('restore', importDatabase)}
+        busy={busy === 'restore'}
+        destructive
       />
+      <SettingsNote>
+        Audio files aren’t in the backup: restored on another phone, episodes show as not downloaded.
+      </SettingsNote>
+
+      <SettingsSection title="Export" />
+      {exportRow('opml', 'OPML export', 'Your subscriptions, for another podcast app.')}
+      <SettingsAction
+        label="Copy OPML"
+        description="The same list, on the clipboard."
+        onPress={() => void run('clipboard', copyOpml)}
+        busy={busy === 'clipboard'}
+      />
+      {exportRow('html', 'HTML export', 'A web page listing your subscriptions.')}
+      {exportRow('favourites', 'Favourites export', 'A web page of your favourite episodes.')}
 
       <SettingsSection title="Import" />
       <SettingsAction
-        label="Import OPML file"
+        label="OPML import"
         description="Pick a subscription list exported from another podcast app."
         onPress={() => void importOpmlFile(router)}
       />
       <SettingsAction
         label="Import OPML from clipboard"
-        description="For a subscription list you've copied as text."
+        description="For a subscription list you’ve copied as text."
         onPress={() => void importOpmlFromClipboard(router)}
       />
-      <SettingsNote>OPML carries your podcasts, not listening progress or downloads.</SettingsNote>
+      <SettingsNote>Exports are saved to a folder you choose. OPML carries your podcasts, not progress.</SettingsNote>
     </SettingsScreen>
   );
 }
