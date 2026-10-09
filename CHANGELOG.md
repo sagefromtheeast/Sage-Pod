@@ -1,3 +1,17 @@
+## [0.21.0](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.20.0...v0.21.0) (2026-10-09)
+
+### 🚀 New Features
+
+* **player:** chapters stored in MP3 and M4A files ([64e2305](https://github.com/sagefromtheeast/Sage-Pod/commit/64e2305a9d1d296e8504cfa442dd8e11b03288c6))
+
+### 🐛 Bug Fixes
+
+* **player:** read only title-sized MP4 chapter samples ([1a3cf6b](https://github.com/sagefromtheeast/Sage-Pod/commit/1a3cf6b96e1f09804aabad478f859321455c40e9))
+
+### 📚 Documentation
+
+* Phase 18b decision (D-027), tasks and handover ([c758373](https://github.com/sagefromtheeast/Sage-Pod/commit/c758373ec11fe9ddbcacb42259c6eebc81c7017c))
+
 ## [0.20.0](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.19.0...v0.20.0) (2026-10-09)
 
 ### 🚀 New Features
