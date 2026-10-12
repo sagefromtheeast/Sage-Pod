@@ -1,3 +1,13 @@
+## [0.22.0](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.21.2...v0.22.0) (2026-10-12)
+
+### 🚀 New Features
+
+* deliver JavaScript changes over the air with EAS Update ([42b54ea](https://github.com/sagefromtheeast/Sage-Pod/commit/42b54ea2e420ec70500bd62e9090ec0e86da3424))
+
+### 🐛 Bug Fixes
+
+* restore the lockfile's root version after the fingerprint check ([1d95f27](https://github.com/sagefromtheeast/Sage-Pod/commit/1d95f278b02b06eb8f2b3c1618632cfa91d3d9c2))
+
 ## [0.21.2](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.21.1...v0.21.2) (2026-10-12)
 
 ### 🐛 Bug Fixes
