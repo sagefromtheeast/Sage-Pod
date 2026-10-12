@@ -1,0 +1,13 @@
+name: Publish OTA update
+
+on:
+  push:
+    branches: ['main']
+
+jobs:
+  update:
+    name: Publish update to preview
+    type: update
+    params:
+      channel: preview
+      platform: android

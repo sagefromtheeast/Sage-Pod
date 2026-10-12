@@ -624,3 +624,31 @@ store them per episode).
 
 *(Ships as v0.21.0.)*
 
+
+## D-028 — Over-the-air updates with EAS Update
+
+**Context.** Every change needed a new APK installed by hand. Most merges
+change only JavaScript.
+
+**Decision (lead developer, owner approved).**
+- **expo-updates**, with `runtimeVersion: { policy: "fingerprint" }`. An
+  update reaches only builds whose native project matches it, so a merge
+  that adds a native module can't break an installed build. That merge
+  needs a new build instead.
+- **The release's version stamps are left out of the fingerprint**
+  (`fingerprint.config.js`, `SourceSkips.ExpoConfigVersions`). Without it,
+  every release would change the runtime and no update would ever apply.
+  Checked: `tool/set_app_version.sh 0.99.0` leaves the hash unchanged.
+- **One channel per build profile** in `eas.json`. The EAS workflow
+  `.eas/workflows/publish-update.yml` publishes an Android update to
+  `preview` on every push to `main`. The release commit triggers a second
+  update with the same code, which is harmless.
+- Installed builds check for an update at launch and apply it on the next
+  launch (the expo-updates default).
+
+**Consequences.** After one preview build with expo-updates installed,
+JavaScript-only merges arrive by restarting the app twice. Native changes
+still need a build.
+
+**Revisit** for iOS (add the platform to the workflow) or a store release
+(publish to `production` from release tags).
