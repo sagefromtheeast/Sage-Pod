@@ -639,7 +639,7 @@ class PlayerService {
       // "last listened".
       if (!this.state.playing) return;
       const secondsPlayed = (POSITION_SAVE_INTERVAL_MS / 1000) * this.state.rate;
-      void this.flushPosition(secondsPlayed);
+      void this.flushPosition(secondsPlayed, { quiet: true });
     }, POSITION_SAVE_INTERVAL_MS);
   }
 
@@ -653,16 +653,18 @@ class PlayerService {
    * Writes the current position to the database.
    *
    * Runs on a timer while playing and on every pause, seek and track change, so
-   * that a force-quit or a battery death loses at most a few seconds.
+   * that a force-quit or a battery death loses at most a few seconds. The
+   * timer's saves are `quiet`; the others repaint the lists, so a row that
+   * stops following the player shows where it was left.
    */
-  async flushPosition(listenedSeconds: number = 0): Promise<void> {
+  async flushPosition(listenedSeconds: number = 0, options: { quiet?: boolean } = {}): Promise<void> {
     const { episode, position, duration } = this.state;
     if (!episode || position <= 0 || episode.id === this.markedPlayedId) return;
 
     if (listenedSeconds > 0) {
       // Lazy-import to avoid cyclic dependencies if any
       const { addListenedSeconds } = require('@/db/stats');
-      await addListenedSeconds(episode.feed_id, episode.id, listenedSeconds);
+      await addListenedSeconds(episode.feed_id, episode.id, listenedSeconds, options);
     }
 
     // "Smart mark as played": stopping in the last few seconds counts as
@@ -674,7 +676,7 @@ class PlayerService {
       return;
     }
 
-    await savePosition(episode.id, position, duration || null);
+    await savePosition(episode.id, position, duration || null, options);
   }
 
   // ------------------------------------------------------------- sleep timer

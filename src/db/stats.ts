@@ -1,7 +1,7 @@
 import { RELEASE_WINDOW } from '@/stats/releaseSchedule';
 import { localDay, markedPlayedRows, type ListenRow, type PlayedEpisodeRow } from '@/stats/aggregate';
 
-import { getDb } from './index';
+import { getDb, quietRows } from './index';
 import { getMeta, setMeta } from './settings';
 
 const STATS_RESET_KEY = 'statsReset';
@@ -31,7 +31,17 @@ export async function getStatsReset(): Promise<StatsReset | null> {
   return reset;
 }
 
-export async function addListenedSeconds(feedId: number, episodeId: number, seconds: number): Promise<void> {
+/**
+ * Adds listening time to today's history row for the episode. `quiet` is for
+ * the player's periodic save: growing an existing row then repaints nothing
+ * (the next pause does); a new row still does.
+ */
+export async function addListenedSeconds(
+  feedId: number,
+  episodeId: number,
+  seconds: number,
+  options: { quiet?: boolean } = {}
+): Promise<void> {
   const date = localDay(Date.now());
   const db = getDb();
   const reset = await getStatsReset();
@@ -46,6 +56,7 @@ export async function addListenedSeconds(feedId: number, episodeId: number, seco
   );
 
   if (existing) {
+    if (options.quiet) quietRows.expect('playback_history', existing.id, Date.now());
     await db.runAsync(
       'UPDATE playback_history SET listened_seconds = ? WHERE id = ?',
       existing.listened_seconds + seconds,
