@@ -78,8 +78,12 @@ export type EpisodeRow = {
   chapters_url: string | null;
 };
 
-/** An episode joined with the feed it belongs to — what every list screen needs. */
-export type EpisodeWithFeed = EpisodeRow & {
+/**
+ * An episode joined with the feed it belongs to — what every list screen
+ * needs. Without the show notes: they are most of a row's size and only the
+ * episode page shows them (`EpisodeWithNotes`).
+ */
+export type EpisodeWithFeed = Omit<EpisodeRow, 'description'> & {
   feed_title: string;
   feed_image_url: string | null;
   feed_author: string | null;
@@ -89,6 +93,9 @@ export type EpisodeWithFeed = EpisodeRow & {
   feed_volume_reduction: number | null;
   feed_auto_delete: number | null;
 };
+
+/** One episode with its show notes, for the episode page. */
+export type EpisodeWithNotes = EpisodeWithFeed & { description: string | null };
 
 /** A subscription plus its unplayed count, for the library grid. */
 export type FeedWithCounts = FeedRow & {

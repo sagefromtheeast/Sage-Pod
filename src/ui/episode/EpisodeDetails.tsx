@@ -9,7 +9,7 @@ import { deleteDownloadByUser } from '@/actions/deleteDownloads';
 import { startDownloads } from '@/actions/startDownloads';
 import { getEpisode, markPlayed, toggleFavorite } from '@/db/episodes';
 import { dequeue, enqueue, isQueued } from '@/db/queue';
-import type { EpisodeWithFeed } from '@/db/types';
+import type { EpisodeWithNotes } from '@/db/types';
 import { useQuery } from '@/db/useQuery';
 import { player, useEpisodePlayback } from '@/player';
 import {
@@ -46,7 +46,7 @@ export function EpisodeDetails({ episodeId }: { episodeId: number }) {
   const router = useRouter();
   const [linkMenu, setLinkMenu] = useState<{ url: string; label: string } | null>(null);
 
-  const { data: episode } = useQuery<EpisodeWithFeed | null>(
+  const { data: episode } = useQuery<EpisodeWithNotes | null>(
     () => getEpisode(episodeId),
     ['episodes', 'feeds'],
     [episodeId]
