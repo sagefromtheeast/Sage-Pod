@@ -15,6 +15,8 @@ export type DownloadWork = {
   id: string;
   episodeId: number;
   state: WorkState;
+  /** When the job was queued (ms since epoch); 0 for a job with no record of it. */
+  enqueuedAt: number;
   attempt: number;
   bytesWritten: number;
   /** -1 while the server hasn't said. */
@@ -46,10 +48,17 @@ export function isUnfinished(state: WorkState): boolean {
 
 /**
  * The job that speaks for an episode when there are several (finished jobs
- * stay listed until pruned): one still going, else a success, else a failure.
+ * stay listed until pruned): one still going, else the newest finished one,
+ * so an old success can't hide the failure of a later retry. Equal times fall
+ * back to success over failure over cancellation.
  */
 export function pickWork(works: readonly DownloadWork[]): DownloadWork | undefined {
-  return [...works].sort((a, b) => RANK[a.state] - RANK[b.state])[0];
+  return [...works].sort((a, b) => {
+    const live = Number(isUnfinished(b.state)) - Number(isUnfinished(a.state));
+    if (live !== 0) return live;
+    if (!isUnfinished(a.state) && a.enqueuedAt !== b.enqueuedAt) return b.enqueuedAt - a.enqueuedAt;
+    return RANK[a.state] - RANK[b.state];
+  })[0];
 }
 
 /**

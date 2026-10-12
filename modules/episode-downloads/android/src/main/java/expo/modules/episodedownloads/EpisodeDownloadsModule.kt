@@ -80,6 +80,7 @@ class EpisodeDownloadsModule : Module() {
         .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 10, TimeUnit.SECONDS)
         .addTag(TAG)
         .addTag(episodeTag(request.episodeId))
+        .addTag("$ENQUEUED_TAG_PREFIX${System.currentTimeMillis()}")
         .setInputData(
           workDataOf(
             EpisodeDownloadWorker.KEY_EPISODE_ID to request.episodeId,
@@ -124,10 +125,14 @@ class EpisodeDownloadsModule : Module() {
     val episodeId = info.tags.firstNotNullOfOrNull { tag ->
       tag.removePrefix(EPISODE_TAG_PREFIX).takeIf { tag.startsWith(EPISODE_TAG_PREFIX) }?.toIntOrNull()
     } ?: 0
+    val enqueuedAt = info.tags.firstNotNullOfOrNull { tag ->
+      tag.removePrefix(ENQUEUED_TAG_PREFIX).takeIf { tag.startsWith(ENQUEUED_TAG_PREFIX) }?.toLongOrNull()
+    } ?: 0L
     return mapOf(
       "id" to info.id.toString(),
       "episodeId" to episodeId,
       "state" to info.state.name,
+      "enqueuedAt" to enqueuedAt.toDouble(),
       "attempt" to info.runAttemptCount,
       "bytesWritten" to info.progress.getLong(EpisodeDownloadWorker.KEY_BYTES, 0L).toDouble(),
       "totalBytes" to info.progress.getLong(EpisodeDownloadWorker.KEY_TOTAL, -1L).toDouble(),
@@ -144,6 +149,7 @@ class EpisodeDownloadsModule : Module() {
   companion object {
     private const val TAG = "sagepod-episode-download"
     private const val EPISODE_TAG_PREFIX = "episode:"
+    private const val ENQUEUED_TAG_PREFIX = "enqueued:"
 
     private fun uniqueName(episodeId: Int) = "episode-download-$episodeId"
 

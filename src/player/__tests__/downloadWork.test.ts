@@ -7,6 +7,7 @@ const work = (state: DownloadWork['state'], extra: Partial<DownloadWork> = {}): 
   id: `${state}-${extra.episodeId ?? 1}`,
   episodeId: 1,
   state,
+  enqueuedAt: 0,
   attempt: 0,
   bytesWritten: 0,
   totalBytes: -1,
@@ -26,6 +27,15 @@ describe('pickWork', () => {
     assert.equal(pickWork([work('FAILED'), work('SUCCEEDED')])?.state, 'SUCCEEDED');
     assert.equal(pickWork([work('CANCELLED'), work('FAILED')])?.state, 'FAILED');
     assert.equal(pickWork([]), undefined);
+  });
+
+  it('prefers the newest finished job, so a later failure beats an old success', () => {
+    const old = work('SUCCEEDED', { enqueuedAt: 1000 });
+    const retry = work('FAILED', { enqueuedAt: 2000 });
+    assert.equal(pickWork([old, retry])?.state, 'FAILED');
+    assert.equal(pickWork([retry, work('SUCCEEDED', { enqueuedAt: 3000 })])?.state, 'SUCCEEDED');
+    // A job still going wins whatever its age.
+    assert.equal(pickWork([retry, work('ENQUEUED', { enqueuedAt: 500 })])?.state, 'ENQUEUED');
   });
 });
 

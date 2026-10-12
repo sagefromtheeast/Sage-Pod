@@ -143,8 +143,8 @@ class Downloader(
 
   /** Follows redirects by hand: HttpURLConnection won't cross from http to https. */
   private fun open(existing: Long, validator: String): HttpURLConnection {
-    val originalHost = URL(url).host
-    var current = URL(url)
+    val original = URL(url)
+    var current = original
     repeat(MAX_REDIRECTS) {
       val connection = current.openConnection() as HttpURLConnection
       active = connection
@@ -153,8 +153,9 @@ class Downloader(
       connection.readTimeout = READ_TIMEOUT_MS
       connection.setRequestProperty("Accept-Encoding", "identity")
       for ((name, value) in headers) {
-        // A feed's password goes only to the feed's own host, never to a redirect target.
-        if (name.equals("Authorization", ignoreCase = true) && current.host != originalHost) continue
+        // A feed's password goes only to the feed's own host, never to a redirect
+        // target and never over plain http after an https start.
+        if (name.equals("Authorization", ignoreCase = true) && !sameOrigin(original, current)) continue
         connection.setRequestProperty(name, value)
       }
       if (existing > 0) {
@@ -187,6 +188,11 @@ class Downloader(
   private class TooManyRedirects : Exception()
 
   companion object {
+    /** Same host, and no downgrade from https to http. */
+    fun sameOrigin(original: URL, current: URL): Boolean =
+      current.host.equals(original.host, ignoreCase = true) &&
+        !(original.protocol == "https" && current.protocol != "https")
+
     private const val BUFFER_SIZE = 64 * 1024
     private const val PROGRESS_INTERVAL_MS = 1000L
     private const val HTML_CHECK_LIMIT = 100 * 1024L
