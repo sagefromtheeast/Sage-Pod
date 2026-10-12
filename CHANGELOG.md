@@ -1,3 +1,10 @@
+## [0.21.1](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.21.0...v0.21.1) (2026-10-12)
+
+### ⚡ Performance
+
+* leave show notes out of episode lists ([1667103](https://github.com/sagefromtheeast/Sage-Pod/commit/16671033f3fd55723d57a55df9034776bd53fa07))
+* write only the episodes a feed refresh actually changed ([b800772](https://github.com/sagefromtheeast/Sage-Pod/commit/b8007721d0fc0182043cf2b85555855a7b6bd1fd))
+
 ## [0.21.0](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.20.0...v0.21.0) (2026-10-09)
 
 ### 🚀 New Features
