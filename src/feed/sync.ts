@@ -17,6 +17,7 @@ import {
 } from './feedPrefs';
 
 import { splitCredentials, type FeedCredentials } from './auth';
+import { episodeUpdateBatches, UPDATE_CHANGED_EPISODES } from './episodeWrites';
 import { feedCredentialsFor, setFeedCredentials } from './credentials';
 import { fetchFeed, normalizeFeedUrl } from './fetch';
 import type { ParsedEpisode, ParsedFeed } from './parser';
@@ -108,28 +109,23 @@ async function upsertEpisodes(
       inserted += chunk.length;
     }
 
-    for (const { id, ep } of toUpdate) {
-      await db.runAsync(
-        `UPDATE episodes
-            SET title = ?, description = ?, link = ?, published_at = ?,
-                duration = COALESCE(?, duration), media_url = ?, media_type = ?,
-                media_size = ?, image_url = ?, season = ?, episode_number = ?,
-                chapters_url = ?
-          WHERE id = ?`,
-        ep.title,
-        ep.description,
-        ep.link,
-        ep.publishedAt,
-        ep.duration,
-        ep.mediaUrl,
-        ep.mediaType,
-        ep.mediaSize,
-        ep.imageUrl,
-        ep.season,
-        ep.episodeNumber,
-        ep.chaptersUrl,
-        id
-      );
+    const metadata = toUpdate.map(({ id, ep }) => ({
+      id,
+      title: ep.title,
+      description: ep.description,
+      link: ep.link,
+      publishedAt: ep.publishedAt,
+      duration: ep.duration,
+      mediaUrl: ep.mediaUrl,
+      mediaType: ep.mediaType,
+      mediaSize: ep.mediaSize,
+      imageUrl: ep.imageUrl,
+      season: ep.season,
+      episodeNumber: ep.episodeNumber,
+      chaptersUrl: ep.chaptersUrl,
+    }));
+    for (const batch of episodeUpdateBatches(metadata)) {
+      await db.runAsync(UPDATE_CHANGED_EPISODES, batch);
     }
   });
 

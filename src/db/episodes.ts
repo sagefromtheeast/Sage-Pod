@@ -1,9 +1,9 @@
 import { SURPRISE_MODULUS } from '@/discover/surpriseSeed';
-import { EPISODE_WITH_FEED_COLUMNS } from './columns';
+import { EPISODE_WITH_FEED_COLUMNS, EPISODE_WITH_NOTES_COLUMNS } from './columns';
 import { getDb } from './index';
 import { searchWords } from './search';
 import { filterClauses, type EpisodeFilter } from '@/feed/episodeFilter';
-import type { DownloadState, EpisodeRow, EpisodeWithFeed } from './types';
+import type { DownloadState, EpisodeRow, EpisodeWithFeed, EpisodeWithNotes } from './types';
 
 /** For queries on `episodes` alone: the episode's podcast is a subscription. */
 const SUBSCRIBED_FEED = "feed_id IN (SELECT id FROM feeds WHERE state = 'subscribed')";
@@ -14,8 +14,14 @@ const EPISODE_WITH_FEED = `
     JOIN feeds f ON f.id = e.feed_id
 `;
 
-export async function getEpisode(id: number): Promise<EpisodeWithFeed | null> {
-  return getDb().getFirstAsync<EpisodeWithFeed>(`${EPISODE_WITH_FEED} WHERE e.id = ?`, id);
+export async function getEpisode(id: number): Promise<EpisodeWithNotes | null> {
+  return getDb().getFirstAsync<EpisodeWithNotes>(
+    `SELECT ${EPISODE_WITH_NOTES_COLUMNS}
+       FROM episodes e
+       JOIN feeds f ON f.id = e.feed_id
+      WHERE e.id = ?`,
+    id
+  );
 }
 
 export type EpisodeSortKey =
