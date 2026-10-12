@@ -1,0 +1,20 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'expo.modules.episodedownloads'
+version = '1.0.0'
+
+android {
+  namespace "expo.modules.episodedownloads"
+  defaultConfig {
+    versionCode 1
+    versionName '1.0.0'
+  }
+}
+
+dependencies {
+  // The version expo-background-task already brings in, so the app links one copy.
+  implementation 'androidx.work:work-runtime-ktx:2.9.1'
+}

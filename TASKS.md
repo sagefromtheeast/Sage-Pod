@@ -187,6 +187,13 @@ destructive.
 - [x] Streams read with HTTP ranges (only the tag or `moov`); downloads read from disk
 - [ ] On a device: a streamed MP3 and a downloaded M4A with chapters show them in the player
 
+## Phase 19 — Background downloads (D-029) ✅
+- [x] 19a: the download log records size, time, speed, resume and background share ("Transfer"); `transferSummary` tests
+- [x] 19b: local Expo module `modules/episode-downloads`: WorkManager worker (unique per episode, expedited taps, unmetered / charging for auto, foreground `dataSync`, Wi-Fi lock, `.part` + Range / If-Range resume, 3 runs, fail fast 401/403/404/410 and HTML, restart on 416), shared progress notification that opens Downloads
+- [x] 19c: downloads.ts uses the module on Android; held list and JS queue bypassed there; WorkInfo reconciled into SQLite live, at startup and in the background refresh; Expo Go, iOS and web keep the JS path (tests: `pickWork`, `reconcileAction`)
+- [x] 19d: iOS keeps its background URLSession; a relaunch restarts the file (recorded in D-029)
+- [ ] On device: start 3 downloads, lock the screen; switch apps; swipe the app away; airplane mode mid-download resumes (log says "resumed from"); reboot with auto downloads pending on Wi-Fi + charging; tap the notification; a protected feed; a 404 (fails once, logged); cancel mid-download (partial file gone)
+
 ## Phase 18 — Optional (one proposal each)
 - [ ] Sync, Cast, Auto/Wear, video, Echo, nav customisation, parental control
 

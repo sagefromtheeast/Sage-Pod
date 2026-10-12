@@ -387,6 +387,66 @@ There are three routes for the expo-audio limits, in rising cost: a config plugi
 ### Phase 18: Later or optional, with rationale
 gpodder.net and Nextcloud sync need an episode-action journal the schema lacks, plus account UIs and conflict handling. That is the largest single item, and the value is low for single-device users. Chromecast, Android Auto, Wear OS, widgets and the Quick Settings tile each need native modules and platform testing. Video podcasts need a video view and PiP, while Sage Pod's parser already prefers audio. Echo year-in-review is seasonal and needs about 7 bespoke screens. ID3/Vorbis/M4A chapter extraction needs ranged binary reads. Customisable navigation and a default start page conflict with the fixed glass tab bar. Parental control is little used. Each item should be its own proposal, approved one at a time.
 
+### Phase 19: Background downloads (D-029)
+*(Built as planned in one PR. 19a became the transfer line in the log: the native worker does the resuming, because expo-file-system's Android resume data is a byte offset only it can use, and iOS resume data exists only after a pause. 19d: iOS restarts, recorded in D-029.)*
+
+**Why.** Downloads are slow unless the app is open, and fastest on the Downloads or podcast screen. The cause is in how they run, not in the network:
+
+- On Android, expo-file-system's `createDownloadTask` is a plain OkHttp call inside the app process (`expo-file-system/android/.../FileSystemDownloadTask.kt`). `sessionType: 'background'` (`SP/src/player/downloads.ts:328-329`) is iOS-only and does nothing on Android. With no foreground service, no WorkManager job and no Wi-Fi lock, Android throttles, freezes or kills the process once the app leaves the screen. With the screen off, Wi-Fi drops into power save.
+- The queue is a JS array (`waiting`, `active`, `pump()`, `SP/src/player/downloads.ts:38, 286-295`), so it advances only while the JS runtime is awake. Nothing resumes after the process dies. `manageAutoDownloads` (`:547`) starts pending rows again **from zero** at the next launch.
+- No `Range` resume: a dropped connection or a retry (`:418`) downloads the whole file again.
+- iOS uses a real background `URLSession`, but JS loses the task on relaunch and starts again from zero.
+
+**How AntennaPod does it.**
+- Each episode is a WorkManager `OneTimeWorkRequest` running `EpisodeDownloadWorker`. It is unique per media URL with `KEEP` and tagged so it can be cancelled (`AP/net/download/service/.../feed/DownloadServiceInterfaceImpl.java:29-45`).
+- A manual download is expedited, with a `CONNECTED` constraint when the user overrides the rules. An auto download waits on `UNMETERED` unless mobile downloads are allowed (`:60-70`). The OS waits for the network, not the app.
+- The worker runs as a foreground service (`getForegroundInfoAsync`, `EpisodeDownloadWorker.java:133`). It shows one ongoing "Downloading episodes" notification with each title and percentage, refreshed by a 1 s progress thread (`:76`). It holds a `WifiLock` for the duration (`:164-166`).
+- It retries 3 times through `Result.retry()` (`:220-225`). It fails fast on 401/403/404 and blocked I/O. A 416 deletes the partial file and retries. `onStopped` cancels the transfer (`:124`).
+- `HttpDownloader` resumes with `Range: bytes=<soFar>-` and `If-Range`, and checks `Content-Range` (`AP/.../feed/remote/HttpDownloader.java:95-136`).
+
+**Steps.**
+
+1. **19a: Measure, then fix what JavaScript can fix** (`fix:` / `perf:`, ships by OTA).
+   - Log bytes per second, AppState and attempt number per download to the download log's details, so the cause is shown on a device and not guessed.
+   - Resume from the partial file: if the server answered with `Accept-Ranges`, keep the `.part` file and send `Range` / `If-Range` (`ETag` or `Last-Modified`) on the retry and on the startup re-queue. A pure `resumePlan(headers, partialBytes)` with tests decides resume, restart or fail (on a 416 or a changed validator).
+   - Keep `pump()` independent of any mounted screen, and check progress emission isn't throttled by screen subscriptions.
+   - **Done** means resume tests pass and the device log shows throughput by state. This step alone doesn't fix the backgrounding.
+2. **19b: Local Expo module `modules/episode-downloads`** (Android, `feat:`; needs a build).
+   - A Kotlin `EpisodeDownloadWorker` (CoroutineWorker) mirroring AntennaPod:
+     - unique work per media URL, `KEEP`
+     - a manual download is expedited with `CONNECTED`
+     - an auto download waits on `UNMETERED` (unless mobile data is allowed), plus `requiresCharging` when "only while charging" is on
+     - runs in the foreground with type `dataSync`
+     - holds a `WifiLock` (high performance)
+     - writes `.part` and renames on success
+     - resumes with Range / If-Range
+     - checks the HTML captive portal and truncation as today
+     - retries 3 times, failing fast on 401/403/404, deleting and restarting on 416
+     - reports progress through `setProgress` every second
+     - feed credentials go in as headers in the work input, never logged
+   - One ongoing grouped notification ("Downloading 2 episodes", titles and %, a Cancel action). Errors keep using the existing `notifyDownloadFailed`.
+   - The JS API is `enqueue({episodeId, url, dest, headers, isAuto, constraints})`, `cancel(episodeId)`, `getAll()` and an `onProgress` / `onFinished` event. The worker writes no SQLite. JS applies results through the repository: live when the app is open, and through a startup and background-task reconcile of finished `WorkInfo` otherwise.
+   - WorkManager is already in the build (expo-background-task pulls `androidx.work:work-runtime-ktx`), so this adds **no third-party dependency**. It does add new native code, the `FOREGROUND_SERVICE_DATA_SYNC` permission and the `SystemForegroundService` manifest entry, through the module's config plugin.
+   - **Done** means `npx expo prebuild` shows the manifest entries, `expo export` and the typecheck pass, and pure tests cover constraints, input mapping and the error-to-retry table.
+3. **19c: Wire Sage Pod onto it** (`feat:`).
+   - `queueDownload`, `cancelDownload`, `manageAutoDownloads` and `retryHeldAutoDownloads` use the module on Android. The JS `waiting` / `active` / `pump()` and the `heldAutoDownloads` meta list drop out there, because WorkManager constraints replace them. `MAX_CONCURRENT` goes too: WorkManager's own executor limits concurrency.
+   - `useDownloadProgress` / `subscribeToDownloads` read the module's progress, so `EpisodeRow`, `EpisodeDetails` and the Downloads screen work unchanged.
+   - A startup reconcile replaces "re-queue from scratch": `running` / `enqueued` work stays, `succeeded` is marked done, `failed` is logged, and a row with no work is re-enqueued (and resumes from its `.part`).
+   - Expo Go and web keep the current JS path (Expo Go can't load the module).
+   - Tests: the reconcile table (row state × WorkInfo state → action) as a pure function.
+4. **19d: iOS** (`feat:` or a documented limitation).
+   - Reattach to the existing background `URLSession` tasks on launch (by task description = episode id) instead of starting again, or accept restarts and record the limit in D-029. Decide after 19c, based on whether expo-file-system's session identifier is stable across launches [UNVERIFIED].
+5. **19e: Device checks** (one preview build).
+   - Start 3 downloads, then lock the screen; switch apps; swipe the app away; turn airplane mode on and off mid-download (it must resume, not restart); reboot with auto downloads pending on Wi-Fi + charging; cancel from the notification; a protected feed; a 404 (fails once, logged).
+   - Compare throughput with the 19a logs.
+
+**Shots.** No visual change is planned. The notification is native, so the user takes a screenshot of it.
+
+**Stop and ask:**
+- before 19b, for approval of a local native module (new native code, a new Android permission)
+- before the one EAS preview build in 19e, for its budget
+- if expo-file-system's partial `.part` handling can't do 19a without forking it
+
 ### TASKS.md to paste into the repo root
 
 ```markdown

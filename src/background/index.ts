@@ -8,7 +8,7 @@ import { backgroundIntervalMinutes } from '@/backup/schedule';
 import { initDb } from '@/db';
 import { getMeta, loadSettings, setMeta, settingsLoaded, useSetting } from '@/db/settings';
 import { refreshAllFeeds } from '@/feed/sync';
-import { retryHeldAutoDownloads } from '@/player/downloads';
+import { reconcileDownloadWork, retryHeldAutoDownloads } from '@/player/downloads';
 
 /**
  * AntennaPod's periodic update: the system wakes Sage Pod now and then to
@@ -28,6 +28,8 @@ if (supported) {
       if (!settingsLoaded()) await loadSettings();
       // Each step on its own: a failed refresh shouldn't skip the backup.
       await refreshAllFeeds().catch(() => undefined);
+      // Records downloads WorkManager finished while the app was closed (D-029).
+      await reconcileDownloadWork().catch(() => undefined);
       await retryHeldAutoDownloads().catch(() => undefined);
       await runAutoBackupIfDue().catch(() => false);
       return BackgroundTask.BackgroundTaskResult.Success;

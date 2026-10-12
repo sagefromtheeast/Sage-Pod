@@ -4,7 +4,7 @@ import { Directory, File, Paths } from 'expo-file-system';
 import * as Network from 'expo-network';
 import { useEffect, useState } from 'react';
 
-import { Platform } from 'react-native';
+import { AppState, Platform } from 'react-native';
 
 import { addDownloadLog, type NewDownloadLogEntry } from '@/db/downloadLog';
 import { getEpisode, listDownloaded, listPendingDownloads, setDownloadState } from '@/db/episodes';
@@ -24,6 +24,16 @@ import {
   shouldAutoDownloadEpisode,
 } from './downloadRules';
 import { cleanupCandidates, parseCleanup } from './cleanup';
+import {
+  isUnfinished,
+  pickWork,
+  reconcileAction,
+  transferSummary,
+  worksByEpisode,
+  type DownloadWork,
+  type WorkState,
+} from './downloadWork';
+import { nativeDownloads } from './nativeDownloads';
 import { classifyDownloadError } from './types';
 
 /**
@@ -34,8 +44,31 @@ import { classifyDownloadError } from './types';
  */
 
 const DOWNLOAD_DIRECTORY = 'episodes';
-/** Concurrent downloads. Phones throttle hard above a handful of transfers. */
+/** Concurrent downloads on the JavaScript path. Phones throttle hard above a handful of transfers. */
 const MAX_CONCURRENT = 2;
+
+/**
+ * Android builds download through WorkManager (D-029): jobs that keep going
+ * with the app in the background or closed, wait for Wi-Fi or power by
+ * themselves, and resume partial files. Expo Go, iOS and web keep the
+ * JavaScript queue below.
+ */
+const worker = nativeDownloads;
+
+/** Total time spent in the background so far, for the download log's transfer line. */
+let backgroundMs = 0;
+let backgroundSince: number | null = AppState.currentState === 'active' ? null : Date.now();
+AppState.addEventListener('change', (state) => {
+  if (state === 'active') {
+    if (backgroundSince != null) backgroundMs += Date.now() - backgroundSince;
+    backgroundSince = null;
+  } else if (backgroundSince == null) {
+    backgroundSince = Date.now();
+  }
+});
+function backgroundTotal(): number {
+  return backgroundMs + (backgroundSince != null ? Date.now() - backgroundSince : 0);
+}
 
 /** Records a finished or failed download in the persisted log (best effort). */
 function recordLog(entry: NewDownloadLogEntry): void {
@@ -227,7 +260,9 @@ async function holdAutoDownload(episodeId: number): Promise<void> {
 export async function retryHeldAutoDownloads(): Promise<void> {
   if (Platform.OS === 'web') return;
   const ids = await heldDownloads();
-  if (ids.size === 0 || !(await networkAllowsDownload(true))) return;
+  // WorkManager waits for Wi-Fi and power itself, so held downloads (kept
+  // from before background downloads) can all be handed over.
+  if (ids.size === 0 || (!worker && !(await networkAllowsDownload(true)))) return;
   const retry = [...ids];
   ids.clear();
   await setMeta(HELD_KEY, '[]');
@@ -261,6 +296,12 @@ export async function queueDownload(
   const { isAuto = false } = options;
   const episode = await getEpisode(episodeId);
   if (!episode) return;
+  if (worker) {
+    if (episode.download_state === 'done') return;
+    if (episode.download_state !== 'downloading') await setDownloadState(episodeId, 'queued');
+    await enqueueWork(episode, isAuto);
+    return;
+  }
   if (episode.download_state === 'done' || active.has(episodeId)) return;
 
   cancelledIds.delete(episodeId);
@@ -279,7 +320,7 @@ let runsInFlight = 0;
 
 /** Whether any download is queued or still writing; a database restore waits for none. */
 export function isDownloading(): boolean {
-  return runsInFlight > 0 || waiting.length > 0;
+  return runsInFlight > 0 || waiting.length > 0 || workInFlight.size > 0;
 }
 
 /** Starts queued downloads up to the concurrency limit. */
@@ -335,6 +376,8 @@ async function run(episodeId: number, isAuto: boolean, attempt = 0): Promise<voi
 
   active.set(episodeId, { cancel: () => task.cancel() });
   await setDownloadState(episodeId, 'downloading');
+  const startedAt = Date.now();
+  const backgroundAtStart = backgroundTotal();
 
   let expectedTotalBytes: number | null = null;
   const subscription = task.addListener('progress', ({ bytesWritten, totalBytes }) => {
@@ -393,7 +436,10 @@ async function run(episodeId: number, isAuto: boolean, attempt = 0): Promise<voi
       url: episode.media_url,
       status: 'success',
       error_code: null,
-      error_message: null,
+      error_message: transferSummary(file.size ?? 0, Date.now() - startedAt, {
+        attempt: attempt + 1,
+        background: (backgroundTotal() - backgroundAtStart) / Math.max(1, Date.now() - startedAt),
+      }),
     });
 
     await setDownloadState(episodeId, 'done', file.uri, file.size ?? null);
@@ -451,6 +497,14 @@ async function run(episodeId: number, isAuto: boolean, attempt = 0): Promise<voi
 
 /** Cancels an in-flight or queued download. */
 export async function cancelDownload(episodeId: number): Promise<void> {
+  if (worker) {
+    await setDownloadState(episodeId, 'none');
+    const episode = await getEpisode(episodeId);
+    if (episode) await worker.cancel(episodeId, new File(downloadDirectory(), fileNameFor(episode)).uri);
+    workInFlight.delete(episodeId);
+    emit({ episodeId, progress: null, bytesWritten: 0, totalBytes: null });
+    return;
+  }
   cancelledIds.add(episodeId);
   const running = active.get(episodeId);
   running?.cancel();
@@ -553,10 +607,14 @@ export async function manageAutoDownloads(): Promise<void> {
   // 1. Reconcile stale downloads (disk vs SQLite, AntennaPod #8428)
   await reconcileStaleDownloads();
 
-  // 2. Resume any interrupted downloads from previous app run
-  const pending = await listPendingDownloads();
-  for (const ep of pending) {
-    void queueDownload(ep.id, { isAuto: true });
+  // 2. Resume any interrupted downloads from previous app run: on Android,
+  // record what WorkManager finished meanwhile and restart what it lost.
+  if (worker) {
+    await reconcileDownloadWork();
+  } else {
+    for (const ep of await listPendingDownloads()) {
+      void queueDownload(ep.id, { isAuto: true });
+    }
   }
 
   // 3. Delete played downloads where configured: the podcast's own Auto-delete
@@ -587,7 +645,7 @@ export async function manageAutoDownloads(): Promise<void> {
   await retryHeldAutoDownloads();
 
   // 6. Queue auto-downloads up to user limit
-  if (settings.autoDownloadLimit > 0 && (await networkAllowsDownload(true))) {
+  if (settings.autoDownloadLimit > 0 && (worker || (await networkAllowsDownload(true)))) {
     const queue = await listQueue();
     let queuedToDownload = 0;
     for (const ep of queue) {
@@ -607,4 +665,131 @@ export async function manageAutoDownloads(): Promise<void> {
       }
     }
   }
+}
+
+// ---------------------------------------------------------------------------
+// Android: WorkManager jobs (D-029)
+
+/** Episodes with a job not yet finished, for isDownloading(). */
+const workInFlight = new Set<number>();
+/** The last state seen per job, so the database is touched only on a change. */
+const seenWork = new Map<string, WorkState>();
+let applying: Promise<void> = Promise.resolve();
+
+async function enqueueWork(episode: EpisodeWithFeed, isAuto: boolean): Promise<void> {
+  if (!worker) return;
+  const settings = getSettings();
+  // A password-protected podcast's file, sent the password only on the feed's own host.
+  const auth = await feedCredentialsFor(episode.feed_id, episode.media_url);
+  workInFlight.add(episode.id);
+  await worker.enqueue({
+    episodeId: episode.id,
+    url: episode.media_url,
+    path: new File(downloadDirectory(), fileNameFor(episode)).uri,
+    title: episode.title,
+    headers: {
+      'User-Agent': USER_AGENT,
+      ...(auth ? { Authorization: basicAuthHeader(auth) } : {}),
+    },
+    manual: !isAuto,
+    unmeteredOnly: settings.downloadOnWifiOnly,
+    requiresCharging: settings.autoDownloadOnlyCharging,
+  });
+}
+
+/** Applies one job's outcome to its episode's row. */
+async function applyWork(episodeId: number, work: DownloadWork | undefined, atStartup: boolean): Promise<void> {
+  const episode = await getEpisode(episodeId);
+  if (!episode) return;
+  const action = reconcileAction(episode.download_state, work, atStartup);
+  if (action === 'downloading') {
+    await setDownloadState(episodeId, 'downloading');
+  } else if (action === 'enqueue') {
+    await enqueueWork(episode, true);
+  } else if (action === 'done' && work) {
+    const file = work.path ? new File(work.path) : null;
+    if (file?.exists) {
+      recordLog({
+        episode_id: episodeId,
+        episode_title: episode.title,
+        feed_title: episode.feed_title,
+        url: episode.media_url,
+        status: 'success',
+        error_code: null,
+        error_message: transferSummary(file.size ?? work.size, work.elapsedMs, {
+          resumedFrom: work.resumedFrom,
+          attempt: work.attempt + 1,
+        }),
+      });
+      await setDownloadState(episodeId, 'done', file.uri, file.size ?? null);
+    } else {
+      // Finished once but gone since: fetch it again.
+      await enqueueWork(episode, true);
+    }
+  } else if (action === 'failed' && work) {
+    const failure = classifyDownloadError(new Error(work.errorMessage ?? work.errorCode ?? 'Download failed'));
+    console.warn(`[downloads] Download failed for episode ${episodeId} (${work.errorCode}):`, work.errorMessage);
+    recordLog({
+      episode_id: episodeId,
+      episode_title: episode.title,
+      feed_title: episode.feed_title,
+      url: episode.media_url,
+      status: 'failed',
+      error_code: failure.code === 'UNKNOWN' && work.errorCode ? work.errorCode : failure.code,
+      error_message: failure.message,
+    });
+    if (getSettings().notifyDownloadErrors) void notifyDownloadFailed(episodeId, episode.title, failure.message);
+    await setDownloadState(episodeId, 'error');
+  }
+}
+
+/** Live job updates: progress to the screens, state changes to the database. */
+function onWorkChange(works: DownloadWork[]): void {
+  const changed: [number, DownloadWork][] = [];
+  for (const [episodeId, list] of worksByEpisode(works)) {
+    const work = pickWork(list);
+    if (!work) continue;
+    if (work.state === 'RUNNING' && work.totalBytes !== 0) {
+      emit({
+        episodeId,
+        progress: work.totalBytes > 0 ? work.bytesWritten / work.totalBytes : null,
+        bytesWritten: work.bytesWritten,
+        totalBytes: work.totalBytes > 0 ? work.totalBytes : null,
+      });
+    }
+    if (isUnfinished(work.state)) workInFlight.add(episodeId);
+    else workInFlight.delete(episodeId);
+    if (seenWork.get(work.id) === work.state) continue;
+    seenWork.set(work.id, work.state);
+    if (!isUnfinished(work.state)) emit({ episodeId, progress: null, bytesWritten: 0, totalBytes: null });
+    changed.push([episodeId, work]);
+  }
+  if (changed.length === 0) return;
+  // One at a time, so a burst of updates can't record a result twice.
+  applying = applying
+    .then(async () => {
+      for (const [episodeId, work] of changed) await applyWork(episodeId, work, false);
+    })
+    .catch((error) => console.warn('[downloads] Could not record a download:', error));
+}
+
+worker?.addListener('onChange', ({ downloads }) => onWorkChange(downloads));
+
+/**
+ * Records what WorkManager finished while Sage Pod wasn't running, restarts
+ * pending downloads it has no job for, then forgets the finished jobs. Runs
+ * at startup and in the background refresh.
+ */
+export async function reconcileDownloadWork(): Promise<void> {
+  if (!worker) return;
+  const work = worksByEpisode(await worker.getAll());
+  const pass = applying.then(async () => {
+    for (const episode of await listPendingDownloads()) {
+      await applyWork(episode.id, pickWork(work.get(episode.id) ?? []), true);
+    }
+  });
+  applying = pass.catch(() => undefined);
+  await pass;
+  await worker.clearFinished();
+  seenWork.clear();
 }

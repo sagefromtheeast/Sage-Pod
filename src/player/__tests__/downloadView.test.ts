@@ -83,5 +83,9 @@ describe('log details', () => {
       logDetails({ ...entry, status: 'success', error_code: null, error_message: null, feed_title: null }, () => 'x'),
       'The 3am bakery\nStatus: Downloaded\nWhen: x\nAddress: https://media.example/9.mp3'
     );
+    assert.match(
+      logDetails({ ...entry, status: 'success', error_code: null, error_message: '48 MB in 1 min, 819 KB/s' }, () => 'x'),
+      /\nTransfer: 48 MB in 1 min, 819 KB\/s\n/
+    );
   });
 });
