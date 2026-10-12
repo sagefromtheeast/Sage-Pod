@@ -85,7 +85,7 @@ export function logDetails(entry: DownloadLogRow, formatDate: (ms: number) => st
     entry.feed_title ? `${entry.feed_title}: ${entry.episode_title}` : entry.episode_title,
     `Status: ${entry.status === 'success' ? 'Downloaded' : 'Failed'}`,
     entry.error_code ? `Error: ${entry.error_code}` : null,
-    entry.error_message ? `Reason: ${entry.error_message}` : null,
+    entry.error_message ? `${entry.status === 'success' ? 'Transfer' : 'Reason'}: ${entry.error_message}` : null,
     `When: ${formatDate(entry.created_at)}`,
     `Address: ${entry.url}`,
   ]

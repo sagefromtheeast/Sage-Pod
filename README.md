@@ -27,7 +27,7 @@ and your subscription list exports as OPML whenever you want to leave.
 - 🔎 **Discover** — full-text podcast search and charts via Apple's public iTunes API (no key, no account), or subscribe by pasting any RSS URL.
 - 📥 **Inbox & queue** — newest episodes across every subscription, a continue-listening shelf, and a reorderable play queue.
 - ▶️ **Background playback** — lock-screen and notification controls, resume-from-position, variable speed, skip intervals, and a sleep timer.
-- ⬇️ **Offline downloads** — a throttled queue with Wi-Fi-only enforcement, per-podcast auto-download, and a storage cap.
+- ⬇️ **Offline downloads** — on Android, WorkManager jobs that keep going in the background, wait for Wi-Fi or power, and resume partial files; per-podcast auto-download and a storage cap.
 - 🦉 **Themed to the bone** — light / dark / OLED palettes, plus the Sage the Owl icon across every appearance.
 
 ## 🚀 Quick start
@@ -85,6 +85,9 @@ src/
   player/                Playback engine, React bindings, download manager
   ui/                    Theme tokens, glass surfaces, shared components
   util/                  Time and HTML helpers
+
+modules/
+  episode-downloads/     Local Expo module: Android background downloads (WorkManager)
 
 assets/                  App icon, adaptive/monochrome layers, splash
   branding/              Source art for the Sage the Owl appearances
