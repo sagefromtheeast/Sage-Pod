@@ -294,9 +294,11 @@ export default function HomeScreen() {
     [inboxSort]
   );
   const { data: feeds = [] } = useQuery<FeedWithCounts[]>(() => listFeeds(), ['feeds']);
+  // `episodes` too: the player's periodic listening-time updates are quiet,
+  // and the position save on pause or seek is what announces them.
   const { data: classics = [] } = useQuery<FeedWithCounts[]>(
     () => listClassicFeeds(classicsSince(Date.now()), CLASSICS_COUNT),
-    ['playback_history', 'feeds']
+    ['playback_history', 'feeds', 'episodes']
   );
   const { data: downloads = [] } = useQuery<EpisodeWithFeed[]>(() => listDownloaded('size'), ['episodes']);
   // Seeded, so the shelf holds still while the player saves positions (which

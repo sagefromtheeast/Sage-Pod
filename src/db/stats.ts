@@ -33,8 +33,9 @@ export async function getStatsReset(): Promise<StatsReset | null> {
 
 /**
  * Adds listening time to today's history row for the episode. `quiet` is for
- * the player's periodic save: growing an existing row then repaints nothing
- * (the next pause does); a new row still does.
+ * the player's periodic save: growing an existing row then repaints nothing,
+ * and a new row still does. Every screen showing listening time also watches
+ * `episodes`, so the position save on pause or seek repaints it.
  */
 export async function addListenedSeconds(
   feedId: number,
