@@ -33,6 +33,8 @@ Format: context → decision → consequences → when to revisit.
 | D-025 | Phase 17b: patch expo-audio with patch-package, build it from source | Accepted |
 | D-026 | Phase 18a: Android widget with react-native-android-widget, tile through the media session, no iOS widget yet | Accepted |
 | D-027 | Phase 18b: chapters from the audio file, read in TypeScript over byte ranges | Accepted |
+| D-028 | Over-the-air updates with EAS Update | Accepted |
+| D-029 | Phase 19: Android downloads in a WorkManager worker (local Expo module), resumable with Range | Proposed |
 
 ---
 
@@ -652,3 +654,38 @@ still need a build.
 
 **Revisit** for iOS (add the platform to the workflow) or a store release
 (publish to `production` from release tags).
+
+## D-029 — Phase 19: background downloads (proposed)
+
+**Context.** Downloads crawl or stop unless Sage Pod is on screen. On
+Android, expo-file-system's download task is a plain OkHttp call in the
+app process; its `sessionType: 'background'` applies only to iOS. Nothing
+keeps the process alive or Wi-Fi awake, the queue lives in JavaScript, and
+every retry or relaunch starts the file from zero. AntennaPod runs each
+episode as a WorkManager job in a foreground service with a Wi-Fi lock,
+network constraints and `Range` resume.
+
+**Proposal.**
+- 19a (JavaScript, by OTA): resume partial files with `Range` / `If-Range`
+  and log throughput by app state.
+- 19b–c (Android): a local Expo module, `modules/episode-downloads`, with
+  a Kotlin worker modelled on AntennaPod's `EpisodeDownloadWorker`. Unique
+  work per URL; expedited manual downloads; auto downloads constrained to
+  unmetered networks (and charging when that setting is on); foreground
+  `dataSync` with one grouped notification; a Wi-Fi lock; 3 retries. The
+  worker never touches SQLite; JS reconciles results through the
+  repositories. WorkManager is already linked through expo-background-task,
+  so there is no new third-party dependency.
+- 19d (iOS): reattach to the background URLSession tasks, or document the
+  restart.
+- Expo Go and web keep today's JavaScript path.
+
+**Rejected.**
+- Android's system `DownloadManager`: it survives process death and
+  resumes, but gives no captive-portal or truncation checks and no retry
+  policy, and it shows its own notification and file naming.
+- Patching expo-file-system: the queue, constraints and notification
+  aren't its job, and the patch would be large.
+
+**Status.** Needs owner approval (new native code, a new Android
+permission) and the budget for one preview build.
