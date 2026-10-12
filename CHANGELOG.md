@@ -1,3 +1,17 @@
+## [0.21.2](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.21.1...v0.21.2) (2026-10-12)
+
+### 🐛 Bug Fixes
+
+* refresh Home's Classics shelf when playback pauses ([97c8f8b](https://github.com/sagefromtheeast/Sage-Pod/commit/97c8f8bba0746c35588a2b67df86e21df9db2d0f))
+
+### ⚡ Performance
+
+* stop the player's periodic position save from reloading every list ([fa27b32](https://github.com/sagefromtheeast/Sage-Pod/commit/fa27b32d6ccda09774e8d44fea8a9455e9bfbca1))
+
+### 🔧 Maintenance
+
+* install agent-skills and pre-approve rea ([08250f5](https://github.com/sagefromtheeast/Sage-Pod/commit/08250f57e944f5efd747acb6c0500edb12b60cf3))
+
 ## [0.21.1](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.21.0...v0.21.1) (2026-10-12)
 
 ### ⚡ Performance
