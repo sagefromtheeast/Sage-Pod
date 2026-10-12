@@ -34,7 +34,7 @@ Format: context → decision → consequences → when to revisit.
 | D-026 | Phase 18a: Android widget with react-native-android-widget, tile through the media session, no iOS widget yet | Accepted |
 | D-027 | Phase 18b: chapters from the audio file, read in TypeScript over byte ranges | Accepted |
 | D-028 | Over-the-air updates with EAS Update | Accepted |
-| D-029 | Phase 19: Android downloads in a WorkManager worker (local Expo module), resumable with Range | Proposed |
+| D-029 | Phase 19: Android downloads in a WorkManager worker (local Expo module), resumable with Range | Accepted |
 
 ---
 
@@ -655,37 +655,60 @@ still need a build.
 **Revisit** for iOS (add the platform to the workflow) or a store release
 (publish to `production` from release tags).
 
-## D-029 — Phase 19: background downloads (proposed)
+## D-029 — Phase 19: background downloads in WorkManager, from a local module
 
-**Context.** Downloads crawl or stop unless Sage Pod is on screen. On
-Android, expo-file-system's download task is a plain OkHttp call in the
+**Context.** Downloads crawled or stopped unless Sage Pod was on screen.
+On Android, expo-file-system's download task is a plain OkHttp call in the
 app process; its `sessionType: 'background'` applies only to iOS. Nothing
-keeps the process alive or Wi-Fi awake, the queue lives in JavaScript, and
-every retry or relaunch starts the file from zero. AntennaPod runs each
+kept the process alive or Wi-Fi awake, the queue lived in JavaScript, and
+every retry or relaunch started the file from zero. AntennaPod runs each
 episode as a WorkManager job in a foreground service with a Wi-Fi lock,
 network constraints and `Range` resume.
 
-**Proposal.**
-- 19a (JavaScript, by OTA): resume partial files with `Range` / `If-Range`
-  and log throughput by app state.
-- 19b–c (Android): a local Expo module, `modules/episode-downloads`, with
-  a Kotlin worker modelled on AntennaPod's `EpisodeDownloadWorker`. Unique
-  work per URL; expedited manual downloads; auto downloads constrained to
-  unmetered networks (and charging when that setting is on); foreground
-  `dataSync` with one grouped notification; a Wi-Fi lock; 3 retries. The
-  worker never touches SQLite; JS reconciles results through the
-  repositories. WorkManager is already linked through expo-background-task,
-  so there is no new third-party dependency.
-- 19d (iOS): reattach to the background URLSession tasks, or document the
-  restart.
-- Expo Go and web keep today's JavaScript path.
+**Decision (lead developer, owner approved).**
+- **A local Expo module, `modules/episode-downloads`** (Android only),
+  with a Kotlin `EpisodeDownloadWorker` modelled on AntennaPod's:
+  - one unique job per episode; a tap replaces an automatic job still
+    waiting, and never one already running
+  - a tap is expedited and needs only a connection; an automatic download
+    waits for an unmetered network when "Wi-Fi only" is on, and for power
+    when "Only while charging" is on (this replaces the JavaScript held list)
+  - it runs in WorkManager's foreground service (type `dataSync`) under one
+    shared "Downloading episodes" notification that opens Downloads, and
+    holds a Wi-Fi lock
+  - it writes `<file>.part` and resumes it with `Range` / `If-Range` (a
+    strong ETag, else Last-Modified); a 416 or a mismatched range starts over
+  - it makes 3 runs at most, with a 10 s exponential backoff; 401 / 403 /
+    404 / 410 and a captive-portal HTML page fail at once
+  - redirects are followed by hand; a feed's password goes only to the
+    feed's own host
+- **The worker never writes SQLite.** JavaScript applies job states through
+  the repositories: live while the app's JavaScript runs, and at startup
+  and in the background refresh for anything that finished meanwhile
+  (`reconcileDownloadWork`, rules in `src/player/downloadWork.ts`), then
+  prunes finished jobs. A pending row with no job is restarted, so an
+  upgrade from the JavaScript queue resumes its downloads.
+- WorkManager was already linked through expo-background-task (same
+  version, 2.9.1). It adds no third-party dependency. It does add the
+  `FOREGROUND_SERVICE_DATA_SYNC` permission.
+- **Expo Go, iOS and web keep the JavaScript queue.** iOS already uses a
+  background URLSession; a download interrupted by a relaunch restarts.
+- Successful downloads log their size, time and speed (and on the JavaScript
+  path, the share spent in the background), shown as "Transfer" in the log.
 
 **Rejected.**
 - Android's system `DownloadManager`: it survives process death and
-  resumes, but gives no captive-portal or truncation checks and no retry
-  policy, and it shows its own notification and file naming.
+  resumes, but gives no captive-portal check or retry policy, and it shows
+  its own notification and file naming.
 - Patching expo-file-system: the queue, constraints and notification
   aren't its job, and the patch would be large.
 
-**Status.** Needs owner approval (new native code, a new Android
-permission) and the budget for one preview build.
+**Consequences.** Downloads continue with the screen off, in other apps and
+after the app is swiped away, and survive a reboot. Changing "Wi-Fi only"
+or "Only while charging" applies to downloads queued afterwards, not to
+jobs already waiting. Feed passwords sit in WorkManager's private database
+while a job waits. Android 15 caps `dataSync` foreground time at 6 hours a
+day.
+
+**Revisit** for iOS (reattach to URLSession tasks after a relaunch), or if
+expo-file-system gains real background downloads on Android.

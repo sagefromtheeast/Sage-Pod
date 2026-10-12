@@ -252,9 +252,11 @@ releasing, so a red check on `main` blocks the release.
   boost, pause on unplug; v0.19.0; D-025), and Phase 18a (Android
   home-screen widget and Quick Settings tile; v0.20.0; D-026), and Phase 18b
   (chapters read from MP3 / M4A files when the feed has none; v0.21.0;
-  D-027).
+  D-027), OTA updates (D-028), and Phase 19 (Android downloads in
+  WorkManager jobs from the local module `modules/episode-downloads`;
+  D-029).
   Earlier: EAS device builds, stable Surprise Me, tablet layouts.
-- **Next**: the one device build (ask for the budget first), then the device checks in TASKS.md. Other Phase 18 items are optional, one proposal each. Schema is at version 7; feeds.state can be 'subscribed',
+- **Next**: the device checks in TASKS.md (Phase 19 above all). Other Phase 18 items are optional, one proposal each. Schema is at version 7; feeds.state can be 'subscribed',
   'preview' or 'archived'.
   Building blocks to reuse: `openEpisodeActions`, `runEpisodeAction`,
   `showToast`, `OverflowMenu`, `BottomSheet` / `ActionSheet`,

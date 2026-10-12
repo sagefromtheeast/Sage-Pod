@@ -387,7 +387,9 @@ There are three routes for the expo-audio limits, in rising cost: a config plugi
 ### Phase 18: Later or optional, with rationale
 gpodder.net and Nextcloud sync need an episode-action journal the schema lacks, plus account UIs and conflict handling. That is the largest single item, and the value is low for single-device users. Chromecast, Android Auto, Wear OS, widgets and the Quick Settings tile each need native modules and platform testing. Video podcasts need a video view and PiP, while Sage Pod's parser already prefers audio. Echo year-in-review is seasonal and needs about 7 bespoke screens. ID3/Vorbis/M4A chapter extraction needs ranged binary reads. Customisable navigation and a default start page conflict with the fixed glass tab bar. Parental control is little used. Each item should be its own proposal, approved one at a time.
 
-### Phase 19: Background downloads (proposed; D-029)
+### Phase 19: Background downloads (D-029)
+*(Built as planned in one PR. 19a became the transfer line in the log: the native worker does the resuming, because expo-file-system's Android resume data is a byte offset only it can use, and iOS resume data exists only after a pause. 19d: iOS restarts, recorded in D-029.)*
+
 **Why.** Downloads are slow unless the app is open, and fastest on the Downloads or podcast screen. The cause is in how they run, not in the network:
 
 - On Android, expo-file-system's `createDownloadTask` is a plain OkHttp call inside the app process (`expo-file-system/android/.../FileSystemDownloadTask.kt`). `sessionType: 'background'` (`SP/src/player/downloads.ts:328-329`) is iOS-only and does nothing on Android. With no foreground service, no WorkManager job and no Wi-Fi lock, Android throttles, freezes or kills the process once the app leaves the screen. With the screen off, Wi-Fi drops into power save.
