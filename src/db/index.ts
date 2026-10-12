@@ -4,6 +4,7 @@ import {
   type SQLiteDatabase,
 } from 'expo-sqlite';
 
+import { QuietRows } from './quietWrites';
 import { migrate } from './schema';
 
 export const DATABASE_NAME = 'sagepod.db';
@@ -38,9 +39,13 @@ let changeSubscription: { remove: () => void } | null = null;
 let flushHandle: ReturnType<typeof setTimeout> | null = null;
 let pendingTables = new Set<string>();
 
+/** Rows a quiet write is about to change; their events repaint nothing. */
+export const quietRows = new QuietRows();
+
 function ensureChangeSubscription() {
   if (changeSubscription) return;
-  changeSubscription = addDatabaseChangeListener(({ tableName }) => {
+  changeSubscription = addDatabaseChangeListener(({ tableName, rowId }) => {
+    if (quietRows.claim(tableName, rowId, Date.now())) return;
     pendingTables.add(tableName);
     if (flushHandle) return;
     flushHandle = setTimeout(() => {

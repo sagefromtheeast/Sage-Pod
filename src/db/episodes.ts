@@ -1,6 +1,7 @@
 import { SURPRISE_MODULUS } from '@/discover/surpriseSeed';
 import { EPISODE_WITH_FEED_COLUMNS, EPISODE_WITH_NOTES_COLUMNS } from './columns';
-import { getDb } from './index';
+import { getDb, quietRows } from './index';
+import { positionSaveIsQuiet, type StoredProgress } from './quietWrites';
 import { searchWords } from './search';
 import { filterClauses, type EpisodeFilter } from '@/feed/episodeFilter';
 import type { DownloadState, EpisodeRow, EpisodeWithFeed, EpisodeWithNotes } from './types';
@@ -229,33 +230,44 @@ export async function searchEpisodes(term: string, limit = 60): Promise<EpisodeW
   );
 }
 
-/** Persists playback position. Called on a timer while playing, so keep it cheap. */
+/**
+ * Persists playback position. Called on a timer while playing, so keep it cheap.
+ *
+ * `quiet` is for that timer: the save then wakes no list unless it moves the
+ * episode between lists (`positionSaveIsQuiet`). Rows follow the playing
+ * episode from the player meanwhile, as AntennaPod's do.
+ */
 export async function savePosition(
   episodeId: number,
   positionSeconds: number,
-  durationSeconds?: number | null
+  durationSeconds?: number | null,
+  options: { quiet?: boolean } = {}
 ): Promise<void> {
   const position = Math.max(0, Math.floor(positionSeconds));
+  const duration =
+    durationSeconds && Number.isFinite(durationSeconds) && durationSeconds > 0 ? Math.floor(durationSeconds) : null;
   const db = getDb();
 
-  if (durationSeconds && Number.isFinite(durationSeconds) && durationSeconds > 0) {
-    await db.runAsync(
-      `UPDATE episodes
-          SET position = ?, duration = COALESCE(duration, ?), played_at = ?, is_new = 0
-        WHERE id = ?`,
-      position,
-      Math.floor(durationSeconds),
-      Date.now(),
+  let quiet = false;
+  if (options.quiet) {
+    const stored = await db.getFirstAsync<StoredProgress>(
+      'SELECT is_new, position, duration FROM episodes WHERE id = ?',
       episodeId
     );
-  } else {
-    await db.runAsync(
-      'UPDATE episodes SET position = ?, played_at = ?, is_new = 0 WHERE id = ?',
-      position,
-      Date.now(),
-      episodeId
-    );
+    quiet = positionSaveIsQuiet(stored, position, duration);
   }
+
+  if (quiet) quietRows.expect('episodes', episodeId, Date.now());
+  const result = await db.runAsync(
+    `UPDATE episodes
+        SET position = ?, duration = COALESCE(duration, ?), played_at = ?, is_new = 0
+      WHERE id = ?`,
+    position,
+    duration,
+    Date.now(),
+    episodeId
+  );
+  if (quiet && result.changes === 0) quietRows.cancel('episodes', episodeId);
 }
 
 /** `?, ?, …` for an `IN (…)` list of `n` values. */

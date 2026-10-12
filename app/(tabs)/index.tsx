@@ -25,7 +25,7 @@ import {
   parseHomeSections,
   type HomeSectionId,
 } from '@/home/sections';
-import { player } from '@/player';
+import { player, useEpisodePlayback } from '@/player';
 import { formatBytes } from '@/player/downloads';
 import { Artwork } from '@/ui/Artwork';
 import { EpisodeRow } from '@/ui/EpisodeRow';
@@ -65,7 +65,11 @@ function ContinueCard({ episode, onPlay, width, artworkSize }: CardProps) {
   const theme = useTheme();
   const router = useRouter();
   const duration = episode.duration ?? 0;
-  const progress = duration > 0 ? episode.position / duration : 0;
+  // The player's periodic saves no longer re-run this shelf's query, so the
+  // playing episode's card follows the player, as its list row does.
+  const { isCurrent, position: livePosition } = useEpisodePlayback(episode.id);
+  const position = isCurrent ? livePosition : episode.position;
+  const progress = duration > 0 ? position / duration : 0;
 
   return (
     <View style={[styles.card, { width, backgroundColor: theme.surface, borderColor: theme.border }]}>
@@ -81,7 +85,7 @@ function ContinueCard({ episode, onPlay, width, artworkSize }: CardProps) {
             {episode.title}
           </Text>
           <Text style={[styles.cardMeta, { color: theme.textMuted }]} numberOfLines={1}>
-            {formatRemaining(duration - episode.position) || episode.feed_title}
+            {formatRemaining(duration - position) || episode.feed_title}
           </Text>
           <ProgressBar progress={progress} />
         </View>
@@ -290,9 +294,11 @@ export default function HomeScreen() {
     [inboxSort]
   );
   const { data: feeds = [] } = useQuery<FeedWithCounts[]>(() => listFeeds(), ['feeds']);
+  // `episodes` too: the player's periodic listening-time updates are quiet,
+  // and the position save on pause or seek is what announces them.
   const { data: classics = [] } = useQuery<FeedWithCounts[]>(
     () => listClassicFeeds(classicsSince(Date.now()), CLASSICS_COUNT),
-    ['playback_history', 'feeds']
+    ['playback_history', 'feeds', 'episodes']
   );
   const { data: downloads = [] } = useQuery<EpisodeWithFeed[]>(() => listDownloaded('size'), ['episodes']);
   // Seeded, so the shelf holds still while the player saves positions (which
