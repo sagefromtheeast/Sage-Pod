@@ -1,3 +1,9 @@
+## [0.23.2](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.23.1...v0.23.2) (2026-10-28)
+
+### 🐛 Bug Fixes
+
+* **audio:** round media controls and use the Sage Pod notification icon ([a492417](https://github.com/sagefromtheeast/Sage-Pod/commit/a4924170f5f3914ad01ccd24f7d2367069cf3850))
+
 ## [0.23.1](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.23.0...v0.23.1) (2026-10-28)
 
 ### 🐛 Bug Fixes
