@@ -179,8 +179,11 @@ destructive.
 - [x] Android home-screen widget: cover, title, podcast, time left, progress; skip back, play/pause, skip forward; tap opens the player
 - [x] Widget buttons work when the app isn't running (the last episode is restored first)
 - [x] Quick Settings tile: play/pause through the media session; opens the app when nothing is loaded
+- [x] Correct the audio patch's binder mismatch: the internal player uses a separate binding action from Media3 controllers (D-026)
+- [ ] Compile the corrected audio patch (`:expo-audio:compileReleaseKotlin`): **[UNVERIFIED]** locally, blocked before audio compilation by HTTP 403 downloading React Native's Android artifact from `repo.reactnative.dev`
 - [x] Tests: widget model and change check
 - [ ] On device: add the widget, resize it, light and dark; each button with the app open, backgrounded and swiped away; add the tile, toggle it while playing, paused and after a reboot
+- [ ] On a new APK: cold-start playback shows notification metadata and play/pause, configured skips and Next; controls work in the background and on the lock screen; switch episodes; open the tile before and after starting playback; no "invalid binder type" errors; another music app still pauses Sage Pod
 
 ## Phase 18b — Embedded chapters (D-027) ✅
 - [x] ID3 CHAP (title, link, picture) and MP4 chapters (QuickTime track, Nero) read from the audio file when the feed gives no chapters
