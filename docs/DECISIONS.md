@@ -584,6 +584,23 @@ pause. The tile needs a native `TileService`.
   connection its own action while preserving Media3's standard action for
   controllers. This correction needs a new native build, not an OTA update;
   notification and tile behaviour together remain **[UNVERIFIED on device]**.
+  Media notifications reuse the icon configured by `expo-notifications`
+  (`expo.modules.notifications.default_notification_icon`) for both the
+  foreground-service placeholder and the player notification. This gives
+  the small artwork badge Sage Pod's existing monochrome owl instead of
+  Media3's generic play icon. If no notification icon is configured, it
+  falls back to the application icon. Requires a new native build;
+  the badge's final rendering is **[UNVERIFIED on device]**.
+  Numbered skip and Next buttons use rounded Material vector artwork with
+  a 48dp intrinsic size and a 24-unit viewport. The larger intrinsic size
+  gives system UIs that rasterize custom actions more pixels to work with;
+  the final button size remains controlled by Android. The patch supplies
+  these resources through `setCustomIconResId` and the older notification
+  action path, retaining Media3's semantic icon codes and all skip amounts
+  (5/10/15/30, with generic arrows for other values). Play/pause remains a
+  standard system action. The resource build is verified; the result on
+  Redmi Pad SE / Android 15 is **[UNVERIFIED on device]**. The derived Google
+  Material artwork's Apache-2.0 license is bundled with the patched module.
 - **No iOS widget for now**: expo-widgets could show what's playing, but
   not control it, and an app extension adds signing work to the one device
   build. iOS has Now Playing on the lock screen and in Control Center.
