@@ -1,3 +1,9 @@
+## [0.23.1](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.23.0...v0.23.1) (2026-10-28)
+
+### 🐛 Bug Fixes
+
+* **audio:** separate playback and media-controller service bindings ([b2eec98](https://github.com/sagefromtheeast/Sage-Pod/commit/b2eec98b613e50422b4ad59e95b60279519f715a))
+
 ## [0.23.0](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.22.0...v0.23.0) (2026-10-12)
 
 ### 🚀 New Features
