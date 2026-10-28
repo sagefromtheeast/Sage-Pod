@@ -575,6 +575,15 @@ pause. The tile needs a native `TileService`.
   version. expo-audio's `onBind` always returned its private binder, so no
   MediaController could connect; the patch (D-025) now returns Media3's
   session binder when the bind asks for it.
+  The player's own `AudioPlaybackServiceConnection` must use a separate
+  `ACTION_BIND_PLAYBACK_SERVICE` action: upstream uses the same
+  `MediaSessionService.SERVICE_INTERFACE` action as MediaControllers but
+  expects an `AudioPlaybackServiceBinder`. Sharing the action routes the
+  player to Media3's binder, so it fails with "invalid binder type" and
+  never attaches the notification controls. The patch gives the internal
+  connection its own action while preserving Media3's standard action for
+  controllers. This correction needs a new native build, not an OTA update;
+  notification and tile behaviour together remain **[UNVERIFIED on device]**.
 - **No iOS widget for now**: expo-widgets could show what's playing, but
   not control it, and an app extension adds signing work to the one device
   build. iOS has Now Playing on the lock screen and in Control Center.

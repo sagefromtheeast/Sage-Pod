@@ -1,3 +1,22 @@
+## [0.23.0](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.22.0...v0.23.0) (2026-10-12)
+
+### 🚀 New Features
+
+* download episodes on Android in background WorkManager jobs ([7de613d](https://github.com/sagefromtheeast/Sage-Pod/commit/7de613de7ea26db13bc09a14b42e78e1e7172307))
+
+### 🐛 Bug Fixes
+
+* pick the newest finished download job and keep passwords off http redirects ([bb0ae8b](https://github.com/sagefromtheeast/Sage-Pod/commit/bb0ae8b53f289ac2c3a3d0e2acc054fb337b216f))
+
+### 📚 Documentation
+
+* Phase 19 decision (D-029), tasks and handover ([cc710b3](https://github.com/sagefromtheeast/Sage-Pod/commit/cc710b3df3ba5945d5bd2208e6dc0581e7007251))
+* Phase 19 plan (background downloads, D-029 proposed) ([c707ce7](https://github.com/sagefromtheeast/Sage-Pod/commit/c707ce7b651eb8dc121551ec2ce592df43cbc0ec))
+
+### 🔧 Maintenance
+
+* drop the local module's Gradle build output and ignore it ([d5e8aa7](https://github.com/sagefromtheeast/Sage-Pod/commit/d5e8aa7c86f5519b4eebd9c2ee4a5e165d229d1d))
+
 ## [0.22.0](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.21.2...v0.22.0) (2026-10-12)
 
 ### 🚀 New Features
