@@ -1,3 +1,23 @@
+## [0.24.0](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.23.2...v0.24.0) (2026-11-06)
+
+### 🚀 New Features
+
+* add Echo, a year in review on Home from 10 December ([17f62f2](https://github.com/sagefromtheeast/Sage-Pod/commit/17f62f216aa58a12a636342a0d0b19f05d3b9859))
+
+### 🐛 Bug Fixes
+
+* fill Echo's waves down to the bottom of the screen ([d4825c7](https://github.com/sagefromtheeast/Sage-Pod/commit/d4825c791e5c17b0df54bfa451c1414ec9d85a11))
+
+### 📚 Documentation
+
+* Phase 20 done (D-030 accepted), tasks, handover and readme ([fab1ea2](https://github.com/sagefromtheeast/Sage-Pod/commit/fab1ea2856babe024a016b352acfc3d8f9f1ac58))
+* Phase 20 plan (Echo year in review, D-030 proposed) ([c8089fd](https://github.com/sagefromtheeast/Sage-Pod/commit/c8089fdbe643dfb6cdceaccf2ef99ee089608185))
+
+### ✅ Tests
+
+* let the comparison page use SHOTS_CHROMIUM too ([2ecf80d](https://github.com/sagefromtheeast/Sage-Pod/commit/2ecf80d715117d127cf910e31d605eca4bc171b7))
+* screenshot Echo's cards, its Home card and Statistics entry ([c2314f3](https://github.com/sagefromtheeast/Sage-Pod/commit/c2314f34bd11ae1576cf052375b24685115cd028))
+
 ## [0.23.2](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.23.1...v0.23.2) (2026-10-28)
 
 ### 🐛 Bug Fixes
