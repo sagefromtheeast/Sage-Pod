@@ -153,14 +153,15 @@ function Squares({ width, height }: { width: number; height: number }) {
   );
 }
 
-function wavePath(width: number, height: number, amplitude: number, waves: number): string {
-  const steps = 48;
+/** A filled wave whose midline sits at `crest`, filled down to `bottom`. */
+function wavePath(width: number, bottom: number, crest: number, amplitude: number, waves: number): string {
+  const steps = 120;
   const points = Array.from({ length: steps + 1 }, (_, i) => {
     const x = (i / steps) * width;
-    const y = height - amplitude * (1 + Math.sin((i / steps) * waves * 2 * Math.PI));
+    const y = crest - amplitude * Math.sin((i / steps) * waves * 2 * Math.PI);
     return `L ${x.toFixed(1)} ${y.toFixed(1)}`;
   });
-  return `M 0 ${height} ${points.join(' ')} L ${width} ${height} Z`;
+  return `M 0 ${bottom} ${points.join(' ')} L ${width} ${bottom} Z`;
 }
 
 function Waves({ width, height }: { width: number; height: number }) {
@@ -169,9 +170,9 @@ function Waves({ width, height }: { width: number; height: number }) {
   return (
     <Animated.View style={[styles.layer, { left: 0, top: 0 }, style]}>
       <Svg width={2 * width} height={height}>
-        <Path d={wavePath(2 * width, height, 60, 4)} fill={shape(1)} />
-        <Path d={wavePath(2 * width, height * 0.82, 44, 6)} fill={shape(0)} />
-        <Path d={wavePath(2 * width, height * 0.62, 30, 2)} fill={shape(3)} />
+        <Path d={wavePath(2 * width, height, height * 0.62, 30, 2)} fill={shape(3)} />
+        <Path d={wavePath(2 * width, height, height * 0.74, 44, 6)} fill={shape(0)} />
+        <Path d={wavePath(2 * width, height, height * 0.86, 60, 4)} fill={shape(1)} />
       </Svg>
     </Animated.View>
   );
