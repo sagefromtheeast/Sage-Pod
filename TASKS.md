@@ -30,7 +30,7 @@ destructive.
 - [x] `npm run shots -- <name>`, `npm run shots:diff`, `shots-tool/README.md`
 - [x] Two runs identical; android export + typecheck still green
 - [x] Before (v0.3.0) vs after (Phase 1) diff shows only the intended changes
-- [ ] Extend routes (+add-feed, feed settings, downloads, history), light and empty-state sets
+- [x] Extend routes (+add-feed, feed settings, downloads, history), light (`SHOTS_SCHEME=light`) and empty-state (`SHOTS_EMPTY=1`) sets
 
 ## Phase 3 — shared building blocks ✅
 - [x] Typed `EpisodeAction` + pure, tested `episodeActionsFor` / `rowButtonFor` / selection helpers (`src/actions/`)
@@ -42,7 +42,7 @@ destructive.
 - [x] PR Checks workflow (typecheck, test, expo-doctor, android bundle)
 - [x] Screenshot harness: interaction shots (long-press sheet, selection, ⋯ menu)
 - [x] No migration needed (types per phase instead: FeedOverride/FeedState → Phase 10, EnqueuePosition → Phase 5, HomeSectionId → Phase 7)
-- [ ] Fix nested-Pressable button-in-button on Home cards (moved to Phase 7, Home)
+- [x] Fix nested-Pressable button-in-button on Home cards (done in Phase 7: open and play are sibling buttons)
 
 ## Phase 4 — Now Playing & mini player ✅
 - [x] Mini player on podcast, episode and list screens (hidden while selecting)
@@ -74,13 +74,13 @@ destructive.
 - [x] Section chrome + empty texts; queue section; See what's new (inbox sort, swipeable); Classics (3 y); Manage downloads; keep in-progress shelf (D-003.6, now only unqueued episodes)
 - [x] Header Search (new local `search` route, every word must match) + ⋯ Refresh / Configure home (show, hide, reorder; `HomeSectionId[]` saved)
 - [x] AGENTS.md: PRs merge with a merge commit, so PR titles need no Conventional prefix
-- [ ] Search: Queue/feed chips and "Search online" (search phase)
+- [x] Search: "Search online" (Phase 11); the queue and each podcast page search in place (their 🔍), standing in for AntennaPod's chips
 
 ## Phase 8 — Episode details ✅
 - [x] ⋯ menu (skip, inbox, reset, website, open podcast, share link / from position / audio file)
 - [x] Inline links (anchors + bare URLs) with long-press Open / Copy / Share; Links list removed (D-003.5); timecode disambiguation by duration, out-of-range times plain (`parseShowNotes`, tested); long-press copy title / podcast; swipe between the podcast's episodes
 - [ ] On device: long-press on inline links (react-native-web doesn't route it, so no shot); pager swipe vs vertical scroll
-- [ ] Pager follows the list you came from (currently the podcast's episodes)
+- [x] Pager follows the list you came from (`src/episode/pagerList`, `EpisodeList`); a deep link falls back to the podcast's episodes
 
 ## Phase 9 — Podcast page / info / preview ✅
 - [x] Icon row (Info / Filter / Settings); real ⋯ menu (sort, refresh, refresh complete, website, share, remove all from inbox, mark played, unsubscribe); search; pull-to-refresh; saved filter (include/exclude pairs) + sort; refresh-failed / updates-off / filtered banners
