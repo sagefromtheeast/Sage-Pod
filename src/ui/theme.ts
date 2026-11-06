@@ -193,3 +193,22 @@ export const MIN_GRID_TILE = 150;
 
 /** Height of the mini player, so screens can pad their scroll content past it. */
 export const MINI_PLAYER_HEIGHT = 64;
+
+/**
+ * Echo's story cards keep their own dark palette in every theme, as
+ * AntennaPod's do: they read like a slideshow, not like the app around them.
+ */
+export const echoPalette = {
+  bg: '#0B1F16',
+  text: '#F2FFF7',
+  textMuted: 'rgba(242, 255, 247, 0.74)',
+  /** Progress segments: track and fill. */
+  track: 'rgba(242, 255, 247, 0.28)',
+  fill: '#F2FFF7',
+  /** Backdrop shapes, drawn faintly behind the words. */
+  shapes: ['#4ADE80', '#22C55E', '#86EFAC', '#E9B764'],
+  shapeOpacity: 0.22,
+  /** The Share button. */
+  button: '#4ADE80',
+  onButton: '#06291A',
+} as const;
