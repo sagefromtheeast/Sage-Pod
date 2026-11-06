@@ -20,6 +20,7 @@ import {
   sizeOf,
   sortDownloads,
 } from '@/player/downloadView';
+import { EpisodeList } from '@/ui/episode/EpisodeList';
 import { ActionSheet } from '@/ui/ActionSheet';
 import { DownloadLogSheet } from '@/ui/downloads/DownloadLogSheet';
 import { EmptyState } from '@/ui/EmptyState';
@@ -156,83 +157,85 @@ export default function DownloadsScreen() {
         </View>
       ) : null}
 
-      <SectionList
-        sections={sections}
-        keyExtractor={(episode) => String(episode.id)}
-        extraData={selection.selected}
-        stickySectionHeadersEnabled={false}
-        contentContainerStyle={{ paddingBottom: selection.active ? SELECTION_BAR_HEIGHT + space.xl : dockPadding }}
-        renderSectionHeader={({ section }) => (
-          <Text style={[styles.heading, { color: theme.textMuted }]}>{section.title}</Text>
-        )}
-        ListEmptyComponent={
-          loading ? null : term ? (
-            <NoMatches message={`No downloads match “${term}”.`} term={term} />
-          ) : (
-            <EmptyState
-              icon="arrow-down-circle-outline"
-              title="No downloads"
-              message="Downloaded episodes play without a connection and appear here."
-            />
-          )
-        }
-        renderItem={({ item, section }) =>
-          section.key === 'active' ? (
-            <EpisodeRow
-              episode={item}
-              onPlay={play}
-              // Waiting or running: the row's own button cancels. A failed
-              // download can be retried or dismissed.
-              trailing={
-                item.download_state === 'error' ? (
-                  <View style={styles.failedActions}>
-                    <Pressable
-                      onPress={() => void startDownloads([item.id])}
-                      hitSlop={8}
-                      style={[styles.retry, { borderColor: theme.danger }]}
-                      accessibilityRole="button"
-                      accessibilityLabel="Retry download"
-                    >
-                      <Text style={[styles.retryLabel, { color: theme.danger }]}>Retry</Text>
-                    </Pressable>
-                    <Pressable
-                      onPress={() => void cancelDownload(item.id)}
-                      hitSlop={8}
-                      accessibilityRole="button"
-                      accessibilityLabel="Dismiss failed download"
-                    >
-                      <Ionicons name="close" size={18} color={theme.textMuted} />
-                    </Pressable>
-                  </View>
-                ) : null
-              }
-            />
-          ) : (
-            <SwipeableEpisodeRow
-              episode={item}
-              screen="downloads"
-              onPlay={play}
-              swipeEnabled={!selection.active}
-              actionHooks={actionHooks}
-              selecting={selection.active}
-              selected={selection.selected.has(item.id)}
-              onToggleSelect={selection.toggle}
-              onSelectRange={selection.openRangeMenu}
-              trailing={
-                <Pressable
-                  // Same confirmed delete as the long-press menu.
-                  onPress={() => void runEpisodeAction('delete', [item])}
-                  hitSlop={8}
-                  accessibilityRole="button"
-                  accessibilityLabel="Delete download"
-                >
-                  <Ionicons name="trash-outline" size={19} color={theme.textFaint} />
-                </Pressable>
-              }
-            />
-          )
-        }
-      />
+      <EpisodeList ids={sections.flatMap((section) => section.data.map((episode) => episode.id))}>
+        <SectionList
+          sections={sections}
+          keyExtractor={(episode) => String(episode.id)}
+          extraData={selection.selected}
+          stickySectionHeadersEnabled={false}
+          contentContainerStyle={{ paddingBottom: selection.active ? SELECTION_BAR_HEIGHT + space.xl : dockPadding }}
+          renderSectionHeader={({ section }) => (
+            <Text style={[styles.heading, { color: theme.textMuted }]}>{section.title}</Text>
+          )}
+          ListEmptyComponent={
+            loading ? null : term ? (
+              <NoMatches message={`No downloads match “${term}”.`} term={term} />
+            ) : (
+              <EmptyState
+                icon="arrow-down-circle-outline"
+                title="No downloads"
+                message="Downloaded episodes play without a connection and appear here."
+              />
+            )
+          }
+          renderItem={({ item, section }) =>
+            section.key === 'active' ? (
+              <EpisodeRow
+                episode={item}
+                onPlay={play}
+                // Waiting or running: the row's own button cancels. A failed
+                // download can be retried or dismissed.
+                trailing={
+                  item.download_state === 'error' ? (
+                    <View style={styles.failedActions}>
+                      <Pressable
+                        onPress={() => void startDownloads([item.id])}
+                        hitSlop={8}
+                        style={[styles.retry, { borderColor: theme.danger }]}
+                        accessibilityRole="button"
+                        accessibilityLabel="Retry download"
+                      >
+                        <Text style={[styles.retryLabel, { color: theme.danger }]}>Retry</Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => void cancelDownload(item.id)}
+                        hitSlop={8}
+                        accessibilityRole="button"
+                        accessibilityLabel="Dismiss failed download"
+                      >
+                        <Ionicons name="close" size={18} color={theme.textMuted} />
+                      </Pressable>
+                    </View>
+                  ) : null
+                }
+              />
+            ) : (
+              <SwipeableEpisodeRow
+                episode={item}
+                screen="downloads"
+                onPlay={play}
+                swipeEnabled={!selection.active}
+                actionHooks={actionHooks}
+                selecting={selection.active}
+                selected={selection.selected.has(item.id)}
+                onToggleSelect={selection.toggle}
+                onSelectRange={selection.openRangeMenu}
+                trailing={
+                  <Pressable
+                    // Same confirmed delete as the long-press menu.
+                    onPress={() => void runEpisodeAction('delete', [item])}
+                    hitSlop={8}
+                    accessibilityRole="button"
+                    accessibilityLabel="Delete download"
+                  >
+                    <Ionicons name="trash-outline" size={19} color={theme.textFaint} />
+                  </Pressable>
+                }
+              />
+            )
+          }
+        />
+      </EpisodeList>
 
       <SelectionBar selection={selection} />
       <MiniPlayerDock hidden={selection.active} />

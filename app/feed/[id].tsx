@@ -34,6 +34,7 @@ import { useQuery } from '@/db/useQuery';
 import { describeFilter, isFiltered, parseEpisodeFilter } from '@/feed/episodeFilter';
 import { fetchOlderFeedEpisodes, refreshFeed, refreshFeedCompletely, subscribe } from '@/feed/sync';
 import { player } from '@/player';
+import { EpisodeList } from '@/ui/episode/EpisodeList';
 import { ActionSheet, type IconName } from '@/ui/ActionSheet';
 import { Artwork } from '@/ui/Artwork';
 import { Chip } from '@/ui/Chip';
@@ -272,169 +273,172 @@ export default function FeedScreen() {
         }}
       />
 
-      <FlatList
-        data={episodes}
-        keyExtractor={(episode) => String(episode.id)}
-        extraData={selection.selected}
-        contentContainerStyle={{ paddingBottom: selection.active ? SELECTION_BAR_HEIGHT + space.xl : dockPadding }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void refresh()} tintColor={theme.accent} />}
-        ListHeaderComponent={
-          <View style={styles.header}>
-            <View style={styles.headerTop}>
-              <Artwork uri={feed.image_url} size={104} />
-              <View style={styles.headerMeta}>
-                <Text style={[styles.title, { color: theme.text }]} numberOfLines={3}>
-                  {feed.title}
-                </Text>
-                {feed.author ? (
-                  <Text style={[styles.author, { color: theme.textMuted }]} numberOfLines={1}>
-                    {feed.author}
+      {/* Until every stored episode is loaded, the pager uses the podcast's full list instead. */}
+      <EpisodeList ids={moreStored ? null : episodes.map((episode) => episode.id)}>
+        <FlatList
+          data={episodes}
+          keyExtractor={(episode) => String(episode.id)}
+          extraData={selection.selected}
+          contentContainerStyle={{ paddingBottom: selection.active ? SELECTION_BAR_HEIGHT + space.xl : dockPadding }}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void refresh()} tintColor={theme.accent} />}
+          ListHeaderComponent={
+            <View style={styles.header}>
+              <View style={styles.headerTop}>
+                <Artwork uri={feed.image_url} size={104} />
+                <View style={styles.headerMeta}>
+                  <Text style={[styles.title, { color: theme.text }]} numberOfLines={3}>
+                    {feed.title}
                   </Text>
-                ) : null}
-                <Text style={[styles.counts, { color: theme.textFaint }]}>
-                  {feed.episode_count} episodes{preview ? '' : ` · ${feed.unplayed_count} unplayed`}
-                </Text>
+                  {feed.author ? (
+                    <Text style={[styles.author, { color: theme.textMuted }]} numberOfLines={1}>
+                      {feed.author}
+                    </Text>
+                  ) : null}
+                  <Text style={[styles.counts, { color: theme.textFaint }]}>
+                    {feed.episode_count} episodes{preview ? '' : ` · ${feed.unplayed_count} unplayed`}
+                  </Text>
+                </View>
               </View>
-            </View>
 
-            {description ? (
-              <Pressable onPress={() => setDescriptionExpanded((value) => !value)}>
-                <Text style={[styles.description, { color: theme.textMuted }]}>{description}</Text>
-                <Text style={[styles.more, { color: theme.accent }]}>
-                  {descriptionExpanded ? 'Show less' : 'Show more'}
-                </Text>
-              </Pressable>
-            ) : null}
-
-            {preview ? (
-              <View style={styles.previewBlock}>
-                <Pressable
-                  onPress={() => void subscribeNow()}
-                  disabled={subscribing}
-                  style={[styles.subscribe, { backgroundColor: theme.accent, opacity: subscribing ? 0.6 : 1 }]}
-                  accessibilityRole="button"
-                >
-                  <Ionicons name="add" size={20} color={theme.onAccent} />
-                  <Text style={[styles.subscribeLabel, { color: theme.onAccent }]}>
-                    {subscribing ? 'Subscribing…' : archived ? 'Subscribe again' : 'Subscribe'}
+              {description ? (
+                <Pressable onPress={() => setDescriptionExpanded((value) => !value)}>
+                  <Text style={[styles.description, { color: theme.textMuted }]}>{description}</Text>
+                  <Text style={[styles.more, { color: theme.accent }]}>
+                    {descriptionExpanded ? 'Show less' : 'Show more'}
                   </Text>
                 </Pressable>
-                <Text style={[styles.previewNote, { color: theme.textFaint }]}>
-                  {archived
-                    ? "Archived. It isn't refreshed and stays out of your Library; your episodes and progress are kept."
-                    : 'Previewing. You can play episodes now; the podcast joins your library when you subscribe.'}
+              ) : null}
+
+              {preview ? (
+                <View style={styles.previewBlock}>
+                  <Pressable
+                    onPress={() => void subscribeNow()}
+                    disabled={subscribing}
+                    style={[styles.subscribe, { backgroundColor: theme.accent, opacity: subscribing ? 0.6 : 1 }]}
+                    accessibilityRole="button"
+                  >
+                    <Ionicons name="add" size={20} color={theme.onAccent} />
+                    <Text style={[styles.subscribeLabel, { color: theme.onAccent }]}>
+                      {subscribing ? 'Subscribing…' : archived ? 'Subscribe again' : 'Subscribe'}
+                    </Text>
+                  </Pressable>
+                  <Text style={[styles.previewNote, { color: theme.textFaint }]}>
+                    {archived
+                      ? "Archived. It isn't refreshed and stays out of your Library; your episodes and progress are kept."
+                      : 'Previewing. You can play episodes now; the podcast joins your library when you subscribe.'}
+                  </Text>
+                </View>
+              ) : (
+                <View style={styles.actions}>
+                  <Chip style={styles.chip} icon="information-circle-outline" label="Info" onPress={() => router.push(`/feed/info/${feed.id}`)} />
+                  <Chip
+                    style={styles.chip}
+                    icon={filtered ? 'funnel' : 'funnel-outline'}
+                    label="Filter"
+                    active={filtered}
+                    onPress={() => setSheet('filter')}
+                  />
+                  <Chip style={styles.chip} icon="settings-outline" label="Settings" onPress={() => router.push(`/feed/settings/${feed.id}`)} />
+                </View>
+              )}
+
+              {!preview && feed.last_refresh_error ? (
+                <Banner
+                  icon="warning-outline"
+                  tone="danger"
+                  text={`Last refresh failed: ${feed.last_refresh_error}`}
+                  action={{ label: 'Retry', onPress: () => void refresh() }}
+                />
+              ) : null}
+              {!preview && feed.keep_updated === 0 ? (
+                <Banner
+                  icon="pause-circle-outline"
+                  text="Automatic updates are off for this podcast."
+                  action={{ label: 'Turn on', onPress: () => void setFeedFlags(feed.id, { keepUpdated: true }) }}
+                />
+              ) : null}
+              {filtered ? (
+                <Banner
+                  icon="funnel-outline"
+                  text={`Filtered: ${describeFilter(filter)}`}
+                  action={{ label: 'Clear', onPress: () => void setFeedViewPrefs(feed.id, { episodeFilter: null }) }}
+                />
+              ) : null}
+
+              {search !== null ? (
+                <View style={[styles.search, { backgroundColor: theme.surfaceAlt }]}>
+                  <Ionicons name="search" size={16} color={theme.textMuted} />
+                  <TextInput
+                    value={search}
+                    onChangeText={setSearch}
+                    autoFocus
+                    placeholder="Search this podcast"
+                    placeholderTextColor={theme.textFaint}
+                    style={[styles.searchInput, { color: theme.text }]}
+                    returnKeyType="search"
+                    accessibilityLabel="Search this podcast"
+                  />
+                </View>
+              ) : null}
+            </View>
+          }
+          onEndReached={showMoreStored}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={
+            !episodesLoading && !moreStored && !term && !filtered && feed.next_page_url ? (
+              // Paged feeds (RFC 5005) only ship their newest page; older
+              // episodes are fetched on request, like AntennaPod's load-more footer.
+              <Pressable
+                onPress={() => void loadOlder()}
+                disabled={loadingOlder}
+                style={[styles.loadOlder, { borderColor: theme.border }]}
+                accessibilityRole="button"
+              >
+                <Ionicons name="time-outline" size={16} color={theme.accent} />
+                <Text style={[styles.chipLabel, { color: theme.accent }]}>
+                  {loadingOlder ? 'Loading older episodes…' : 'Load older episodes'}
                 </Text>
-              </View>
-            ) : (
-              <View style={styles.actions}>
-                <Chip style={styles.chip} icon="information-circle-outline" label="Info" onPress={() => router.push(`/feed/info/${feed.id}`)} />
-                <Chip
-                  style={styles.chip}
-                  icon={filtered ? 'funnel' : 'funnel-outline'}
-                  label="Filter"
-                  active={filtered}
-                  onPress={() => setSheet('filter')}
-                />
-                <Chip style={styles.chip} icon="settings-outline" label="Settings" onPress={() => router.push(`/feed/settings/${feed.id}`)} />
-              </View>
-            )}
-
-            {!preview && feed.last_refresh_error ? (
-              <Banner
-                icon="warning-outline"
-                tone="danger"
-                text={`Last refresh failed: ${feed.last_refresh_error}`}
-                action={{ label: 'Retry', onPress: () => void refresh() }}
+              </Pressable>
+            ) : null
+          }
+          ListEmptyComponent={
+            episodesLoading ? null : filtered || term ? (
+              <EmptyState
+                icon="filter-outline"
+                title="No matching episodes"
+                message={term ? `No episodes match “${term}”.` : 'None of the episodes match the filter.'}
+                action={
+                  filtered
+                    ? { label: 'Clear filter', onPress: () => void setFeedViewPrefs(feed.id, { episodeFilter: null }) }
+                    : { label: 'Search all podcasts', onPress: () => router.push({ pathname: '/search', params: { q: term } }) }
+                }
               />
-            ) : null}
-            {!preview && feed.keep_updated === 0 ? (
-              <Banner
-                icon="pause-circle-outline"
-                text="Automatic updates are off for this podcast."
-                action={{ label: 'Turn on', onPress: () => void setFeedFlags(feed.id, { keepUpdated: true }) }}
-              />
-            ) : null}
-            {filtered ? (
-              <Banner
-                icon="funnel-outline"
-                text={`Filtered: ${describeFilter(filter)}`}
-                action={{ label: 'Clear', onPress: () => void setFeedViewPrefs(feed.id, { episodeFilter: null }) }}
-              />
-            ) : null}
-
-            {search !== null ? (
-              <View style={[styles.search, { backgroundColor: theme.surfaceAlt }]}>
-                <Ionicons name="search" size={16} color={theme.textMuted} />
-                <TextInput
-                  value={search}
-                  onChangeText={setSearch}
-                  autoFocus
-                  placeholder="Search this podcast"
-                  placeholderTextColor={theme.textFaint}
-                  style={[styles.searchInput, { color: theme.text }]}
-                  returnKeyType="search"
-                  accessibilityLabel="Search this podcast"
-                />
-              </View>
-            ) : null}
-          </View>
-        }
-        onEndReached={showMoreStored}
-        onEndReachedThreshold={0.5}
-        ListFooterComponent={
-          !episodesLoading && !moreStored && !term && !filtered && feed.next_page_url ? (
-            // Paged feeds (RFC 5005) only ship their newest page; older
-            // episodes are fetched on request, like AntennaPod's load-more footer.
-            <Pressable
-              onPress={() => void loadOlder()}
-              disabled={loadingOlder}
-              style={[styles.loadOlder, { borderColor: theme.border }]}
-              accessibilityRole="button"
-            >
-              <Ionicons name="time-outline" size={16} color={theme.accent} />
-              <Text style={[styles.chipLabel, { color: theme.accent }]}>
-                {loadingOlder ? 'Loading older episodes…' : 'Load older episodes'}
-              </Text>
-            </Pressable>
-          ) : null
-        }
-        ListEmptyComponent={
-          episodesLoading ? null : filtered || term ? (
-            <EmptyState
-              icon="filter-outline"
-              title="No matching episodes"
-              message={term ? `No episodes match “${term}”.` : 'None of the episodes match the filter.'}
-              action={
-                filtered
-                  ? { label: 'Clear filter', onPress: () => void setFeedViewPrefs(feed.id, { episodeFilter: null }) }
-                  : { label: 'Search all podcasts', onPress: () => router.push({ pathname: '/search', params: { q: term } }) }
+            ) : null
+          }
+          renderItem={({ item }) => (
+            <EpisodeRow
+              episode={item}
+              onPlay={play}
+              hideFeedTitle
+              actionHooks={actionHooks}
+              selecting={selection.active}
+              selected={selection.selected.has(item.id)}
+              onToggleSelect={selection.toggle}
+              onSelectRange={selection.openRangeMenu}
+              trailing={
+                <Pressable
+                  onPress={() => void enqueue(item.id)}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Add to queue"
+                >
+                  <Ionicons name="add-circle-outline" size={20} color={theme.textMuted} />
+                </Pressable>
               }
             />
-          ) : null
-        }
-        renderItem={({ item }) => (
-          <EpisodeRow
-            episode={item}
-            onPlay={play}
-            hideFeedTitle
-            actionHooks={actionHooks}
-            selecting={selection.active}
-            selected={selection.selected.has(item.id)}
-            onToggleSelect={selection.toggle}
-            onSelectRange={selection.openRangeMenu}
-            trailing={
-              <Pressable
-                onPress={() => void enqueue(item.id)}
-                hitSlop={8}
-                accessibilityRole="button"
-                accessibilityLabel="Add to queue"
-              >
-                <Ionicons name="add-circle-outline" size={20} color={theme.textMuted} />
-              </Pressable>
-            }
-          />
-        )}
-      />
+          )}
+        />
+      </EpisodeList>
       <SelectionBar selection={selection} />
       <MiniPlayerDock hidden={selection.active} />
 

@@ -8,6 +8,7 @@ import { enqueue } from '@/db/queue';
 import type { EpisodeWithFeed } from '@/db/types';
 import { useQuery } from '@/db/useQuery';
 import { player } from '@/player';
+import { EpisodeList } from '@/ui/episode/EpisodeList';
 import { EmptyState } from '@/ui/EmptyState';
 import { EpisodeRow } from '@/ui/EpisodeRow';
 import { SELECTION_BAR_HEIGHT, SelectionBar } from '@/ui/SelectionBar';
@@ -76,39 +77,41 @@ export default function ListScreen() {
           ),
         }}
       />
-      <FlatList
-        data={episodes}
-        keyExtractor={(episode) => String(episode.id)}
-        extraData={selection.selected}
-        contentContainerStyle={[
-          styles.content,
-          { paddingBottom: selection.active ? SELECTION_BAR_HEIGHT + space.xl : dockPadding },
-        ]}
-        ListEmptyComponent={
-          loading ? null : <EmptyState icon={view.icon} title={view.title} message={view.empty} />
-        }
-        renderItem={({ item }) => (
-          <EpisodeRow
-            episode={item}
-            onPlay={play}
-            actionHooks={actionHooks}
-            selecting={selection.active}
-            selected={selection.selected.has(item.id)}
-            onToggleSelect={selection.toggle}
-            onSelectRange={selection.openRangeMenu}
-            trailing={
-              <Pressable
-                onPress={() => void enqueue(item.id)}
-                hitSlop={8}
-                accessibilityRole="button"
-                accessibilityLabel="Add to queue"
-              >
-                <Ionicons name="add-circle-outline" size={20} color={theme.textMuted} />
-              </Pressable>
-            }
-          />
-        )}
-      />
+      <EpisodeList ids={episodes.map((episode) => episode.id)}>
+        <FlatList
+          data={episodes}
+          keyExtractor={(episode) => String(episode.id)}
+          extraData={selection.selected}
+          contentContainerStyle={[
+            styles.content,
+            { paddingBottom: selection.active ? SELECTION_BAR_HEIGHT + space.xl : dockPadding },
+          ]}
+          ListEmptyComponent={
+            loading ? null : <EmptyState icon={view.icon} title={view.title} message={view.empty} />
+          }
+          renderItem={({ item }) => (
+            <EpisodeRow
+              episode={item}
+              onPlay={play}
+              actionHooks={actionHooks}
+              selecting={selection.active}
+              selected={selection.selected.has(item.id)}
+              onToggleSelect={selection.toggle}
+              onSelectRange={selection.openRangeMenu}
+              trailing={
+                <Pressable
+                  onPress={() => void enqueue(item.id)}
+                  hitSlop={8}
+                  accessibilityRole="button"
+                  accessibilityLabel="Add to queue"
+                >
+                  <Ionicons name="add-circle-outline" size={20} color={theme.textMuted} />
+                </Pressable>
+              }
+            />
+          )}
+        />
+      </EpisodeList>
       <SelectionBar selection={selection} />
       <MiniPlayerDock hidden={selection.active} />
     </>

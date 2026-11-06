@@ -12,6 +12,13 @@ const base = process.argv[3] ?? 'http://localhost:8081';
 const scheme = process.argv[4] ?? 'dark';
 const only = process.argv[5]?.split(',');
 
+// SHOTS_EMPTY=1: a fresh install, no seed, so the screens show their empty states.
+const EMPTY = process.env.SHOTS_EMPTY === '1';
+const EMPTY_ROUTES = [
+  ['home', '/'], ['queue', '/queue'], ['inbox', '/inbox'], ['library', '/library'], ['episodes', '/episodes'],
+  ['downloads', '/downloads'], ['favorites', '/list/favorites'], ['history', '/list/history'], ['stats', '/stats'],
+].filter(([n]) => !only || only.includes(n));
+
 const VIEWPORTS = [
   { name: 'phone', width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
   { name: 'tablet', width: 800, height: 1280, deviceScaleFactor: 1, isMobile: true, hasTouch: true },
@@ -48,7 +55,7 @@ const ECHO_NOW = Date.UTC(2026, 11, 15, 15, 0, 0);
 const ROUTES = [
   ['home', '/'], ['queue', '/queue'], ['inbox', '/inbox'], ['discover', '/discover'], ['library', '/library'],
   ['player', '/player'], ['feed', '/feed/1'], ['episode', '/episode/3'], ['settings', '/settings'], ['stats', '/stats'],
-  ['favorites', '/list/favorites'],
+  ['favorites', '/list/favorites'], ['history', '/list/history'],
   ['feed-actions', '/feed/1', longPressFirstEpisode],
   ['feed-select', '/feed/1', async (page) => {
     await longPressFirstEpisode(page);
@@ -405,9 +412,9 @@ for (const vp of VIEWPORTS) {
   log(vpName, 'boot'); await page.goto(base + '/');
   await page.waitForFunction(() => globalThis.__SQLITE_DBS__?.['sagepod.db'], null, { timeout: 30000 });
   await page.getByText('Library', { exact: true }).first().waitFor({ timeout: 30000 });
-  log(vpName, 'seeding'); await page.evaluate((sql) => globalThis.__SQLITE_DBS__['sagepod.db'].execAsync(sql), seedSql());
+  if (!EMPTY) { log(vpName, 'seeding'); await page.evaluate((sql) => globalThis.__SQLITE_DBS__['sagepod.db'].execAsync(sql), seedSql()); }
 
-  for (const [name, url, act] of ROUTES) {
+  for (const [name, url, act] of EMPTY ? EMPTY_ROUTES : ROUTES) {
     log(vpName, name);
     try {
       await page.goto(base + url);

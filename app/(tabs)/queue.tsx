@@ -20,6 +20,7 @@ import { useQuery } from '@/db/useQuery';
 import { refreshAllFeeds } from '@/feed/sync';
 import { player, useCurrentEpisodeId } from '@/player';
 import { queueTimeLeft } from '@/player/queueSorting';
+import { EpisodeList } from '@/ui/episode/EpisodeList';
 import { DraggableList } from '@/ui/DraggableList';
 import { EmptyState } from '@/ui/EmptyState';
 import { triggerHaptic } from '@/ui/haptics';
@@ -220,42 +221,44 @@ export default function QueueScreen() {
         </View>
       ) : null}
 
-      <DraggableList
-        listRef={listRef}
-        data={shown}
-        keyOf={(episode) => episode.id}
-        dragEnabled={canDrag}
-        onReorder={(ids) => void reorderQueue(ids)}
-        extraData={selection.selected}
-        contentContainerStyle={{
-          paddingBottom: selection.active ? SELECTION_BAR_HEIGHT + space.xl : MINI_PLAYER_HEIGHT + space.xl,
-        }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void refresh()} tintColor={theme.accent} />}
-        onScrollToIndexFailed={(info) => {
-          listRef.current?.scrollToOffset({ offset: info.averageItemLength * info.index, animated: true });
-        }}
-        ListEmptyComponent={
-          term ? (
-            <NoMatches message={`No queued episodes match “${search}”.`} term={search ?? ''} />
-          ) : null
-        }
-        renderItem={(item, _index, handle) => (
-          <SwipeableEpisodeRow
-            episode={item}
-            screen="queue"
-            onPlay={play}
-            swipeEnabled={!locked && !selection.active}
-            // Kept sorted: moving to the top would be undone at once.
-            unavailable={keptSorted ? NO_MOVE_TO_TOP : undefined}
-            actionHooks={actionHooks}
-            selecting={selection.active}
-            selected={selection.selected.has(item.id)}
-            onToggleSelect={selection.toggle}
-            onSelectRange={selection.openRangeMenu}
-            trailing={handle}
-          />
-        )}
-      />
+      <EpisodeList ids={shown.map((episode) => episode.id)}>
+        <DraggableList
+          listRef={listRef}
+          data={shown}
+          keyOf={(episode) => episode.id}
+          dragEnabled={canDrag}
+          onReorder={(ids) => void reorderQueue(ids)}
+          extraData={selection.selected}
+          contentContainerStyle={{
+            paddingBottom: selection.active ? SELECTION_BAR_HEIGHT + space.xl : MINI_PLAYER_HEIGHT + space.xl,
+          }}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => void refresh()} tintColor={theme.accent} />}
+          onScrollToIndexFailed={(info) => {
+            listRef.current?.scrollToOffset({ offset: info.averageItemLength * info.index, animated: true });
+          }}
+          ListEmptyComponent={
+            term ? (
+              <NoMatches message={`No queued episodes match “${search}”.`} term={search ?? ''} />
+            ) : null
+          }
+          renderItem={(item, _index, handle) => (
+            <SwipeableEpisodeRow
+              episode={item}
+              screen="queue"
+              onPlay={play}
+              swipeEnabled={!locked && !selection.active}
+              // Kept sorted: moving to the top would be undone at once.
+              unavailable={keptSorted ? NO_MOVE_TO_TOP : undefined}
+              actionHooks={actionHooks}
+              selecting={selection.active}
+              selected={selection.selected.has(item.id)}
+              onToggleSelect={selection.toggle}
+              onSelectRange={selection.openRangeMenu}
+              trailing={handle}
+            />
+          )}
+        />
+      </EpisodeList>
 
       <SelectionBar selection={selection} inQueue={!keptSorted} />
       <QueueSortSheet visible={sorting} onClose={() => setSorting(false)} />

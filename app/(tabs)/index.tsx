@@ -30,6 +30,7 @@ import {
 import { player, useEpisodePlayback } from '@/player';
 import { formatBytes } from '@/player/downloads';
 import { Artwork } from '@/ui/Artwork';
+import { EpisodeList, useOpenEpisode } from '@/ui/episode/EpisodeList';
 import { EpisodeRow } from '@/ui/EpisodeRow';
 import { triggerHaptic } from '@/ui/haptics';
 import { ConfigureHomeSheet } from '@/ui/home/ConfigureHomeSheet';
@@ -65,7 +66,7 @@ type CardProps = {
  */
 function ContinueCard({ episode, onPlay, width, artworkSize }: CardProps) {
   const theme = useTheme();
-  const router = useRouter();
+  const openEpisode = useOpenEpisode();
   const duration = episode.duration ?? 0;
   // The player's periodic saves no longer re-run this shelf's query, so the
   // playing episode's card follows the player, as its list row does.
@@ -76,7 +77,7 @@ function ContinueCard({ episode, onPlay, width, artworkSize }: CardProps) {
   return (
     <View style={[styles.card, { width, backgroundColor: theme.surface, borderColor: theme.border }]}>
       <Pressable
-        onPress={() => router.push(`/episode/${episode.id}`)}
+        onPress={() => openEpisode(episode.id)}
         style={styles.cardMain}
         accessibilityRole="button"
         accessibilityLabel={`${episode.title}, ${episode.feed_title}`}
@@ -101,12 +102,12 @@ function ContinueCard({ episode, onPlay, width, artworkSize }: CardProps) {
 
 function SurpriseCard({ episode, onPlay, width, artworkSize }: CardProps) {
   const theme = useTheme();
-  const router = useRouter();
+  const openEpisode = useOpenEpisode();
 
   return (
     <View style={[styles.card, { width, backgroundColor: theme.surface, borderColor: theme.border }]}>
       <Pressable
-        onPress={() => router.push(`/episode/${episode.id}`)}
+        onPress={() => openEpisode(episode.id)}
         style={styles.cardMain}
         accessibilityRole="button"
         accessibilityLabel={`${episode.title}, ${episode.feed_title}`}
@@ -307,24 +308,28 @@ function Shelf<T>({
     const perRow = Math.max(1, Math.floor((layout.usableWidth + GRID_GAP) / (minCardWidth + GRID_GAP)));
     const width = Math.floor((layout.usableWidth - GRID_GAP * (perRow - 1)) / perRow);
     return (
-      <View style={[styles.grid, { paddingHorizontal: layout.gutter }]}>
-        {data.map((item) => (
-          <View key={`${keyPrefix}-${getKey(item)}`}>{renderCard(item, width)}</View>
-        ))}
-      </View>
+      <EpisodeList ids={data.map(getKey)}>
+        <View style={[styles.grid, { paddingHorizontal: layout.gutter }]}>
+          {data.map((item) => (
+            <View key={`${keyPrefix}-${getKey(item)}`}>{renderCard(item, width)}</View>
+          ))}
+        </View>
+      </EpisodeList>
     );
   }
 
   return (
-    <FlatList
-      key={resetKey}
-      horizontal
-      data={data}
-      keyExtractor={(item) => `${keyPrefix}-${getKey(item)}`}
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={[styles.shelfContent, { paddingHorizontal: layout.gutter }]}
-      renderItem={({ item }) => renderCard(item, minCardWidth)}
-    />
+    <EpisodeList ids={data.map(getKey)}>
+      <FlatList
+        key={resetKey}
+        horizontal
+        data={data}
+        keyExtractor={(item) => `${keyPrefix}-${getKey(item)}`}
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={[styles.shelfContent, { paddingHorizontal: layout.gutter }]}
+        renderItem={({ item }) => renderCard(item, minCardWidth)}
+      />
+    </EpisodeList>
   );
 }
 
@@ -425,11 +430,13 @@ export default function HomeScreen() {
             right={<SectionLink label="Inbox" onPress={() => router.push('/inbox')} />}
             empty={newEpisodes.length === 0 ? 'No new episodes. New episodes from your podcasts show up here.' : null}
           >
-            <View>
-              {newEpisodes.map((episode) => (
-                <SwipeableEpisodeRow key={episode.id} episode={episode} screen="inbox" onPlay={play} />
-              ))}
-            </View>
+            <EpisodeList ids={newEpisodes.map((episode) => episode.id)}>
+              <View>
+                {newEpisodes.map((episode) => (
+                  <SwipeableEpisodeRow key={episode.id} episode={episode} screen="inbox" onPlay={play} />
+                ))}
+              </View>
+            </EpisodeList>
           </HomeSection>
         );
       case 'surprise':
@@ -482,11 +489,13 @@ export default function HomeScreen() {
             <Text style={[styles.sectionNote, { color: theme.textMuted, paddingHorizontal: layout.gutter }]}>
               {downloads.length} episode{downloads.length === 1 ? '' : 's'} · {formatBytes(downloadedBytes)}
             </Text>
-            <View>
-              {downloads.slice(0, ROW_COUNT).map((episode) => (
-                <EpisodeRow key={episode.id} episode={episode} onPlay={play} />
-              ))}
-            </View>
+            <EpisodeList ids={downloads.map((episode) => episode.id)}>
+              <View>
+                {downloads.slice(0, ROW_COUNT).map((episode) => (
+                  <EpisodeRow key={episode.id} episode={episode} onPlay={play} />
+                ))}
+              </View>
+            </EpisodeList>
           </HomeSection>
         );
       case 'inProgress':

@@ -1,5 +1,4 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
 import { memo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
@@ -15,6 +14,7 @@ import { cancelDownload, formatBytes, useDownloadProgress } from '@/player/downl
 import { formatDuration, formatPublishDate, formatRemaining } from '@/util/time';
 
 import { Artwork } from './Artwork';
+import { useOpenEpisode } from './episode/EpisodeList';
 import { openEpisodeActions } from './EpisodeActionsHost';
 import { ProgressBar } from './ProgressBar';
 import { ProgressRing } from './ProgressRing';
@@ -81,7 +81,7 @@ export const EpisodeRow = memo(function EpisodeRow({
   onSelectRange,
 }: Props) {
   const theme = useTheme();
-  const router = useRouter();
+  const openEpisode = useOpenEpisode();
   const queued = useIsQueued(episode.id);
   const download = useDownloadProgress(
     episode.download_state === 'downloading' || episode.download_state === 'queued' ? episode.id : null
@@ -124,7 +124,7 @@ export const EpisodeRow = memo(function EpisodeRow({
   return (
     <Pressable
       onPress={() =>
-        selecting ? onToggleSelect?.(episode.id) : router.push(`/episode/${episode.id}`)
+        selecting ? onToggleSelect?.(episode.id) : openEpisode(episode.id)
       }
       onLongPress={() =>
         selecting ? onSelectRange?.(episode.id) : openEpisodeActions(episode, actionHooks)
