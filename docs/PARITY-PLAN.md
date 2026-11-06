@@ -447,7 +447,9 @@ gpodder.net and Nextcloud sync need an episode-action journal the schema lacks, 
 - before the one EAS preview build in 19e, for its budget
 - if expo-file-system's partial `.part` handling can't do 19a without forking it
 
-### Phase 20: Echo, the year in review (D-030, proposed)
+### Phase 20: Echo, the year in review (D-030)
+*(Built as planned in one PR. The seed's year of history already passes 10 hours, so `seed.mjs` didn't change; the harness opens each card with `/echo?still=1&card=n` and moves its clock to 15 December for the Home card and the Statistics entry.)*
+
 **Why.** AntennaPod shows "Echo" on its Home screen from 10 December: seven full-screen story cards about the listener's year, worked out on the phone. It is the last Phase 18 item that needs no native code and no new dependency, so it ships over the air (D-028) and is the first real test of that pipeline. It has to be merged before 10 December to matter this year.
 
 **How AntennaPod does it** (`AP/ui/echo/`, `AP/app/.../home/sections/EchoSection.java`):

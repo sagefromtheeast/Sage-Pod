@@ -201,17 +201,19 @@ destructive.
 - [x] 19d: iOS keeps its background URLSession; a relaunch restarts the file (recorded in D-029)
 - [ ] On device: start 3 downloads, lock the screen; switch apps; swipe the app away; airplane mode mid-download resumes (log says "resumed from"); reboot with auto downloads pending on Wi-Fi + charging; tap the notification; a protected feed; a 404 (fails once, logged); cancel mid-download (partial file gone)
 
-## Phase 20 — Echo, the year in review (D-030, proposed)
-- [ ] 20a: `src/echo/` pure helpers (window, queue outlook, median delay, listener type, hoarder verdict, thanks line, top 5) + `getEchoYear` repository + tests
-- [ ] 20b: `/echo` story screen: 7 cards, 10 s auto-advance, tap forward/back, hold to pause, progress bar, animated SVG backgrounds (still with reduce motion)
-- [ ] 20c: Home card (10–31 Dec, ≥ 10 h, hide for the year) + Statistics menu entry
-- [ ] 20d: share as text (`Share` API); image sharing is a separate native proposal
-- [ ] 20e: seed a year of history, harness shots (7 cards, Home card), checks, fingerprint unchanged → ships over the air
+## Phase 20 — Echo, the year in review (D-030) ✅
+- [x] 20a: `src/echo/` pure helpers (window, queue outlook, median delay, listener type, hoarder verdict, thanks line, top 5) + `getEchoYear` repository + tests
+- [x] 20b: `/echo` story screen: 7 cards, 10 s auto-advance, tap forward/back, hold to pause, progress bar, animated SVG backgrounds (still with reduce motion)
+- [x] 20c: Home card (10–31 Dec, ≥ 10 h, hide for the year) + Statistics menu entry
+- [x] 20d: share as text (`Share` API); image sharing is a separate native proposal
+- [x] 20e: harness shots (7 cards via `/echo?still=1&card=n`, Home card and Statistics entry at 15 Dec; the seed's year of history already qualifies), checks, Android fingerprint unchanged (e6bc…) → ships over the air
+- [ ] On device after the update: Home card from 10 Dec; tap, hold and back on the cards; Share; reduce motion keeps the timer but stills the shapes; TalkBack stops auto-advance
 
 ## Phase 18 — Optional (one proposal each)
 - [ ] Sync, Cast, Auto/Wear, video, Echo, nav customisation, parental control
 
 ## Discovered (not yet scheduled)
+- [ ] expo-doctor fails since Expo published SDK 57 patch releases (expo 57.0.32 and others). `npx expo install --fix` changes native code, so it needs a new build; until then CI's doctor step is red on every branch
 - [ ] iOS home-screen widget (expo-widgets can show what's playing, but its buttons can't reach the player; D-026)
 - [ ] Hardware headset next/previous buttons seek instead of changing episode (AntennaPod's "Hardware forward button skips" setting)
 - [ ] Skip silence and volume boost on iOS (needs an audio tap; D-025)
