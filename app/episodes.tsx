@@ -9,6 +9,7 @@ import type { EpisodeWithFeed } from '@/db/types';
 import { useQuery } from '@/db/useQuery';
 import { describeFilter, isFiltered, parseEpisodeFilter } from '@/feed/episodeFilter';
 import { player } from '@/player';
+import { EpisodeList } from '@/ui/episode/EpisodeList';
 import { ActionSheet } from '@/ui/ActionSheet';
 import { EmptyState } from '@/ui/EmptyState';
 import { SwipeableEpisodeRow } from '@/ui/SwipeableEpisodeRow';
@@ -71,67 +72,69 @@ export default function EpisodesScreen() {
           ),
         }}
       />
-      <FlatList
-        data={episodes}
-        keyExtractor={(episode) => String(episode.id)}
-        extraData={selection.selected}
-        contentContainerStyle={{ paddingBottom: selection.active ? SELECTION_BAR_HEIGHT + space.xl : dockPadding }}
-        onEndReachedThreshold={0.5}
-        onEndReached={() => {
-          // A full page means there may be more.
-          if (episodes.length >= limit) setLimit((value) => value + PAGE_SIZE);
-        }}
-        ListHeaderComponent={
-          <View style={styles.header}>
-            <Text style={[styles.summary, { color: theme.textMuted }]}>{EPISODE_SORT_LABELS[sort]}</Text>
-            {filtered ? (
-              <Pressable
-                onPress={() => setSheet('filter')}
-                style={[styles.filtered, { backgroundColor: theme.surfaceAlt }]}
-                accessibilityRole="button"
-              >
-                <Ionicons name="funnel" size={14} color={theme.accent} />
-                <Text style={[styles.filteredLabel, { color: theme.text }]} numberOfLines={1}>
-                  {describeFilter(filter)}
-                </Text>
-                <Text
-                  style={[styles.filteredLink, { color: theme.accent }]}
-                  onPress={() => void setSetting('episodesFilter', '')}
+      <EpisodeList ids={episodes.map((episode) => episode.id)}>
+        <FlatList
+          data={episodes}
+          keyExtractor={(episode) => String(episode.id)}
+          extraData={selection.selected}
+          contentContainerStyle={{ paddingBottom: selection.active ? SELECTION_BAR_HEIGHT + space.xl : dockPadding }}
+          onEndReachedThreshold={0.5}
+          onEndReached={() => {
+            // A full page means there may be more.
+            if (episodes.length >= limit) setLimit((value) => value + PAGE_SIZE);
+          }}
+          ListHeaderComponent={
+            <View style={styles.header}>
+              <Text style={[styles.summary, { color: theme.textMuted }]}>{EPISODE_SORT_LABELS[sort]}</Text>
+              {filtered ? (
+                <Pressable
+                  onPress={() => setSheet('filter')}
+                  style={[styles.filtered, { backgroundColor: theme.surfaceAlt }]}
+                  accessibilityRole="button"
                 >
-                  Clear
-                </Text>
-              </Pressable>
-            ) : null}
-          </View>
-        }
-        ListEmptyComponent={
-          loading ? null : (
-            <EmptyState
-              icon={filtered ? 'funnel-outline' : 'albums-outline'}
-              title={filtered ? 'No matching episodes' : 'No episodes yet'}
-              message={
-                filtered
-                  ? 'None of your episodes match the filter.'
-                  : 'Episodes of the podcasts you follow appear here.'
-              }
-              action={filtered ? { label: 'Clear filter', onPress: () => void setSetting('episodesFilter', '') } : undefined}
+                  <Ionicons name="funnel" size={14} color={theme.accent} />
+                  <Text style={[styles.filteredLabel, { color: theme.text }]} numberOfLines={1}>
+                    {describeFilter(filter)}
+                  </Text>
+                  <Text
+                    style={[styles.filteredLink, { color: theme.accent }]}
+                    onPress={() => void setSetting('episodesFilter', '')}
+                  >
+                    Clear
+                  </Text>
+                </Pressable>
+              ) : null}
+            </View>
+          }
+          ListEmptyComponent={
+            loading ? null : (
+              <EmptyState
+                icon={filtered ? 'funnel-outline' : 'albums-outline'}
+                title={filtered ? 'No matching episodes' : 'No episodes yet'}
+                message={
+                  filtered
+                    ? 'None of your episodes match the filter.'
+                    : 'Episodes of the podcasts you follow appear here.'
+                }
+                action={filtered ? { label: 'Clear filter', onPress: () => void setSetting('episodesFilter', '') } : undefined}
+              />
+            )
+          }
+          renderItem={({ item }) => (
+            <SwipeableEpisodeRow
+              episode={item}
+              screen="episodes"
+              onPlay={play}
+              swipeEnabled={!selection.active}
+              actionHooks={actionHooks}
+              selecting={selection.active}
+              selected={selection.selected.has(item.id)}
+              onToggleSelect={selection.toggle}
+              onSelectRange={selection.openRangeMenu}
             />
-          )
-        }
-        renderItem={({ item }) => (
-          <SwipeableEpisodeRow
-            episode={item}
-            screen="episodes"
-            onPlay={play}
-            swipeEnabled={!selection.active}
-            actionHooks={actionHooks}
-            selecting={selection.active}
-            selected={selection.selected.has(item.id)}
-            onToggleSelect={selection.toggle}
-            onSelectRange={selection.openRangeMenu}
-          />
-        )}
-      />
+          )}
+        />
+      </EpisodeList>
       <SelectionBar selection={selection} />
       <MiniPlayerDock hidden={selection.active} />
 

@@ -8,6 +8,7 @@ import { searchFeeds } from '@/db/feeds';
 import type { EpisodeWithFeed, FeedWithCounts } from '@/db/types';
 import { useQuery } from '@/db/useQuery';
 import { player } from '@/player';
+import { EpisodeList } from '@/ui/episode/EpisodeList';
 import { EpisodeRow } from '@/ui/EpisodeRow';
 import { MiniPlayerDock, useMiniPlayerDockPadding } from '@/ui/MiniPlayerDock';
 import { PodcastCard } from '@/ui/PodcastCard';
@@ -73,72 +74,45 @@ export default function SearchScreen() {
         />
       </View>
 
-      <FlatList
-        data={episodes}
-        keyExtractor={(episode) => String(episode.id)}
-        keyboardShouldPersistTaps="handled"
-        extraData={selection.selected}
-        contentContainerStyle={{
-          paddingBottom: selection.active ? SELECTION_BAR_HEIGHT + space.xl : dockPadding,
-        }}
-        ListHeaderComponent={
-          <>
-            {query ? (
-              <Pressable
-                onPress={() =>
-                  router.navigate({
-                    pathname: '/discover',
-                    // `at` makes a repeat of the same words a new request, so Discover
-                    // re-applies them even if its field was edited since.
-                    params: { q: query, at: String(Date.now()) },
-                  })
-                }
-                style={({ pressed }) => [
-                  styles.online,
-                  {
-                    paddingHorizontal: layout.gutter,
-                    backgroundColor: pressed ? theme.surfaceAlt : 'transparent',
-                  },
-                ]}
-                accessibilityRole="button"
-              >
-                <Ionicons name="globe-outline" size={20} color={theme.accent} />
-                <Text style={[styles.onlineLabel, { color: theme.text }]} numberOfLines={1}>
-                  Search online for “{query}”
-                </Text>
-                <Ionicons name="chevron-forward" size={18} color={theme.textFaint} />
-              </Pressable>
-            ) : null}
-            {feeds.length > 0 ? (
-              <View style={styles.section}>
-                <Text
-                  style={[
-                    styles.heading,
+      <EpisodeList ids={episodes.map((episode) => episode.id)}>
+        <FlatList
+          data={episodes}
+          keyExtractor={(episode) => String(episode.id)}
+          keyboardShouldPersistTaps="handled"
+          extraData={selection.selected}
+          contentContainerStyle={{
+            paddingBottom: selection.active ? SELECTION_BAR_HEIGHT + space.xl : dockPadding,
+          }}
+          ListHeaderComponent={
+            <>
+              {query ? (
+                <Pressable
+                  onPress={() =>
+                    router.navigate({
+                      pathname: '/discover',
+                      // `at` makes a repeat of the same words a new request, so Discover
+                      // re-applies them even if its field was edited since.
+                      params: { q: query, at: String(Date.now()) },
+                    })
+                  }
+                  style={({ pressed }) => [
+                    styles.online,
                     {
-                      color: theme.textMuted,
                       paddingHorizontal: layout.gutter,
+                      backgroundColor: pressed ? theme.surfaceAlt : 'transparent',
                     },
                   ]}
+                  accessibilityRole="button"
                 >
-                  PODCASTS
-                </Text>
-                <FlatList
-                  horizontal
-                  data={feeds}
-                  keyExtractor={(feed) => String(feed.id)}
-                  showsHorizontalScrollIndicator={false}
-                  contentContainerStyle={[styles.feeds, { paddingHorizontal: layout.gutter }]}
-                  renderItem={({ item }) => (
-                    <PodcastCard
-                      title={item.title}
-                      subtitle={item.author}
-                      artworkUrl={item.image_url}
-                      size={layout.feedTile}
-                      onPress={() => router.push(`/feed/${item.id}`)}
-                    />
-                  )}
-                />
-                {episodes.length > 0 ? (
+                  <Ionicons name="globe-outline" size={20} color={theme.accent} />
+                  <Text style={[styles.onlineLabel, { color: theme.text }]} numberOfLines={1}>
+                    Search online for “{query}”
+                  </Text>
+                  <Ionicons name="chevron-forward" size={18} color={theme.textFaint} />
+                </Pressable>
+              ) : null}
+              {feeds.length > 0 ? (
+                <View style={styles.section}>
                   <Text
                     style={[
                       styles.heading,
@@ -148,39 +122,68 @@ export default function SearchScreen() {
                       },
                     ]}
                   >
-                    EPISODES
+                    PODCASTS
                   </Text>
-                ) : null}
-              </View>
-            ) : null}
-            {feeds.length === 0 && episodes.length > 0 ? (
-              <Text style={[styles.heading, { color: theme.textMuted, paddingHorizontal: layout.gutter }]}>
-                EPISODES
+                  <FlatList
+                    horizontal
+                    data={feeds}
+                    keyExtractor={(feed) => String(feed.id)}
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={[styles.feeds, { paddingHorizontal: layout.gutter }]}
+                    renderItem={({ item }) => (
+                      <PodcastCard
+                        title={item.title}
+                        subtitle={item.author}
+                        artworkUrl={item.image_url}
+                        size={layout.feedTile}
+                        onPress={() => router.push(`/feed/${item.id}`)}
+                      />
+                    )}
+                  />
+                  {episodes.length > 0 ? (
+                    <Text
+                      style={[
+                        styles.heading,
+                        {
+                          color: theme.textMuted,
+                          paddingHorizontal: layout.gutter,
+                        },
+                      ]}
+                    >
+                      EPISODES
+                    </Text>
+                  ) : null}
+                </View>
+              ) : null}
+              {feeds.length === 0 && episodes.length > 0 ? (
+                <Text style={[styles.heading, { color: theme.textMuted, paddingHorizontal: layout.gutter }]}>
+                  EPISODES
+                </Text>
+              ) : null}
+            </>
+          }
+          ListEmptyComponent={
+            !query ? (
+              <Text style={[styles.hint, { color: theme.textMuted }]}>
+                Search titles, authors and show notes in the podcasts you follow.
               </Text>
-            ) : null}
-          </>
-        }
-        ListEmptyComponent={
-          !query ? (
-            <Text style={[styles.hint, { color: theme.textMuted }]}>
-              Search titles, authors and show notes in the podcasts you follow.
-            </Text>
-          ) : loading || feeds.length > 0 ? null : (
-            <Text style={[styles.hint, { color: theme.textMuted }]}>Nothing in your library matches “{query}”.</Text>
-          )
-        }
-        renderItem={({ item }) => (
-          <EpisodeRow
-            episode={item}
-            onPlay={play}
-            actionHooks={actionHooks}
-            selecting={selection.active}
-            selected={selection.selected.has(item.id)}
-            onToggleSelect={selection.toggle}
-            onSelectRange={selection.openRangeMenu}
-          />
-        )}
-      />
+            ) : loading || feeds.length > 0 ? null : (
+              <Text style={[styles.hint, { color: theme.textMuted }]}>Nothing in your library matches “{query}”.</Text>
+            )
+          }
+          renderItem={({ item }) => (
+            <EpisodeRow
+              episode={item}
+              onPlay={play}
+              actionHooks={actionHooks}
+              selecting={selection.active}
+              selected={selection.selected.has(item.id)}
+              onToggleSelect={selection.toggle}
+              onSelectRange={selection.openRangeMenu}
+            />
+          )}
+        />
+      </EpisodeList>
       <SelectionBar selection={selection} />
       <MiniPlayerDock hidden={selection.active} />
     </View>

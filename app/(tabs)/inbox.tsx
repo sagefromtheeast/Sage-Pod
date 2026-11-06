@@ -29,6 +29,7 @@ import type { EpisodeWithFeed } from '@/db/types';
 import { useQuery } from '@/db/useQuery';
 import { refreshAllFeeds } from '@/feed/sync';
 import { player } from '@/player';
+import { EpisodeList } from '@/ui/episode/EpisodeList';
 import { ActionSheet } from '@/ui/ActionSheet';
 import { EmptyState } from '@/ui/EmptyState';
 import { triggerHaptic } from '@/ui/haptics';
@@ -248,51 +249,53 @@ export default function InboxScreen() {
         </View>
       ) : null}
 
-      <FlatList
-        data={episodes}
-        keyExtractor={(episode) => String(episode.id)}
-        extraData={selection.selected}
-        contentContainerStyle={{
-          paddingBottom: selection.active ? SELECTION_BAR_HEIGHT + space.xl : MINI_PLAYER_HEIGHT + space.xl,
-        }}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={theme.accent} />}
-        onEndReachedThreshold={0.5}
-        onEndReached={() => {
-          // A full page means there may be more.
-          if (episodes.length >= limit) setLimit((value) => value + PAGE_SIZE);
-        }}
-        ListEmptyComponent={
-          loading ? null : term ? (
-            <NoMatches message={`No inbox episodes match “${term}”.`} term={term} />
-          ) : (
-            <EmptyState
-              icon="filter-outline"
-              title="No episodes"
-              message="No episodes from this podcast in your inbox."
-              action={{
-                label: 'Show all episodes',
-                onPress: () => {
-                  triggerHaptic('selection');
-                  setSelectedFeedId(null);
-                },
-              }}
+      <EpisodeList ids={episodes.map((episode) => episode.id)}>
+        <FlatList
+          data={episodes}
+          keyExtractor={(episode) => String(episode.id)}
+          extraData={selection.selected}
+          contentContainerStyle={{
+            paddingBottom: selection.active ? SELECTION_BAR_HEIGHT + space.xl : MINI_PLAYER_HEIGHT + space.xl,
+          }}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={refresh} tintColor={theme.accent} />}
+          onEndReachedThreshold={0.5}
+          onEndReached={() => {
+            // A full page means there may be more.
+            if (episodes.length >= limit) setLimit((value) => value + PAGE_SIZE);
+          }}
+          ListEmptyComponent={
+            loading ? null : term ? (
+              <NoMatches message={`No inbox episodes match “${term}”.`} term={term} />
+            ) : (
+              <EmptyState
+                icon="filter-outline"
+                title="No episodes"
+                message="No episodes from this podcast in your inbox."
+                action={{
+                  label: 'Show all episodes',
+                  onPress: () => {
+                    triggerHaptic('selection');
+                    setSelectedFeedId(null);
+                  },
+                }}
+              />
+            )
+          }
+          renderItem={({ item }) => (
+            <SwipeableEpisodeRow
+              episode={item}
+              onPlay={play}
+              screen="inbox"
+              swipeEnabled={!selection.active}
+              actionHooks={actionHooks}
+              selecting={selection.active}
+              selected={selection.selected.has(item.id)}
+              onToggleSelect={selection.toggle}
+              onSelectRange={selection.openRangeMenu}
             />
-          )
-        }
-        renderItem={({ item }) => (
-          <SwipeableEpisodeRow
-            episode={item}
-            onPlay={play}
-            screen="inbox"
-            swipeEnabled={!selection.active}
-            actionHooks={actionHooks}
-            selecting={selection.active}
-            selected={selection.selected.has(item.id)}
-            onToggleSelect={selection.toggle}
-            onSelectRange={selection.openRangeMenu}
-          />
-        )}
-      />
+          )}
+        />
+      </EpisodeList>
 
       <SelectionBar selection={selection} />
       {sortSheet}

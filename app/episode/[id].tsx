@@ -14,6 +14,7 @@ import {
 import { runEpisodeAction } from '@/actions/runEpisodeAction';
 import type { SheetItem } from '@/ui/ActionSheet';
 import { getEpisode, listFeedEpisodeIds } from '@/db/episodes';
+import { pagerIds, recallPagerList } from '@/episode/pagerList';
 import type { EpisodeWithFeed } from '@/db/types';
 import { useQuery } from '@/db/useQuery';
 import { player, useCurrentEpisodeId } from '@/player';
@@ -25,18 +26,22 @@ import { getLocalEpisodePath } from '@/player/downloads';
 import { shareEpisode, shareEpisodeFile } from '@/util/share';
 
 /**
- * Episode details, swipeable sideways to the podcast's other episodes (newest
- * on the left, as on the podcast page), like AntennaPod's episode pager.
+ * Episode details, swipeable sideways like AntennaPod's episode pager: through
+ * the list the episode was opened from (`?list=`, see `src/episode/pagerList`),
+ * else the podcast's other episodes (newest on the left, as on its page).
  */
 export default function EpisodeScreen() {
   const theme = useTheme();
   const { width } = useWindowDimensions();
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, list } = useLocalSearchParams<{ id: string; list?: string }>();
   const openedId = Number(id);
+  // Read once: the stored list may be dropped later, but this screen keeps it.
+  const [source] = useState(() => recallPagerList(list));
   const [currentId, setCurrentId] = useState(openedId);
 
   const { data: opened } = useQuery<EpisodeWithFeed | null>(() => getEpisode(openedId), ['episodes'], [openedId]);
-  const feedId = opened?.feed_id ?? null;
+  // The podcast's episodes are only needed when there is no source list.
+  const feedId = source?.includes(openedId) ? null : (opened?.feed_id ?? null);
   const { data: feedIds } = useQuery<number[] | null>(
     () => (feedId === null ? Promise.resolve(null) : listFeedEpisodeIds(feedId)),
     ['episodes'],
@@ -44,8 +49,8 @@ export default function EpisodeScreen() {
   );
   // Freeze the page list once loaded, so a refresh adding episodes doesn't
   // shift the page under the reader's thumb.
-  const frozen = useRef<number[] | null>(null);
-  if (!frozen.current && feedIds && feedIds.includes(openedId)) frozen.current = feedIds;
+  const frozen = useRef<readonly number[] | null>(null);
+  if (!frozen.current) frozen.current = pagerIds(source, openedId, feedIds ?? null);
   const ids = frozen.current;
   // The page on screen when the list (re)mounts: rotating remounts it at the
   // new width, so it reopens on the same episode instead of between pages.
