@@ -23,7 +23,7 @@ const page = (body) => `<!doctype html><meta charset="utf-8"><title>Screenshot c
 fs.writeFileSync(path.join(root, 'compare.html'), page(`<h1>Before / after</h1>${files.map(row).join('\n')}`));
 fs.rmSync(path.join(root, 'compare'), { recursive: true, force: true });
 fs.mkdirSync(path.join(root, 'compare'), { recursive: true });
-const browser = await pw.chromium.launch();
+const browser = await pw.chromium.launch(process.env.SHOTS_CHROMIUM ? { executablePath: process.env.SHOTS_CHROMIUM } : {});
 const p = await browser.newPage({ viewport: { width: 1600, height: 900 } });
 for (const f of files.filter(changed)) {
   const tmp = path.join(root, `.montage.html`);
