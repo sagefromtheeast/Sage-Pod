@@ -10,6 +10,8 @@ npm run shots -- before            # on the base commit (e.g. before your change
 npm run shots -- after             # same command, after the change
 npm run shots:diff                 # pixel diff + screenshots/compare.html
 npm run shots -- after home,player # only some screens
+SHOTS_EMPTY=1 npm run shots -- empty  # a fresh install: the empty states, no seed
+SHOTS_SCHEME=light npm run shots -- light  # the light theme
 ```
 
 Output lands in `screenshots/` (git-ignored): `before/`, `after/`, `diff/`
