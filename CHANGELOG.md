@@ -1,3 +1,23 @@
+## [0.25.0](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.24.1...v0.25.0) (2026-11-06)
+
+### 🚀 New Features
+
+* swipe through the list an episode was opened from ([ec04266](https://github.com/sagefromtheeast/Sage-Pod/commit/ec04266c75809ef375d06f559eb99e7f41727a5d))
+
+### 🐛 Bug Fixes
+
+* keep every stored episode in a podcast's pager until its list is fully loaded ([63bb27d](https://github.com/sagefromtheeast/Sage-Pod/commit/63bb27d796e1e965bc56218e0502f1c7b76bd2d4))
+
+### 📚 Documentation
+
+* record the 0.24.1 build and the over-the-air status in the handover ([6f3ed4f](https://github.com/sagefromtheeast/Sage-Pod/commit/6f3ed4fbf20c95849148ef242a970a57fe141aa6))
+* tick the device checks and the items already done ([16bffde](https://github.com/sagefromtheeast/Sage-Pod/commit/16bffde7c52c61d7b0f4a94e7e2b9925ed23991d))
+* tick the pager, screenshot and Home card items ([46142d9](https://github.com/sagefromtheeast/Sage-Pod/commit/46142d96743ff07e14c2eabc6e78d5619e6ba545))
+
+### ✅ Tests
+
+* screenshot history, and add empty-state and light runs ([c2eca54](https://github.com/sagefromtheeast/Sage-Pod/commit/c2eca546a920491624ff808a6292f23cb1ba6783))
+
 ## [0.24.1](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.24.0...v0.24.1) (2026-11-06)
 
 ### 🐛 Bug Fixes
