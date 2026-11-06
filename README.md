@@ -28,6 +28,7 @@ and your subscription list exports as OPML whenever you want to leave.
 - 📥 **Inbox & queue** — newest episodes across every subscription, a continue-listening shelf, and a reorderable play queue.
 - ▶️ **Background playback** — lock-screen and notification controls, resume-from-position, variable speed, skip intervals, and a sleep timer.
 - ⬇️ **Offline downloads** — on Android, WorkManager jobs that keep going in the background, wait for Wi-Fi or power, and resume partial files; per-podcast auto-download and a storage cap.
+- 🎁 **Echo** — from 10 December, a year in review as story cards (hours played, queue outlook, top podcasts), worked out on the phone.
 - 🦉 **Themed to the bone** — light / dark / OLED palettes, plus the Sage the Owl icon across every appearance.
 
 ## 🚀 Quick start
@@ -76,12 +77,14 @@ app/                     Screens (expo-router file-based routes)
   episode/[id].tsx       Show notes, links, per-episode actions
   list/[kind].tsx        Favourites / Downloads / History
   player.tsx             Full-screen player (modal)
+  echo.tsx               Echo, the year in review (story cards)
   add-feed.tsx           Subscribe by pasting an RSS URL
 
 src/
   db/                    SQLite schema, migrations, typed repositories
   feed/                  RSS/Atom parsing, fetching, sync, OPML
   discover/              Podcast search and charts (iTunes Search API)
+  echo/                  Echo's numbers and card text
   player/                Playback engine, React bindings, download manager
   ui/                    Theme tokens, glass surfaces, shared components
   util/                  Time and HTML helpers

@@ -35,6 +35,7 @@ Format: context → decision → consequences → when to revisit.
 | D-027 | Phase 18b: chapters from the audio file, read in TypeScript over byte ranges | Accepted |
 | D-028 | Over-the-air updates with EAS Update | Accepted |
 | D-029 | Phase 19: Android downloads in a WorkManager worker (local Expo module), resumable with Range | Accepted |
+| D-030 | Phase 20: Echo year in review, in TypeScript, shipped over the air; text sharing only | Accepted |
 
 ---
 
@@ -738,3 +739,39 @@ day.
 
 **Revisit** for iOS (reattach to URLSession tasks after a relaunch), or if
 expo-file-system gains real background downloads on Android.
+
+## D-030 — Phase 20: Echo, the year in review
+
+**Context.** AntennaPod shows "Echo" from 10 December: seven story cards
+about the listener's year (hours played, queue outlook, how soon episodes
+are played after release, how many subscriptions get played, the first
+year with the app, and the top 5 podcasts with a shareable image). Sage
+Pod already stores everything Echo needs. It is the last optional parity
+item with no native code.
+
+**Decision (lead developer, owner approved).**
+- Build Echo in TypeScript on data already stored: no migration, no new
+  dependency, no native code. It ships over the air (D-028) to the
+  installed 0.23.2 build.
+- Match AntennaPod's window, threshold and wording: 10–31 December, at
+  least 10 hours of listening, and a card that can be hidden for the year.
+  The year is the current one, not a constant changed by hand each release.
+- Sharing is text through React Native's `Share` API. A shared image needs
+  `react-native-view-shot`, a native module, so it is left to its own
+  proposal.
+- Animated backgrounds use `react-native-svg` and Reanimated, coloured from
+  theme tokens and still when the system reduce-motion setting is on.
+
+**Consequences.**
+- A pure `src/echo/` module and one repository function, `getEchoYear`.
+- A new full-screen route, `/echo`, which also opens outside the window.
+- If over-the-air updates still don't arrive, the phase waits for the next
+  build.
+- The card timer ignores reduce motion (it is a timer, not motion); the
+  backdrops hold still. A screen reader stops auto-advance.
+- One difference from AntennaPod: under 10 hours the card simply isn't
+  shown, rather than being hidden for the rest of the year, so a listener
+  who passes 10 hours in late December still gets it.
+
+**Revisit** if the owner wants the shared PNG, or a recap for other periods.
+

@@ -12,6 +12,7 @@ import {
   type StatsFeed,
 } from '@/db/stats';
 import { useQuery } from '@/db/useQuery';
+import { echoWindow } from '@/echo/echo';
 import { formatBytes } from '@/player/downloads';
 import {
   donutSlices,
@@ -65,6 +66,7 @@ type StatsData = {
  */
 export default function StatisticsScreen() {
   const theme = useTheme();
+  const router = useRouter();
   const params = useLocalSearchParams<{ tab?: string }>();
   const [tab, setTab] = useState<Tab>(parseTab(params.tab));
   const range = parseStatsRange(useSetting('statsRange'));
@@ -112,6 +114,17 @@ export default function StatisticsScreen() {
           headerRight: () => (
             <OverflowMenu
               items={[
+                // AntennaPod offers Echo only from Home; this keeps it reachable once the card is closed.
+                ...(echoWindow(Date.now()).open
+                  ? [
+                      {
+                        key: 'echo',
+                        label: 'Your year in podcasts',
+                        icon: 'sparkles-outline' as const,
+                        onPress: () => router.push('/echo'),
+                      },
+                    ]
+                  : []),
                 {
                   key: 'reset',
                   label: 'Reset statistics',

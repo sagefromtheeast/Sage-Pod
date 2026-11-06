@@ -42,6 +42,9 @@ async function touchDrag(page, x, y, dx, dy, steps = 15) {
 }
 
 // [name, route, optional interaction run after the screen settles]
+// A day inside Echo's window, for the Home card and the Statistics menu entry.
+const ECHO_NOW = Date.UTC(2026, 11, 15, 15, 0, 0);
+
 const ROUTES = [
   ['home', '/'], ['queue', '/queue'], ['inbox', '/inbox'], ['discover', '/discover'], ['library', '/library'],
   ['player', '/player'], ['feed', '/feed/1'], ['episode', '/episode/3'], ['settings', '/settings'], ['stats', '/stats'],
@@ -276,6 +279,24 @@ const ROUTES = [
         at('A billion years in a pebble') < at('Why we stopped writing letters');
     }, null, { timeout: 10000 });
   }],
+  // Phase 20: Echo's seven cards, timer stopped.
+  ...['intro', 'hours', 'queue', 'delay', 'hoarder', 'thanks', 'top'].map((card, i) => [
+    `echo-${card}`, `/echo?still=1&card=${i}`, async (page) => {
+      await page.getByRole('button', { name: 'Close Echo' }).first().waitFor({ timeout: 10000 });
+    },
+  ]),
+  // Last, because they move the clock to the Echo window (10–31 December).
+  ['home-echo', '/', async (page) => {
+    await page.clock.setFixedTime(ECHO_NOW);
+    await page.reload();
+    await page.getByText('Review the year').first().waitFor({ timeout: 30000 });
+  }],
+  ['stats-echo', '/stats', async (page) => {
+    await page.clock.setFixedTime(ECHO_NOW);
+    await page.reload();
+    await page.getByRole('button', { name: 'More options' }).first().click();
+    await page.getByText('Your year in podcasts').first().waitFor({ timeout: 10000 });
+  }],
 ].filter(([n]) => !only || only.includes(n));
 
 const CHART = Array.from({ length: 12 }, (_, i) => ({
@@ -365,7 +386,8 @@ async function settle(page) {
 }
 
 const log = (...a) => console.error(new Date().toISOString().slice(11, 19), ...a);
-const browser = await chromium.launch();
+// SHOTS_CHROMIUM points at a preinstalled Chromium when Playwright's own build isn't there.
+const browser = await chromium.launch(process.env.SHOTS_CHROMIUM ? { executablePath: process.env.SHOTS_CHROMIUM } : {});
 fs.mkdirSync(outDir, { recursive: true });
 let failed = false;
 for (const vp of VIEWPORTS) {

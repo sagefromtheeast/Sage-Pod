@@ -48,4 +48,5 @@ native builds are untouched.
   `src/db/schema.ts`, update `seed.mjs` to match or seeding fails.
 - New screens: add a `[name, route]` pair to `ROUTES` in `shoot.mjs`.
 - Playwright is pinned to the version whose Chromium is installed
-  (`playwright@1.56.1`). On a fresh machine run `npx playwright install chromium` once.
+  (`playwright@1.56.1`). On a fresh machine run `npx playwright install chromium` once,
+  or point `SHOTS_CHROMIUM` at an installed Chromium (`SHOTS_CHROMIUM=/opt/pw-browsers/chromium npm run shots -- after`).

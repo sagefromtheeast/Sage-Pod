@@ -12,10 +12,12 @@ import {
   listSurpriseEpisodes,
 } from '@/db/episodes';
 import { listClassicFeeds, listFeeds } from '@/db/feeds';
+import { getEchoHiddenYear, getEchoListenedSeconds, hideEchoForYear } from '@/db/echo';
 import { listQueue } from '@/db/queue';
 import { useSetting } from '@/db/settings';
 import type { EpisodeWithFeed, FeedWithCounts } from '@/db/types';
 import { useQuery } from '@/db/useQuery';
+import { echoWindow, showEchoCard } from '@/echo/echo';
 import { getSurpriseSeed, shuffleSurprise, subscribeSurpriseSeed } from '@/discover/surpriseSeed';
 import { refreshAllFeeds } from '@/feed/sync';
 import {
@@ -166,6 +168,61 @@ function FeedStrip({ feeds, layout }: { feeds: FeedWithCounts[]; layout: Layout 
       {feeds.map((feed) => (
         <FeedBadge key={feed.id} feed={feed} size={layout.tileSize} />
       ))}
+    </View>
+  );
+}
+
+/**
+ * AntennaPod's Echo card: from 10 December, for a year with at least 10 hours
+ * of listening, until closed for the year (D-030).
+ */
+function EchoSection({ layout }: { layout: Layout }) {
+  const theme = useTheme();
+  const router = useRouter();
+  const [now] = useState(() => Date.now());
+  const { year, open } = echoWindow(now);
+  const { data: show = false } = useQuery(
+    async () => {
+      if (!open) return false;
+      const [listened, hidden] = await Promise.all([getEchoListenedSeconds(year), getEchoHiddenYear()]);
+      return showEchoCard(now, listened, hidden);
+    },
+    ['settings', 'playback_history'],
+    [year, open]
+  );
+  if (!show) return null;
+
+  return (
+    <View
+      style={[
+        styles.echoCard,
+        { marginHorizontal: layout.gutter, backgroundColor: theme.accentSoft, borderColor: theme.border },
+      ]}
+    >
+      <View style={styles.echoHeader}>
+        <Text style={[styles.sectionHeaderTitle, { color: theme.text }]} accessibilityRole="header">
+          Sage Pod Echo {year}
+        </Text>
+        <Pressable
+          onPress={() => void hideEchoForYear(year)}
+          hitSlop={10}
+          accessibilityRole="button"
+          accessibilityLabel={`Hide Echo until ${year + 1}`}
+        >
+          <Ionicons name="close" size={20} color={theme.textMuted} />
+        </Pressable>
+      </View>
+      <Text style={[styles.emptyText, { color: theme.textMuted }]}>
+        Your top podcasts and stats from the past year. Worked out on your phone, never sent anywhere.
+      </Text>
+      <Pressable
+        onPress={() => router.push('/echo')}
+        style={[styles.echoButton, { backgroundColor: theme.accent }]}
+        accessibilityRole="button"
+      >
+        <Ionicons name="sparkles" size={18} color={theme.onAccent} />
+        <Text style={[styles.echoButtonText, { color: theme.onAccent }]}>Review the year</Text>
+      </Pressable>
     </View>
   );
 }
@@ -510,6 +567,7 @@ export default function HomeScreen() {
             <SectionLink label="Find podcasts" onPress={() => router.push('/discover')} />
           </View>
         ) : null}
+        <EchoSection layout={layout} />
         {sections.filter((section) => section.visible).map((section) => renderSection(section.id))}
       </ScrollView>
       <ConfigureHomeSheet visible={configuring} onClose={() => setConfiguring(false)} />
@@ -540,6 +598,28 @@ const styles = StyleSheet.create({
   section: {
     gap: space.sm,
   },
+  echoCard: {
+    padding: space.lg,
+    borderRadius: radius.lg,
+    borderWidth: StyleSheet.hairlineWidth,
+    gap: space.sm,
+  },
+  echoHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  echoButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: space.sm,
+    marginTop: space.xs,
+    paddingHorizontal: space.lg,
+    paddingVertical: space.sm,
+    borderRadius: radius.pill,
+  },
+  echoButtonText: typography.label,
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',

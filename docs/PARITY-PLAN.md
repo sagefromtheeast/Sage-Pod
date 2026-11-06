@@ -447,6 +447,58 @@ gpodder.net and Nextcloud sync need an episode-action journal the schema lacks, 
 - before the one EAS preview build in 19e, for its budget
 - if expo-file-system's partial `.part` handling can't do 19a without forking it
 
+### Phase 20: Echo, the year in review (D-030)
+*(Built as planned in one PR. The seed's year of history already passes 10 hours, so `seed.mjs` didn't change; the harness opens each card with `/echo?still=1&card=n` and moves its clock to 15 December for the Home card and the Statistics entry.)*
+
+**Why.** AntennaPod shows "Echo" on its Home screen from 10 December: seven full-screen story cards about the listener's year, worked out on the phone. It is the last Phase 18 item that needs no native code and no new dependency, so it ships over the air (D-028) and is the first real test of that pipeline. It has to be merged before 10 December to matter this year.
+
+**How AntennaPod does it** (`AP/ui/echo/`, `AP/app/.../home/sections/EchoSection.java`):
+- **When.** `EchoConfig.isCurrentlyVisible()`: the release year, December, day 10 or later. Home adds an Echo card ("Review the year", "Your top podcasts and stats from the past year. Exclusively on your phone.") only if the year's listening is at least 10 hours. Closing the card hides it for that year (`PREF_HIDE_ECHO` = year); under 10 hours it hides itself.
+- **The player** (`EchoActivity`): 7 screens, each about 10 s, with a segmented progress bar. A tap moves on, the last tap closes. Each screen has its own animated background.
+- **The screens**:
+  1. *Intro*: "Your year / 2026 / in podcasts / generated privately on your phone".
+  2. *Hours played*: total hours this year, from N different podcasts.
+  3. *Queue*: hours still waiting in the queue (duration minus position) from N episodes, and "about X each day until 2027 starts". Up to 1.5 h a day: "ready to make a clean start". Up to 24 h: "quite a bit to go". Above that: "Wait, what?".
+  4. *Listened after*: the median time from release to completion, for episodes released and completed this year (`PodDBAdapter.getTimeBetweenReleaseAndPlayback`). Up to 2.5 days: 🏃 "You're a podcast addict"; otherwise 🧘 "You're easy going".
+  5. *Hoarder*: the share of auto-refreshed subscriptions played this year. Under 25 %: 🗄️ hoarder. Under 75 %: ✅ "no hoarding here", naming a random one with recent unplayed episodes. Otherwise: ✨ "Clean!".
+  6. *Thanks*: "for sticking with us" since the month of the first play, or "for joining us this year".
+  7. *Final share*: the top 5 podcasts' covers and titles, with a Share button that draws a 1000 × 1000 PNG and shares it with "My year 2026 in podcasts. #AntennaPodEcho".
+
+**What Sage Pod already has.** Every figure comes from data already stored, so there is **no migration**:
+- hours and podcasts from `playback_history` (`getListenRows`, `SP/src/db/stats.ts:123`), honouring a statistics reset
+- the queue from `queue` joined to `episodes.duration` and `position`
+- release to completion from `episodes.published_at` and `played_at`
+- active subscriptions from `feeds.keep_updated` and `state = 'subscribed'`
+- the first play from `MIN(playback_history.date)`
+
+**Steps.**
+1. **20a: The numbers** (`feat:`).
+   - A pure `src/echo/` module: `echoWindow(now)` (10–31 December of the current year), `queueOutlook(seconds, episodes, now)` with the 1.5 h / 24 h thresholds, `medianDelay(pairs)`, `listenerType(ms)`, `hoarderVerdict(played, total)`, `thanksLine(firstDay, year)` and `topFeeds(rows, 5)`.
+   - A repository `src/db/echo.ts` with one `getEchoYear(year)` that runs the five queries and returns one plain object.
+   - Tests for every threshold and for the empty year, a reset mid-year, and a queue with unknown durations.
+2. **20b: The Echo screen** (`feat:`).
+   - A full-screen modal route `app/echo.tsx` holding the 7 cards. It auto-advances every 10 s; a tap on the right goes forward, on the left goes back; holding pauses it; the last tap closes it. Segmented progress bar at the top.
+   - Five animated backgrounds (bubbles, waveform, stripes, rotating squares, waves) drawn with `react-native-svg` and Reanimated, both already installed. Colours come from theme tokens.
+   - The system reduce-motion setting (Reanimated's `useReducedMotion`) turns the animation off.
+   - The final card shows the top 5 covers (`expo-image`) and titles.
+3. **20c: The way in** (`feat:`).
+   - An Echo card at the top of Home, above the configurable sections, while `echoWindow` is open, the year has at least 10 h of listening and the card isn't hidden for this year (setting `echo_hidden_year`). Its ✕ hides it for the year.
+   - "Your year in podcasts" in the Statistics screen's menu during the same window, so a hidden card can still be reached.
+   - The `/echo` route also opens outside the window, for the screenshot harness and deep links.
+4. **20d: Sharing** (`feat:`).
+   - The Share button shares text through React Native's `Share` API: "My year 2026 in podcasts: 214 hours from 18 podcasts. Top 5: …". No dependency.
+   - **Not in this phase:** a shared PNG like AntennaPod's. That needs `react-native-view-shot` (native code, so a new build). It is a separate proposal if the owner wants it.
+5. **20e: Check.**
+   - Seed a year of `playback_history` in `shots-tool/seed.mjs`, and add `/echo` (all 7 cards) and the Home card to the harness. Run before and after shots.
+   - Typecheck, tests, expo-doctor and `expo export` must pass.
+   - The fingerprint must be unchanged, so the phase reaches the installed 0.23.2 build as an over-the-air update.
+
+**Shots.** New screens: all 7 Echo cards, the Home card, and the Statistics menu entry (phone and tablet). The Home "before" shot shows no card.
+
+**Stop and ask:**
+- if any step turns out to need a native dependency (for example image sharing)
+- before an EAS build. None is planned: this phase ships over the air.
+
 ### TASKS.md to paste into the repo root
 
 ```markdown
