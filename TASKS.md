@@ -213,7 +213,8 @@ destructive.
 - [ ] Sync, Cast, Auto/Wear, video, Echo, nav customisation, parental control
 
 ## Discovered (not yet scheduled)
-- [ ] expo-doctor fails since Expo published SDK 57 patch releases (expo 57.0.32 and others). `npx expo install --fix` changes native code, so it needs a new build; until then CI's doctor step is red on every branch
+- [x] expo-doctor failed after Expo's SDK 57 patch releases (expo 57.0.32 and 15 more): fixed with `npx expo install --fix`, which changes the runtime, so it ships in a build
+- [ ] "Publish OTA update" still never runs: no Expo check appears on pushes to `main`, so EAS isn't receiving this repository's push events (check the project's GitHub link and the Expo GitHub app's repository access)
 - [ ] iOS home-screen widget (expo-widgets can show what's playing, but its buttons can't reach the player; D-026)
 - [ ] Hardware headset next/previous buttons seek instead of changing episode (AntennaPod's "Hardware forward button skips" setting)
 - [ ] Skip silence and volume boost on iOS (needs an audio tap; D-025)
