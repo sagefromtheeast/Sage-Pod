@@ -201,6 +201,13 @@ destructive.
 - [x] 19d: iOS keeps its background URLSession; a relaunch restarts the file (recorded in D-029)
 - [ ] On device: start 3 downloads, lock the screen; switch apps; swipe the app away; airplane mode mid-download resumes (log says "resumed from"); reboot with auto downloads pending on Wi-Fi + charging; tap the notification; a protected feed; a 404 (fails once, logged); cancel mid-download (partial file gone)
 
+## Phase 20 — Echo, the year in review (D-030, proposed)
+- [ ] 20a: `src/echo/` pure helpers (window, queue outlook, median delay, listener type, hoarder verdict, thanks line, top 5) + `getEchoYear` repository + tests
+- [ ] 20b: `/echo` story screen: 7 cards, 10 s auto-advance, tap forward/back, hold to pause, progress bar, animated SVG backgrounds (still with reduce motion)
+- [ ] 20c: Home card (10–31 Dec, ≥ 10 h, hide for the year) + Statistics menu entry
+- [ ] 20d: share as text (`Share` API); image sharing is a separate native proposal
+- [ ] 20e: seed a year of history, harness shots (7 cards, Home card), checks, fingerprint unchanged → ships over the air
+
 ## Phase 18 — Optional (one proposal each)
 - [ ] Sync, Cast, Auto/Wear, video, Echo, nav customisation, parental control
 

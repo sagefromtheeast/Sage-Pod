@@ -256,7 +256,7 @@ releasing, so a red check on `main` blocks the release.
   WorkManager jobs from the local module `modules/episode-downloads`;
   D-029).
   Earlier: EAS device builds, stable Surprise Me, tablet layouts.
-- **Next**: the device checks in TASKS.md (Phase 19 above all). Other Phase 18 items are optional, one proposal each. Schema is at version 7; feeds.state can be 'subscribed',
+- **Next**: Phase 20, Echo (D-030, proposed; must merge before 10 December), once the owner approves the plan. Then the device checks in TASKS.md (Phase 19 above all). Other Phase 18 items are optional, one proposal each. Schema is at version 7; feeds.state can be 'subscribed',
   'preview' or 'archived'.
   Building blocks to reuse: `openEpisodeActions`, `runEpisodeAction`,
   `showToast`, `OverflowMenu`, `BottomSheet` / `ActionSheet`,
