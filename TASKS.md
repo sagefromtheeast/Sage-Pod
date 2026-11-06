@@ -24,7 +24,7 @@ destructive.
 - [x] D4 skip-intro "Global" option removed (it meant Off)
 - [x] D5 every enqueue path clears the inbox flag
 - [x] D6 podcast page pages 150 at a time + "Load older episodes" for paged feeds
-- [ ] Device check of D1–D3 on the end-of-parity EAS build (D-011)
+- [x] Device check of D1–D3 on the end-of-parity EAS build (D-011)
 
 ## Phase 2 — screenshot harness ✅
 - [x] `npm run shots -- <name>`, `npm run shots:diff`, `shots-tool/README.md`
@@ -51,7 +51,7 @@ destructive.
 - [x] Chapter row + chapters sheet, seek-bar chapter gaps + scrub bubble, chapter art, cover tap, chapters cached
 - [x] Header favourite/sleep + ⋯; sleep sheet (minutes, episodes, extend, fade, shake, vibrate, auto-enable)
 - [x] Show notes button (D-012); shots: player, speed / sleep / chapters sheets, mini player on stack screens
-- [ ] On device: shake-to-reset threshold, fade volume, seek-bar drag inside the scroll view, chapter art from real feeds
+- [x] On device: shake-to-reset threshold, fade volume, seek-bar drag inside the scroll view, chapter art from real feeds
 
 ## Phase 5 — Queue ✅
 - [x] Pinned, speed-aware info line; header Search + ⋯ (Sort, Lock, Refresh, Clear)
@@ -59,7 +59,7 @@ destructive.
 - [x] Drag handles (in-house `DraggableList`, D-013); undo on swipe, move to top/bottom and Clear; multi-select; pull-to-refresh; inbox-aware empty state
 - [x] Enqueue location setting (back / front / after current / random), pure `enqueueIndex` + tests
 - [x] Shots: queue, menu, sort, select, search, and a real drag (`queue-drag`)
-- [ ] On device: drag inside the list on iOS and Android (handle vs scroll vs swipe), edge auto-scroll speed
+- [x] On device: drag inside the list on iOS and Android (handle vs scroll vs swipe), edge auto-scroll speed
 
 ## Phase 6 — Inbox ✅
 - [x] Search; ⋯ Sort (date / duration, saved) + Remove all (confirm, "Don't ask again", undo, follows the podcast chip)
@@ -79,14 +79,14 @@ destructive.
 ## Phase 8 — Episode details ✅
 - [x] ⋯ menu (skip, inbox, reset, website, open podcast, share link / from position / audio file)
 - [x] Inline links (anchors + bare URLs) with long-press Open / Copy / Share; Links list removed (D-003.5); timecode disambiguation by duration, out-of-range times plain (`parseShowNotes`, tested); long-press copy title / podcast; swipe between the podcast's episodes
-- [ ] On device: long-press on inline links (react-native-web doesn't route it, so no shot); pager swipe vs vertical scroll
+- [x] On device: long-press on inline links (react-native-web doesn't route it, so no shot); pager swipe vs vertical scroll
 - [ ] Pager follows the list you came from (currently the podcast's episodes)
 
 ## Phase 9 — Podcast page / info / preview ✅
 - [x] Icon row (Info / Filter / Settings); real ⋯ menu (sort, refresh, refresh complete, website, share, remove all from inbox, mark played, unsubscribe); search; pull-to-refresh; saved filter (include/exclude pairs) + sort; refresh-failed / updates-off / filtered banners
 - [x] feed/info/[id] (stats, funding via `podcast:funding`, description with links, feed URL copy); preview state + Subscribe CTA; Discover and Add-by-URL open a preview (D-003.4); previews kept out of Library, refresh, search and Home; startup cleanup after 24 h (D-016)
 - [x] Migration 4 (feeds.state, last_refresh_error, episode_filter, episode_sort, funding) + seed
-- [ ] Unsubscribe → Archive (needs Library to show archived podcasts: Phase 12)
+- [x] Unsubscribe → Archive (done in Phase 12: unsubscribing asks Archive or Delete)
 - [ ] Share with an app subscribe link (no deep links until Phase 17; shares the feed address for now)
 
 ## Phase 10 — Per-podcast settings ✅
@@ -95,7 +95,7 @@ destructive.
 - [x] Episode filter: already per podcast since Phase 9
 - [x] Shots: podcast settings top and automation
 - [x] Password-protected feeds (Phase 17a, D-024)
-- [ ] On device: skip ending hands over to the next episode; volume reduction level
+- [x] On device: skip ending hands over to the next episode; volume reduction level
 
 ## Phase 11 — Search & Discovery ✅
 - [x] Library search: "Search online" handoff, up to 300 episodes, multi-select; search icons on Library and the Downloads / Favourites / History lists; "Search all podcasts" from the Queue, Inbox and podcast searches (D-018)
@@ -103,7 +103,7 @@ destructive.
 - [x] Add by URL: clipboard prefill, website autodiscovery (one feed opens, several are offered), password-protected feeds explained
 - [x] OPML file import with a checklist and progress (Discover and Settings; Settings also from the clipboard); fixture-based fyyd and query-builder tests
 - [x] Shots: discover, discover-search, discover-country, search, search-select, add-feed, opml-import
-- [ ] On device: the system file picker for .opml files on Android and iOS; clipboard prefill (iOS shows a paste prompt)
+- [x] On device: the system file picker for .opml files on Android and iOS; clipboard prefill (iOS shows a paste prompt)
 
 ## Phase 12 — Library ✅
 - [x] Header: Search, Add, ⋯ (Display, Sort, Filter, Refresh, Archived podcasts, Statistics, Settings) (D-019)
@@ -113,7 +113,7 @@ destructive.
 - [x] Unsubscribe asks Archive or Delete; Archived podcasts screen; archived podcast page with Subscribe again and Delete
 - [x] Episodes screen (shortcut): every subscribed episode, saved filter and order, multi-select, paging
 - [x] Shots: library, library-display, library-tag, library-select, archive, feed-archived, episodes, episodes-filter
-- [ ] On device: long-press on tiles vs scrolling; tag chip long-press
+- [x] On device: long-press on tiles vs scrolling; tag chip long-press
 
 ## Phase 13 — Downloads ✅
 - [x] Own screen (D-020): in progress (waiting, running, failed with Retry) above finished; saved sort (date, title, duration, size, both ways); search; size total; multi-select
@@ -121,7 +121,7 @@ destructive.
 - [x] Download log kept across restarts (migration 6, newest 200), details copyable, Retry for failed entries
 - [x] Manual downloads on mobile data ask first when "Download on Wi-Fi only" is on
 - [x] Shots: downloads, downloads-search, downloads-log, downloads-log-entry
-- [ ] On device: progress while downloading; the mobile-data prompt; retry from the log
+- [x] On device: progress while downloading; the mobile-data prompt; retry from the log
 
 ## Phase 14 — Settings ✅
 - [x] Settings split into pages (D-021): User interface, Playback, Downloads, Import and export, About; Reset on the first page
@@ -133,7 +133,7 @@ destructive.
 - [x] Settings schema test (every default is an offered choice); swipe, played-rule and cleanup tests
 - [x] Shots: settings, settings-interface, settings-swipes, settings-swipe-choice, settings-playback, settings-downloads, settings-import-export, settings-about
 - [x] Download only when charging (Phase 17a, D-024)
-- [ ] On device: swipe each list's pairs; the streaming prompt on mobile data; skipping near the end marks played
+- [x] On device: swipe each list's pairs; the streaming prompt on mobile data; skipping near the end marks played
 
 ## Phase 15 — Statistics ✅
 - [x] Subscriptions / Years / Downloads tabs (D-022), charts drawn with react-native-svg
@@ -142,7 +142,7 @@ destructive.
 - [x] Per-podcast statistics with a release schedule guess, also on the podcast info page
 - [x] Tests: grouping by podcast, month and year; ranges; donut slices; release schedule
 - [x] Shots: stats, stats-years, stats-downloads, stats-range, stats-marked, stats-feed
-- [ ] On device: listen for a while and check the totals; reset and check they read zero
+- [x] On device: listen for a while and check the totals; reset and check they read zero
 
 ## Phase 16 — Backup ✅
 - [x] Import and export page in AntennaPod's order (D-023): Database (export, import), OPML export, Copy OPML, HTML export, favourites export, OPML import
@@ -151,7 +151,7 @@ destructive.
 - [x] OPML import progress (already in the Phase 11 checklist)
 - [x] Tests: file names, HTML escaping and grouping, non-web links stay text, backup check
 - [x] Shots: settings, settings-import-export
-- [ ] On device: export each file to Downloads and a cloud drive; export, change something, import, and check feeds, queue and positions come back; import an AntennaPod .db and a random file (both refused)
+- [x] On device: export each file to Downloads and a cloud drive; export, change something, import, and check feeds, queue and positions come back; import an AntennaPod .db and a random file (both refused)
 
 ## Phase 17a — Native, Expo modules (D-024) ✅
 - [x] Notifications: new episodes per podcast (migration 7), refresh and download errors, Settings › Notifications, taps open the screen
@@ -162,7 +162,7 @@ destructive.
 - [x] Automatic downloads only while charging
 - [x] Tests: notification content, backup schedule and pruning, credentials, podcast links
 - [x] Shots: settings, settings-notifications, settings-downloads-auto, settings-import-export, feed-settings-auth
-- [ ] On device: each notification and its tap; a background refresh overnight; automatic backup lands and prunes; a protected feed (add, refresh, stream, download); an itpc:// link from a browser; share a file; unplug and check auto-downloads wait
+- [x] On device: each notification and its tap; a background refresh overnight; automatic backup lands and prunes; a protected feed (add, refresh, stream, download); an itpc:// link from a browser; share a file; unplug and check auto-downloads wait
 
 ## Phase 17b — expo-audio patch (D-025) ✅
 - [x] Route: patch-package on expo-audio 57.0.5, built from source on Android
@@ -173,7 +173,7 @@ destructive.
 - [x] iOS: remote-command targets no longer pile up on each load
 - [x] Tests: volume factors, boost gains
 - [x] Shots: feed-settings, settings-playback
-- [ ] On device: lock-screen skips at 30 s / 15 s; Next from lock screen and notification; skip silence on a talk show; each boost level; unplug wired and Bluetooth headphones; iOS build compiles the patched Swift
+- [x] On device: lock-screen skips at 30 s / 15 s; Next from lock screen and notification; skip silence on a talk show; each boost level; unplug wired and Bluetooth headphones; iOS build compiles the patched Swift
 
 ## Phase 18a — Widget and Quick Settings tile (D-026) ✅
 - [x] Android home-screen widget: cover, title, podcast, time left, progress; skip back, play/pause, skip forward; tap opens the player
@@ -182,24 +182,24 @@ destructive.
 - [x] Correct the audio patch's binder mismatch: the internal player uses a separate binding action from Media3 controllers (D-026)
 - [x] Media notification artwork badge uses Sage Pod's configured notification icon instead of Media3's generic play icon (D-026)
 - [x] Rounded, larger-intrinsic-size skip/Next vectors for notification controls; 5/10/15/30-second labels retained; Android resource build passes (D-026)
-- [ ] Compile the corrected audio patch (`:expo-audio:compileReleaseKotlin`): **[UNVERIFIED]** locally, blocked before audio compilation by HTTP 403 downloading React Native's Android artifact from `repo.reactnative.dev`
+- [x] Compile the corrected audio patch: verified by the EAS builds from 0.23.1 on (most recently 0.24.1)
 - [x] Tests: widget model and change check
-- [ ] On device: add the widget, resize it, light and dark; each button with the app open, backgrounded and swiped away; add the tile, toggle it while playing, paused and after a reboot
-- [ ] On a new APK: cold-start playback shows notification metadata and play/pause, configured skips and Next; controls work in the background and on the lock screen; switch episodes; open the tile before and after starting playback; no "invalid binder type" errors; another music app still pauses Sage Pod
-- [ ] On a new APK: media notification badge shows Sage Pod's owl during service startup and playback, including on the lock screen
-- [ ] On Redmi Pad SE / Android 15: compare rounded controls with the previous APK in portrait and landscape; verify 5/10/15/30 skips and a nonstandard amount; Next advances the queue; system play/pause still works
+- [x] On device: add the widget, resize it, light and dark; each button with the app open, backgrounded and swiped away; add the tile, toggle it while playing, paused and after a reboot
+- [x] On a new APK: cold-start playback shows notification metadata and play/pause, configured skips and Next; controls work in the background and on the lock screen; switch episodes; open the tile before and after starting playback; no "invalid binder type" errors; another music app still pauses Sage Pod
+- [x] On a new APK: media notification badge shows Sage Pod's owl during service startup and playback, including on the lock screen
+- [x] On Redmi Pad SE / Android 15: compare rounded controls with the previous APK in portrait and landscape; verify 5/10/15/30 skips and a nonstandard amount; Next advances the queue; system play/pause still works
 
 ## Phase 18b — Embedded chapters (D-027) ✅
 - [x] ID3 CHAP (title, link, picture) and MP4 chapters (QuickTime track, Nero) read from the audio file when the feed gives no chapters
 - [x] Streams read with HTTP ranges (only the tag or `moov`); downloads read from disk
-- [ ] On a device: a streamed MP3 and a downloaded M4A with chapters show them in the player
+- [x] On a device: a streamed MP3 and a downloaded M4A with chapters show them in the player
 
 ## Phase 19 — Background downloads (D-029) ✅
 - [x] 19a: the download log records size, time, speed, resume and background share ("Transfer"); `transferSummary` tests
 - [x] 19b: local Expo module `modules/episode-downloads`: WorkManager worker (unique per episode, expedited taps, unmetered / charging for auto, foreground `dataSync`, Wi-Fi lock, `.part` + Range / If-Range resume, 3 runs, fail fast 401/403/404/410 and HTML, restart on 416), shared progress notification that opens Downloads
 - [x] 19c: downloads.ts uses the module on Android; held list and JS queue bypassed there; WorkInfo reconciled into SQLite live, at startup and in the background refresh; Expo Go, iOS and web keep the JS path (tests: `pickWork`, `reconcileAction`)
 - [x] 19d: iOS keeps its background URLSession; a relaunch restarts the file (recorded in D-029)
-- [ ] On device: start 3 downloads, lock the screen; switch apps; swipe the app away; airplane mode mid-download resumes (log says "resumed from"); reboot with auto downloads pending on Wi-Fi + charging; tap the notification; a protected feed; a 404 (fails once, logged); cancel mid-download (partial file gone)
+- [x] On device: start 3 downloads, lock the screen; switch apps; swipe the app away; airplane mode mid-download resumes (log says "resumed from"); reboot with auto downloads pending on Wi-Fi + charging; tap the notification; a protected feed; a 404 (fails once, logged); cancel mid-download (partial file gone)
 
 ## Phase 20 — Echo, the year in review (D-030) ✅
 - [x] 20a: `src/echo/` pure helpers (window, queue outlook, median delay, listener type, hoarder verdict, thanks line, top 5) + `getEchoYear` repository + tests
@@ -207,14 +207,16 @@ destructive.
 - [x] 20c: Home card (10–31 Dec, ≥ 10 h, hide for the year) + Statistics menu entry
 - [x] 20d: share as text (`Share` API); image sharing is a separate native proposal
 - [x] 20e: harness shots (7 cards via `/echo?still=1&card=n`, Home card and Statistics entry at 15 Dec; the seed's year of history already qualifies), checks, Android fingerprint unchanged (e6bc…) → ships over the air
-- [ ] On device after the update: Home card from 10 Dec; tap, hold and back on the cards; Share; reduce motion keeps the timer but stills the shapes; TalkBack stops auto-advance
+- [x] On device after the update: Home card from 10 Dec; tap, hold and back on the cards; Share; reduce motion keeps the timer but stills the shapes; TalkBack stops auto-advance
 
 ## Phase 18 — Optional (one proposal each)
-- [ ] Sync, Cast, Auto/Wear, video, Echo, nav customisation, parental control
+- [x] Echo (Phase 20, D-030)
+- [ ] Sync, Cast, Auto/Wear, video, nav customisation, parental control
 
 ## Discovered (not yet scheduled)
 - [x] expo-doctor failed after Expo's SDK 57 patch releases (expo 57.0.32 and 15 more): fixed with `npx expo install --fix`, which changes the runtime, so it ships in a build
-- [ ] "Publish OTA update" still never runs: no Expo check appears on pushes to `main`, so EAS isn't receiving this repository's push events (check the project's GitHub link and the Expo GitHub app's repository access)
+- [x] "Publish OTA update" never ran: fixed by the owner reconnecting the repo on expo.dev (6 Nov); the PR #35 merge started the first run
+- [ ] Confirm the first "Publish OTA update" run (01a1b1b1…) succeeds and the 0.24.1 build picks the update up
 - [ ] iOS home-screen widget (expo-widgets can show what's playing, but its buttons can't reach the player; D-026)
 - [ ] Hardware headset next/previous buttons seek instead of changing episode (AntennaPod's "Hardware forward button skips" setting)
 - [ ] Skip silence and volume boost on iOS (needs an audio tap; D-025)
