@@ -1,6 +1,6 @@
 {
   "name": "sage-pod",
-  "version": "0.24.0",
+  "version": "0.24.1",
   "main": "index.ts",
   "dependencies": {
     "@expo/vector-icons": "^15.1.1",

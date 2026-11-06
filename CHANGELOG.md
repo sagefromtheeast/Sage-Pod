@@ -1,3 +1,9 @@
+## [0.24.1](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.24.0...v0.24.1) (2026-11-06)
+
+### 🐛 Bug Fixes
+
+* update Expo SDK 57 packages to their latest patch releases ([4660a76](https://github.com/sagefromtheeast/Sage-Pod/commit/4660a76dd60d19ae4e228ce1df24974f671036fa))
+
 ## [0.24.0](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.23.2...v0.24.0) (2026-11-06)
 
 ### 🚀 New Features
