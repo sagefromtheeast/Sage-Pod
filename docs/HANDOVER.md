@@ -257,7 +257,7 @@ releasing, so a red check on `main` blocks the release.
   D-029).
   Earlier: EAS device builds, stable Surprise Me, tablet layouts.
 - **Phase 20 (Echo, D-030)**: `src/echo/` (pure: window, queue outlook, median delay, verdicts, card text, share text), `src/db/echo.ts` (`getEchoYear`, hidden-year meta), `app/echo.tsx` (story screen; `?card=n&still=1`), `src/ui/echo/EchoBackdrop.tsx`, `echoPalette` in theme. JavaScript only: ships over the air.
-- **Next**: the device checks in TASKS.md (Phases 19 and 20), and the expo-doctor SDK patch drift (needs a build). Other Phase 18 items are optional, one proposal each. Schema is at version 7; feeds.state can be 'subscribed',
+- **Next**: the device checks in TASKS.md (Phases 19 and 20). Over-the-air updates still never trigger (TASKS.md, Discovered). Other Phase 18 items are optional, one proposal each. Schema is at version 7; feeds.state can be 'subscribed',
   'preview' or 'archived'.
   Building blocks to reuse: `openEpisodeActions`, `runEpisodeAction`,
   `showToast`, `OverflowMenu`, `BottomSheet` / `ActionSheet`,
