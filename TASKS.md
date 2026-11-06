@@ -216,7 +216,7 @@ destructive.
 ## Discovered (not yet scheduled)
 - [x] expo-doctor failed after Expo's SDK 57 patch releases (expo 57.0.32 and 15 more): fixed with `npx expo install --fix`, which changes the runtime, so it ships in a build
 - [x] "Publish OTA update" never ran: fixed by the owner reconnecting the repo on expo.dev (6 Nov); the PR #35 merge started the first run
-- [ ] Confirm the first "Publish OTA update" run (01a1b1b1…) succeeds and the 0.24.1 build picks the update up
+- [x] Confirm the first "Publish OTA update" runs succeed: 6 Nov, PR #35 at 16:53 UTC and v0.25.0 at 17:26 UTC, for runtime `f069fcd…` (the 0.24.1 APK). Each run waits roughly 20 minutes in the EAS queue
 - [ ] iOS home-screen widget (expo-widgets can show what's playing, but its buttons can't reach the player; D-026)
 - [ ] Hardware headset next/previous buttons seek instead of changing episode (AntennaPod's "Hardware forward button skips" setting)
 - [ ] Skip silence and volume boost on iOS (needs an audio tap; D-025)
