@@ -11,8 +11,11 @@ type ListRef = { current: readonly number[] | null };
  */
 const EpisodeListContext = createContext<ListRef>({ current: null });
 
-/** Wrap a screen's list so episodes opened from it swipe through `ids`, in its order. */
-export function EpisodeList({ ids, children }: { ids: readonly number[]; children: ReactNode }) {
+/**
+ * Wrap a screen's list so episodes opened from it swipe through `ids`, in its
+ * order. Null leaves the pager to its fallback, the podcast's episodes.
+ */
+export function EpisodeList({ ids, children }: { ids: readonly number[] | null; children: ReactNode }) {
   const ref = useRef<readonly number[] | null>(ids);
   ref.current = ids;
   return <EpisodeListContext.Provider value={ref}>{children}</EpisodeListContext.Provider>;

@@ -273,7 +273,8 @@ export default function FeedScreen() {
         }}
       />
 
-      <EpisodeList ids={episodes.map((episode) => episode.id)}>
+      {/* Until every stored episode is loaded, the pager uses the podcast's full list instead. */}
+      <EpisodeList ids={moreStored ? null : episodes.map((episode) => episode.id)}>
         <FlatList
           data={episodes}
           keyExtractor={(episode) => String(episode.id)}
