@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Sage Pod: free, open-source podcast player for Android</title>
+  <meta name="description" content="Subscribe to any podcast, download for offline listening, and keep your history on your phone. Free software under the GNU GPL.">
+  <meta name="theme-color" content="#163300">
+  <meta property="og:title" content="Sage Pod: podcasts that stay on your phone">
+  <meta property="og:description" content="A free, open-source podcast player for Android. Your subscriptions and listening history stay on your device.">
+  <meta property="og:image" content="/img/og.png">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" href="/favicon.png" type="image/png">
+  <link rel="apple-touch-icon" href="/img/icon-192.png">
+  <link rel="preload" href="/fonts/InterDisplay-Black.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/fonts/Inter-Regular.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/main.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="wrap header-row">
+      <a class="brand" href="/" aria-label="Sage Pod home">
+        <img src="/img/icon-192.png" alt="" width="36" height="36">
+        <span>Sage Pod</span>
+      </a>
+      <nav aria-label="Main">
+        <ul class="nav">
+          <li><a href="#features">Features</a></li>
+          <li><a href="#privacy">Privacy</a></li>
+          <li><a href="#faq">FAQ</a></li>
+          <li><a class="nav-github" href="https://github.com/sagefromtheeast/Sage-Pod">GitHub</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <!-- Hero -->
+    <section class="hero">
+      <div class="wrap hero-grid">
+        <div class="hero-copy">
+          <p class="eyebrow">Free podcast player for Android</p>
+          <h1 class="display">Podcasts that stay on your phone.</h1>
+          <p class="lede">Sage Pod is a free, open-source podcast player for Android. Subscribe to any show, download episodes for the train, and keep your listening history where only you can see it.</p>
+          <div class="cta-row">
+            <a class="btn btn-primary" href="https://github.com/sagefromtheeast/Sage-Pod">Read the code on GitHub</a>
+            <span class="badge-soon" aria-label="Coming to Google Play">
+              <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M4 2.6v18.8c0 .5.5.8 1 .6L20.4 13a.7.7 0 0 0 0-1.2L5 2c-.5-.3-1 .1-1 .6Z"/></svg>
+              Coming to Google Play
+            </span>
+          </div>
+          <p class="proof">Free software under the GNU GPL. Every release is public on GitHub.</p>
+        </div>
+        <div class="hero-visual" aria-hidden="true">
+          <div class="wave-panel demo" data-demo="waveform">
+            <div class="bars">
+              <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+            </div>
+          </div>
+          <figure class="phone phone-hero">
+            <img src="/img/home.webp" alt="" width="390" height="844" fetchpriority="high">
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <!-- Find shows -->
+    <section class="feature" id="features" aria-labelledby="find-title">
+      <div class="wrap split">
+        <div class="feature-copy">
+          <h2 id="find-title" class="h2">Follow anything with a feed.</h2>
+          <p>Search millions of podcasts, browse the charts for your country, or paste a feed address from any show's website. Private and paid feeds with a password work too, and an OPML file brings your subscriptions over from the app you use now.</p>
+          <div class="add-feed demo" data-demo="typing" aria-hidden="true">
+            <span class="add-label">Add podcast by address</span>
+            <div class="add-field"><span class="typed"></span><span class="caret"></span></div>
+            <span class="add-done">✓ Subscribed</span>
+          </div>
+        </div>
+        <figure class="phone">
+          <img src="/img/discover.webp" alt="Sage Pod's Discover screen with top podcast charts" width="390" height="844" loading="lazy">
+        </figure>
+      </div>
+    </section>
+
+    <!-- Player -->
+    <section class="feature feature-fog" aria-labelledby="player-title">
+      <div class="wrap split split-reverse">
+        <div class="feature-copy">
+          <h2 id="player-title" class="h2">Hear more of what you came for.</h2>
+          <p>Skip silence, boost quiet voices, and set your own skip lengths for the lock screen. Each show remembers its speed and skips its own intro. Chapters show up even when they're hidden inside the MP3.</p>
+          <p class="small">Sleep timer with fade-out. Shake the phone to add time.</p>
+          <div class="player-demo demo" data-demo="player" aria-hidden="true">
+            <div class="chapter-name"><span class="chapter-text">A detour into deep time</span></div>
+            <div class="segments">
+              <span style="--w:14%"><b></b></span><span style="--w:30%"><b></b></span><span style="--w:22%"><b></b></span><span style="--w:34%"><b></b></span>
+            </div>
+            <div class="player-row">
+              <span class="speed">1×</span>
+              <span class="ctrl">−10</span>
+              <span class="play"><svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M8 5v14l11-7z"/></svg></span>
+              <span class="ctrl">+30</span>
+              <span class="toggle"><i></i>Skip silence</span>
+            </div>
+          </div>
+        </div>
+        <figure class="phone">
+          <img src="/img/player.webp" alt="Sage Pod's player with chapters, speed and skip buttons" width="390" height="844" loading="lazy">
+        </figure>
+      </div>
+    </section>
+
+    <!-- Inbox and queue -->
+    <section class="feature" aria-labelledby="queue-title">
+      <div class="wrap split">
+        <div class="feature-copy">
+          <h2 id="queue-title" class="h2">New episodes land in your inbox. You decide what plays next.</h2>
+          <p>Swipe an episode into the queue or out of the inbox, drag to reorder, and pick up on the Home screen where you stopped.</p>
+        </div>
+        <div class="rows demo" data-demo="queue" aria-hidden="true">
+          <div class="row row-swipe">
+            <span class="row-action">+ Queue</span>
+            <div class="row-body"><span class="art" style="--c:#6d3fa0">DT</span><span class="row-text"><b>Deep Time</b>118. A billion years in a pebble</span></div>
+          </div>
+          <div class="row row-a"><div class="row-body"><span class="art" style="--c:#a0522d">FN</span><span class="row-text"><b>Field Notes</b>118. The comet that came back</span><span class="grip">≡</span></div></div>
+          <div class="row row-b"><div class="row-body"><span class="art" style="--c:#2f5aa8">SN</span><span class="row-text"><b>Signal &amp; Noise</b>118. The art of doing less</span><span class="grip">≡</span></div></div>
+          <div class="row row-c"><div class="row-body"><span class="art" style="--c:#b8860b">KT</span><span class="row-text"><b>Kitchen Table Economics</b>117. Why rent is sticky</span><span class="grip">≡</span></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Downloads -->
+    <section class="feature feature-fog" aria-labelledby="dl-title">
+      <div class="wrap split split-reverse">
+        <div class="feature-copy">
+          <h2 id="dl-title" class="h2">Downloads that finish while you're doing something else.</h2>
+          <p>Lock the phone, switch apps, lose signal in a tunnel. Downloads carry on in the background and pick up from where they stopped, on Wi-Fi or while charging if you prefer.</p>
+        </div>
+        <div class="dl-card demo" data-demo="download" aria-hidden="true">
+          <div class="dl-head">
+            <svg class="ring" viewBox="0 0 44 44" width="56" height="56"><circle cx="22" cy="22" r="19" class="ring-track"/><circle cx="22" cy="22" r="19" class="ring-fill"/></svg>
+            <div><b>118. The comet that came back</b><span class="dl-status">Downloading · 0%</span></div>
+          </div>
+          <div class="dl-bar"><span></span></div>
+          <p class="dl-log"><span class="dl-log-label">Transfer</span><span class="dl-log-text">48 MB in 1 min 12 s, 683 KB/s, resumed from 30 MB</span></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Echo -->
+    <section class="feature echo-section" aria-labelledby="echo-title">
+      <div class="wrap split">
+        <div class="feature-copy">
+          <h2 id="echo-title" class="h2">Every December, your year in podcasts.</h2>
+          <p>Hours played, your top five shows, and how quickly you get to new episodes, worked out on your phone and yours to share.</p>
+          <p class="small">Example cards with demo data.</p>
+        </div>
+        <div class="echo demo" data-demo="echo" aria-hidden="true">
+          <div class="echo-progress"><span><b></b></span><span><b></b></span><span><b></b></span><span><b></b></span></div>
+          <div class="echo-backdrop"><i></i><i></i><i></i></div>
+          <div class="echo-card is-current"><p>Your year</p><strong>2026</strong><p>in podcasts</p></div>
+          <div class="echo-card"><p>This year you played</p><strong>46</strong><p>hours of episodes from 6 different podcasts</p></div>
+          <div class="echo-card"><p>Our conclusion?</p><strong>🏃</strong><p>You're a podcast addict</p></div>
+          <div class="echo-card"><p>Thanks</p><strong>✨</strong><p>for sticking with Sage Pod this year</p></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Privacy -->
+    <section class="privacy" id="privacy" aria-labelledby="privacy-title">
+      <div class="wrap">
+        <h2 id="privacy-title" class="display display-md">What leaves your phone, in full.</h2>
+        <dl class="flows">
+          <div><dt>The shows you follow</dt><dd>Requests for feeds, episodes and artwork go to each show's own server.</dd></div>
+          <div><dt>Search</dt><dd>Your search words go to Apple's and fyyd's podcast search.</dd></div>
+          <div><dt>App updates</dt><dd>The app checks Expo's server for its own updates.</dd></div>
+        </dl>
+        <p class="privacy-close">That's the whole list. Sage Pod has no server of its own, so there's no account to make and nothing for us to lose. <a href="https://github.com/sagefromtheeast/Sage-Pod/blob/main/PRIVACY.md">Read the privacy policy</a></p>
+      </div>
+    </section>
+
+    <!-- Open source -->
+    <section class="feature" aria-labelledby="oss-title">
+      <div class="wrap split">
+        <div class="feature-copy">
+          <h2 id="oss-title" class="h2">Built in the open.</h2>
+          <p>Sage Pod is free software under the GNU GPL v3. Read the code, report a bug, or build it yourself. If it ever goes in a direction you don't like, it can be forked.</p>
+          <a class="text-link" href="https://github.com/sagefromtheeast/Sage-Pod">Read the code on GitHub</a>
+        </div>
+        <pre class="terminal" aria-label="Build Sage Pod from source"><code><span class="t-dim">$</span> git clone https://github.com/sagefromtheeast/Sage-Pod
+<span class="t-dim">$</span> cd Sage-Pod && npm install
+<span class="t-dim">$</span> npx expo run:android</code></pre>
+      </div>
+    </section>
+
+    <!-- FAQ -->
+    <section class="faq" id="faq" aria-labelledby="faq-title">
+      <div class="wrap faq-grid">
+        <h2 id="faq-title" class="h2">Questions</h2>
+        <div class="faq-list">
+          <details><summary>Is Sage Pod really free?</summary><p>Yes. There are no ads, no subscription and no paid tier. It's free software, so the code is free too.</p></details>
+          <details><summary>Do I need an account?</summary><p>No. Open the app and subscribe.</p></details>
+          <details><summary>Can I bring my podcasts from another app?</summary><p>Export an OPML file from your current app and import it in Settings › Import/Export. You can export one from Sage Pod the same way whenever you want to leave.</p></details>
+          <details><summary>Does it work offline?</summary><p>Downloaded episodes play anywhere. Searching and refreshing feeds need a connection.</p></details>
+          <details><summary>Where is my data stored?</summary><p>On your phone: subscriptions, history, statistics and settings. Automatic backups go to a folder you choose.</p></details>
+          <details><summary>Does it work with private or paid feeds?</summary><p>Yes, if the feed gives you an address, with or without a username and password.</p></details>
+          <details><summary>Is there an iPhone version?</summary><p>Sage Pod is built for both, but only the Android app is published for now.</p></details>
+          <details><summary>How is it related to AntennaPod?</summary><p>AntennaPod's feature set is the benchmark Sage Pod is working through. Sage Pod is a separate app written from scratch and shares no code with it.</p></details>
+          <details><summary>How do I report a bug or ask for a feature?</summary><p>Open an issue on <a href="https://github.com/sagefromtheeast/Sage-Pod/issues">GitHub</a>. Security problems go through the private report described in <a href="https://github.com/sagefromtheeast/Sage-Pod/blob/main/SECURITY.md">SECURITY.md</a>.</p></details>
+        </div>
+      </div>
+    </section>
+
+    <!-- Final CTA -->
+    <section class="final" aria-labelledby="final-title">
+      <div class="wrap final-row">
+        <h2 id="final-title" class="display display-md">Your podcasts, on your phone, for free.</h2>
+        <div class="cta-row">
+          <a class="btn btn-primary" href="https://github.com/sagefromtheeast/Sage-Pod">Read the code on GitHub</a>
+          <span class="badge-soon badge-soon-dark">Coming to Google Play</span>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-row">
+      <p>Sage Pod · Free software under the <a href="https://github.com/sagefromtheeast/Sage-Pod/blob/main/LICENSE">GNU GPL v3 or later</a></p>
+      <ul class="footer-links">
+        <li><a href="https://github.com/sagefromtheeast/Sage-Pod/blob/main/PRIVACY.md">Privacy</a></li>
+        <li><a href="https://github.com/sagefromtheeast/Sage-Pod/blob/main/SECURITY.md">Security</a></li>
+        <li><a href="https://github.com/sagefromtheeast/Sage-Pod">GitHub</a></li>
+        <li><a href="/fonts/OFL.txt">Font licence</a></li>
+      </ul>
+    </div>
+  </footer>
+</body>
+</html>
