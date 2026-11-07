@@ -12,6 +12,7 @@ npm run shots:diff                 # pixel diff + screenshots/compare.html
 npm run shots -- after home,player # only some screens
 SHOTS_EMPTY=1 npm run shots -- empty  # a fresh install: the empty states, no seed
 SHOTS_SCHEME=light npm run shots -- light  # the light theme
+SHOTS_SCALE=2.5 npm run shots -- store     # store resolution, for tool/store_mockups.py
 ```
 
 Output lands in `screenshots/` (git-ignored): `before/`, `after/`, `diff/`

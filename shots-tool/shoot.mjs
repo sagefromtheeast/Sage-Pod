@@ -19,10 +19,13 @@ const EMPTY_ROUTES = [
   ['downloads', '/downloads'], ['favorites', '/list/favorites'], ['history', '/list/history'], ['stats', '/stats'],
 ].filter(([n]) => !only || only.includes(n));
 
+// SHOTS_SCALE multiplies every viewport's pixel density, e.g. 2.5 for store
+// mockups (tool/store_mockups.py). Leave it unset for before/after diffs.
+const SCALE = Number(process.env.SHOTS_SCALE ?? 1);
 const VIEWPORTS = [
-  { name: 'phone', width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true },
-  { name: 'tablet', width: 800, height: 1280, deviceScaleFactor: 1, isMobile: true, hasTouch: true },
-  { name: 'tablet-land', width: 1280, height: 800, deviceScaleFactor: 1, isMobile: true, hasTouch: true },
+  { name: 'phone', width: 390, height: 844, deviceScaleFactor: 2 * SCALE, isMobile: true, hasTouch: true },
+  { name: 'tablet', width: 800, height: 1280, deviceScaleFactor: 1 * SCALE, isMobile: true, hasTouch: true },
+  { name: 'tablet-land', width: 1280, height: 800, deviceScaleFactor: 1 * SCALE, isMobile: true, hasTouch: true },
 ];
 // Long-press the first episode row of a list (RN-web Pressable needs a held pointer).
 async function longPressFirstEpisode(page, title = /^120\. /) {
