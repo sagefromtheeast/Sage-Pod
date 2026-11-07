@@ -209,6 +209,17 @@ destructive.
 - [x] 20e: harness shots (7 cards via `/echo?still=1&card=n`, Home card and Statistics entry at 15 Dec; the seed's year of history already qualifies), checks, Android fingerprint unchanged (e6bc…) → ships over the air
 - [x] On device after the update: Home card from 10 Dec; tap, hold and back on the cards; Share; reduce motion keeps the timer but stills the shapes; TalkBack stops auto-advance
 
+## Open source and Google Play
+- [x] GPL-3.0-or-later licence; CONTRIBUTING, CODE_OF_CONDUCT, SECURITY, PRIVACY; issue and PR templates
+- [x] CI: actions pinned to commits, `permissions: {}` by default, CodeQL (public repos only), Dependabot (Expo/RN excluded)
+- [x] Play listing in `fastlane/metadata/android/en-US` (texts, icon, feature graphic, screenshots via `tool/store_assets.py`); `docs/PLAY-STORE.md`
+- [ ] Owner: replace `SUPPORT_EMAIL` in PRIVACY, SECURITY and CODE_OF_CONDUCT
+- [ ] Owner: make the repository public and switch on the settings in `docs/GOING-PUBLIC.md`
+- [ ] Owner: Play developer account, create the app, upload the first production `.aab` by hand (`docs/PLAY-STORE.md`)
+- [ ] EAS Submit: service account key in EAS, then `eas submit` for later builds
+- [ ] `decode-uri-component` advisory (via expo-router): fixed by the SDK 58 upgrade
+- [ ] Consider R8 minification and EAS Update code signing for release builds (each needs a device test)
+
 ## Phase 18 — Optional (one proposal each)
 - [x] Echo (Phase 20, D-030)
 - [ ] Sync, Cast, Auto/Wear, video, nav customisation, parental control

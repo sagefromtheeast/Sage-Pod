@@ -258,6 +258,7 @@ releasing, so a red check on `main` blocks the release.
   Earlier: EAS device builds, stable Surprise Me, tablet layouts.
 - **Phase 20 (Echo, D-030)**: `src/echo/` (pure: window, queue outlook, median delay, verdicts, card text, share text), `src/db/echo.ts` (`getEchoYear`, hidden-year meta), `app/echo.tsx` (story screen; `?card=n&still=1`), `src/ui/echo/EchoBackdrop.tsx`, `echoPalette` in theme. JavaScript only: ships over the air.
 - **Builds**: the latest Android preview is v0.24.1 (EAS build `010f7f23`, runtime `f069fcd…`); over-the-air updates for JavaScript-only changes target that runtime.
+- **Open source / Play**: GPL-3.0-or-later; store listing in `fastlane/metadata`, steps in `docs/PLAY-STORE.md`, repo settings in `docs/GOING-PUBLIC.md`. `eas.json` is part of the runtime fingerprint, so editing it moves the OTA runtime.
 - **Next**: the device checks in TASKS.md (Phases 19 and 20). Over-the-air updates: the owner reconnected the GitHub repo on 6 Nov; confirm a "Publish OTA update" run follows the next push to `main` (TASKS.md, Discovered). Other Phase 18 items are optional, one proposal each. Schema is at version 7; feeds.state can be 'subscribed',
   'preview' or 'archived'.
   Building blocks to reuse: `openEpisodeActions`, `runEpisodeAction`,
