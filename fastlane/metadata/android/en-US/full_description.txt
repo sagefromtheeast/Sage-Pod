@@ -1,0 +1,35 @@
+Sage Pod is a free, open-source podcast player that puts you in charge. Subscribe to any podcast by its RSS feed, download episodes for offline listening, and keep everything on your phone: no account, no ads, no tracking.
+
+<b>Find and follow podcasts</b>
+• Search millions of podcasts, browse the charts by country, or paste any RSS feed address
+• Password-protected and private feeds work too
+• Import and export your subscriptions as OPML whenever you like
+
+<b>Listen your way</b>
+• Background playback with lock-screen and notification controls
+• Variable speed, custom skip amounts, skip silence and volume boost
+• Sleep timer with shake to reset and fade-out
+• Chapters, including chapters embedded in MP3 and M4A files
+• Per-podcast speed, intro and ending skips, and volume adjustment
+
+<b>Your queue, your inbox</b>
+• An inbox of new episodes and a reorderable queue
+• Swipe actions you can choose, and multi-select for bulk changes
+• Favourites, history and a "continue listening" shelf on Home
+
+<b>Downloads that just work</b>
+• Downloads keep going in the background and resume where they stopped
+• Automatic downloads per podcast, on Wi-Fi or while charging
+• A storage limit and automatic clean-up of played episodes
+
+<b>Yours to keep</b>
+• Listening statistics, and Echo: your year in podcasts every December
+• Automatic backups, and full export and import of your data
+• Home-screen widget and Quick Settings tile
+• Light, dark and pure-black themes
+
+<b>Private by design</b>
+Sage Pod has no server and no account. Your subscriptions, listening history and settings never leave your device. The app only connects to the podcasts you follow, to podcast search, and to check for its own updates.
+
+<b>Free software</b>
+Sage Pod is licensed under the GNU GPL v3 or later. The source code, issue tracker and roadmap are on GitHub: https://github.com/sagefromtheeast/Sage-Pod

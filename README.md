@@ -12,6 +12,7 @@
 [![New Architecture](https://img.shields.io/badge/New_Arch-Fabric-4ADE80)](https://reactnative.dev/architecture/landing-page)
 ![Platforms](https://img.shields.io/badge/platforms-iOS_·_Android-16A34A?logo=apple&logoColor=white)
 ![Status](https://img.shields.io/badge/status-pre--1.0-E9B764)
+[![License: GPL v3+](https://img.shields.io/badge/License-GPLv3+-blue.svg)](LICENSE)
 
 </div>
 
@@ -147,7 +148,24 @@ pasted directly.
 - [`docs/DECISIONS.md`](docs/DECISIONS.md): settled decisions
 - [`docs/HANDOVER.md`](docs/HANDOVER.md): guide for whoever (or whatever AI) leads development next
 
+## 🤝 Contributing
+
+Bug reports, ideas and pull requests are welcome. Start with
+[`CONTRIBUTING.md`](CONTRIBUTING.md); security problems go through
+[`SECURITY.md`](SECURITY.md), not public issues.
+
+## 🔒 Privacy
+
+No account, no analytics, no ads. Your subscriptions, listening history and
+settings stay on your device. See [`PRIVACY.md`](PRIVACY.md) for every network
+request the app makes.
+
 ## 📄 License
 
-Sage Pod is its own implementation and shares no code with AntennaPod; it
-borrows the product model, not the source.
+Sage Pod is free software: you can redistribute it and/or modify it under the
+terms of the [GNU General Public License](LICENSE), version 3 or (at your
+option) any later version. It comes with **no warranty**.
+
+Sage Pod is its own implementation and shares no code with
+[AntennaPod](https://github.com/AntennaPod/AntennaPod); it borrows the product
+model, not the source.

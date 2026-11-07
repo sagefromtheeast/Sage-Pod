@@ -1,0 +1,16 @@
+name: Feature request
+description: Suggest something new, or an AntennaPod feature Sage Pod lacks
+labels: [enhancement]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What would you like to do?
+      description: The problem or wish, in your own words.
+    validations:
+      required: true
+  - type: textarea
+    id: antennapod
+    attributes:
+      label: How does AntennaPod (or another app) do it?
+      description: Optional, but it helps when Sage Pod should match.

@@ -80,6 +80,8 @@
     "postinstall": "patch-package"
   },
   "private": true,
+  "license": "GPL-3.0-or-later",
+  "repository": "github:sagefromtheeast/Sage-Pod",
   "expo": {
     "autolinking": {
       "buildFromSource": [

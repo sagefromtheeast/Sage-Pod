@@ -1,0 +1,42 @@
+name: Bug report
+description: Something in Sage Pod doesn't work as it should
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. **Security problems go through SECURITY.md, not here.**
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open …
+        2. Tap …
+  - type: input
+    id: feed
+    attributes:
+      label: Feed address
+      description: If one podcast triggers it, its RSS feed address (Podcast info › Feed).
+  - type: input
+    id: version
+    attributes:
+      label: App version
+      description: Settings › About
+      placeholder: 0.25.0
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device and OS
+      placeholder: Pixel 8, Android 15
+    validations:
+      required: true
