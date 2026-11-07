@@ -81,6 +81,26 @@ python3 tool/store_assets.py    # needs Pillow
    *shared*, *not collected by you*, *processed ephemerally*. **[VERIFY at
    submission time]**
 
+5. **Foreground service permissions** (Policy › App content). Play asks
+   for a short video of each one in use; a screen recording uploaded to
+   YouTube as *unlisted* is enough.
+   - `FOREGROUND_SERVICE_MEDIA_PLAYBACK` › **Media playback**: plays podcast
+     episodes the user starts, with the lock-screen and notification
+     controls, while the screen is off or another app is open. Video: start
+     an episode, lock the phone, use the lock-screen controls.
+   - `FOREGROUND_SERVICE_DATA_SYNC` › **Network processing › Other**:
+     downloads podcast episodes the user taps Download on (or that
+     auto-download fetches for subscribed shows) in the background, with a
+     progress notification, so a download finishes when the user leaves the
+     app. Video: tap Download on an episode, leave the app, show the
+     progress notification finishing.
+6. **Health apps**: Sage Pod has no health features. Play asks only because
+   `expo-sensors` adds `ACTIVITY_RECOGNITION` for its step counter; Sage Pod
+   uses the accelerometer alone (shake to extend the sleep timer), which
+   needs no permission. From 0.25.2 the permission is blocked in `app.json`
+   (`android.blockedPermissions`); once no active release carries it, the
+   Health apps form is no longer required.
+
 ## Build and upload
 
 1. **Production build** (Android App Bundle, signed with the upload key stored in EAS):
