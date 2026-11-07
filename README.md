@@ -4,7 +4,7 @@
 
 # Sage Pod
 
-**A local-first podcast player for iOS & Android — built with React Native and Expo.**
+**A podcast player that keeps your listening on your phone. Built with React Native and Expo.**
 
 [![Expo SDK](https://img.shields.io/badge/Expo_SDK-57-000020?logo=expo&logoColor=white)](https://expo.dev)
 [![React Native](https://img.shields.io/badge/React_Native-0.86-61DAFB?logo=react&logoColor=black)](https://reactnative.dev)

@@ -7,7 +7,7 @@ repository **settings**, so the owner does them on GitHub.
 
 ## Before flipping the switch
 
-- [ ] Replace every `SUPPORT_EMAIL` placeholder (`PRIVACY.md`, `SECURITY.md`,
+- [x] Replace every `SUPPORT_EMAIL` placeholder (`PRIVACY.md`, `SECURITY.md`,
       `CODE_OF_CONDUCT.md`) and merge.
 - [ ] Accept that history is public as it is: 5 early commits carry the
       owner's personal email address as author (decided 7 Nov 2026 not to

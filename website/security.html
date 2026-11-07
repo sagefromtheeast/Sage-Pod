@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Security · Sage Pod</title>
+  <meta name="description" content="How to report a security problem in Sage Pod privately, what is in scope, and how the app protects feed passwords and handles untrusted feeds.">
+  <meta name="theme-color" content="#163300">
+  <meta property="og:title" content="Sage Pod security policy">
+  <meta property="og:description" content="Report a vulnerability privately. You'll get a reply within a week.">
+  <meta property="og:image" content="/img/og.png">
+  <link rel="canonical" href="https://sage-pod-site.vercel.app/security">
+  <link rel="icon" href="/favicon.png" type="image/png">
+  <link rel="preload" href="/fonts/InterDisplay-Black.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/main.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="wrap header-row">
+      <a class="brand" href="/" aria-label="Sage Pod home">
+        <img src="/img/icon-192.png" alt="" width="36" height="36">
+        <span>Sage Pod</span>
+      </a>
+      <nav aria-label="Main">
+        <ul class="nav">
+          <li><a href="/#features">Features</a></li>
+          <li><a href="/privacy">Privacy</a></li>
+          <li><a href="/#faq">FAQ</a></li>
+          <li><a class="nav-github" href="https://github.com/sagefromtheeast/Sage-Pod">GitHub</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="doc-hero" aria-labelledby="doc-title">
+      <div class="wrap">
+        <p class="eyebrow">Security policy</p>
+        <h1 id="doc-title" class="display display-md">Found a security problem? Tell us privately.</h1>
+        <p class="lede">Sage Pod reads feeds, audio and show notes from servers it doesn't control. If one of them can make the app misbehave, we want to hear about it before anyone else does.</p>
+        <div class="cta-row doc-cta">
+          <a class="btn btn-primary" href="mailto:faithsoul.feed@gmail.com?subject=Sage%20Pod%20security">Email a security report</a>
+          <a class="badge-soon badge-soon-dark" href="https://github.com/sagefromtheeast/Sage-Pod/security/advisories/new">Or report it on GitHub</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="doc">
+      <div class="wrap doc-grid">
+        <nav class="doc-toc" aria-label="On this page">
+          <p>On this page</p>
+          <ol>
+            <li><a href="#report">Reporting a problem</a></li>
+            <li><a href="#versions">Supported versions</a></li>
+            <li><a href="#scope">What is in scope</a></li>
+            <li><a href="#design">How the app protects you</a></li>
+          </ol>
+        </nav>
+
+        <div class="prose">
+          <h2 id="report">Reporting a problem</h2>
+          <p class="note"><strong>Please don't open a public issue for a security problem.</strong></p>
+          <p>Report it privately through GitHub: on the repository's <strong>Security</strong> tab, choose <strong>Report a vulnerability</strong>. If that isn't available, email <a href="mailto:faithsoul.feed@gmail.com?subject=Sage%20Pod%20security">faithsoul.feed@gmail.com</a> with "Sage Pod security" in the subject.</p>
+          <p>Please include:</p>
+          <ul>
+            <li>what an attacker could do, and what they need (a malicious feed, a link, a position on the network, physical access…)</li>
+            <li>steps or a sample feed that reproduce it</li>
+            <li>the app version (Settings › About) and your device</li>
+          </ul>
+          <p>You'll get a reply within a week. Fixes ship as a normal release, and you're credited in the release notes unless you'd rather not be.</p>
+
+          <h2 id="versions">Supported versions</h2>
+          <p>Only the latest release gets security fixes: the newest tag on <code>main</code>, and the newest build on Google Play.</p>
+
+          <h2 id="scope">What is in scope</h2>
+          <p>Problems in how the app handles content from podcast feeds, episode files, artwork, chapter files and show-note links. For example:</p>
+          <ul>
+            <li>a feed, chapter file or show note that crashes the app, runs script, or reads or writes files outside the app's storage</li>
+            <li>feed passwords leaking: logged, sent to another host, or sent over plain HTTP</li>
+            <li>a link (<code>itpc://</code>, <code>podcast://</code>, <code>sagepod://</code>…) that does more than open a screen</li>
+            <li>a backup file that does more than restore the app's own data</li>
+          </ul>
+          <p>Out of scope: the security of podcast hosts themselves, the content of podcasts, and attacks that need a rooted or jailbroken device.</p>
+
+          <h2 id="design">How the app protects you</h2>
+          <ul>
+            <li>Feed passwords live in the system keystore and are sent only to the feed's own host. They are never sent after a redirect to another host, or from HTTPS down to HTTP.</li>
+            <li>Plain HTTP is allowed because many podcast feeds and audio files are still served over it. HTTPS is used whenever a feed offers it.</li>
+            <li>Show notes are shown as text and links, never in a web view, so a feed can't run script inside the app.</li>
+            <li>The app has no server and no account, so there's no store of user data anywhere else to breach.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-row">
+      <p>Sage Pod · Free software under the <a href="https://github.com/sagefromtheeast/Sage-Pod/blob/main/LICENSE">GNU GPL v3 or later</a></p>
+      <ul class="footer-links">
+        <li><a href="/privacy">Privacy</a></li>
+        <li><a href="/security">Security</a></li>
+        <li><a href="https://github.com/sagefromtheeast/Sage-Pod">GitHub</a></li>
+        <li><a href="/fonts/OFL.txt">Font licence</a></li>
+      </ul>
+    </div>
+  </footer>
+</body>
+</html>

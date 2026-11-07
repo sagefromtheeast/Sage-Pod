@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Privacy policy · Sage Pod</title>
+  <meta name="description" content="What Sage Pod keeps on your phone, every network request it makes, and who receives them. There is no account and no analytics.">
+  <meta name="theme-color" content="#163300">
+  <meta property="og:title" content="Sage Pod privacy policy">
+  <meta property="og:description" content="Everything Sage Pod stores stays on your phone. Here is every request it makes, and to whom.">
+  <meta property="og:image" content="/img/og.png">
+  <link rel="canonical" href="https://sage-pod-site.vercel.app/privacy">
+  <link rel="icon" href="/favicon.png" type="image/png">
+  <link rel="preload" href="/fonts/InterDisplay-Black.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/main.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="wrap header-row">
+      <a class="brand" href="/" aria-label="Sage Pod home">
+        <img src="/img/icon-192.png" alt="" width="36" height="36">
+        <span>Sage Pod</span>
+      </a>
+      <nav aria-label="Main">
+        <ul class="nav">
+          <li><a href="/#features">Features</a></li>
+          <li><a href="/privacy" aria-current="page">Privacy</a></li>
+          <li><a href="/#faq">FAQ</a></li>
+          <li><a class="nav-github" href="https://github.com/sagefromtheeast/Sage-Pod">GitHub</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <section class="doc-hero" aria-labelledby="doc-title">
+      <div class="wrap">
+        <p class="eyebrow">Privacy policy</p>
+        <h1 id="doc-title" class="display display-md">Your listening stays on your phone.</h1>
+        <p class="lede">Sage Pod has no server of its own. This page lists what the app stores, where it stores it, and every request it sends to anyone else.</p>
+        <ul class="doc-summary">
+          <li><b>No account</b>There is nothing to sign up for or log in to.</li>
+          <li><b>No analytics or ads</b>The app contains no analytics or advertising SDK.</li>
+          <li><b>Stored on your device</b>Subscriptions, history, statistics, downloads and settings.</li>
+          <li><b>Nothing sent to us</b>The developer receives none of your data.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="doc">
+      <div class="wrap doc-grid">
+        <nav class="doc-toc" aria-label="On this page">
+          <p>On this page</p>
+          <ol>
+            <li><a href="#device">What stays on your device</a></li>
+            <li><a href="#network">Network requests</a></li>
+            <li><a href="#notifications">Notifications</a></li>
+            <li><a href="#children">Children</a></li>
+            <li><a href="#choices">Your choices</a></li>
+            <li><a href="#changes">Changes</a></li>
+            <li><a href="#contact">Contact</a></li>
+          </ol>
+        </nav>
+
+        <div class="prose">
+          <p class="updated">Last updated 7 November 2026</p>
+          <p>Sage Pod is a podcast player for Android and iOS, published as free software under the GNU GPL by its developer. This policy covers the app as published on Google Play and as built from <a href="https://github.com/sagefromtheeast/Sage-Pod">its source code</a>.</p>
+
+          <h2 id="device">What stays on your device</h2>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">Data</th><th scope="col">Where it is kept</th></tr></thead>
+              <tbody>
+                <tr><td>Subscriptions, episodes, queue, favourites, listening history and statistics</td><td>A database on your phone</td></tr>
+                <tr><td>Downloaded episodes</td><td>The app's private storage</td></tr>
+                <tr><td>Settings</td><td>The same database on your phone</td></tr>
+                <tr><td>Usernames and passwords for password-protected feeds</td><td>The system keystore (Android Keystore or iOS Keychain)</td></tr>
+                <tr><td>Backups you export (OPML or database)</td><td>Wherever you choose to save them</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>Android's own backup ("Back up to Google Drive") may include the app's database if you turned it on in your phone's settings. Feed passwords are left out of that backup. That setting belongs to your phone, not to the app.</p>
+
+          <h2 id="network">Network requests the app makes</h2>
+          <p>Sage Pod contacts other servers only to do something you asked for.</p>
+          <div class="table-scroll">
+            <table>
+              <thead><tr><th scope="col">Request</th><th scope="col">Sent to</th><th scope="col">What is sent</th></tr></thead>
+              <tbody>
+                <tr><td>Refresh a podcast, download or stream an episode, load artwork and chapters</td><td>The podcast's own host, whoever publishes the feed</td><td>A normal web request for that file: your IP address and the app's user agent (<code>SagePod/…</code>). For a password-protected feed, the username and password you entered, sent only to that feed's own host and never over plain HTTP after HTTPS.</td></tr>
+                <tr><td>Search for podcasts and browse charts in Discover</td><td>Apple's podcast search (<code>itunes.apple.com</code>, <code>rss.applemarketingtools.com</code>) and fyyd (<code>api.fyyd.de</code>)</td><td>Your search words and your IP address</td></tr>
+                <tr><td>Check for app updates</td><td>Expo's update service (<code>u.expo.dev</code>)</td><td>The app version, platform, update channel and an anonymous random installation ID used to serve the right update</td></tr>
+                <tr><td>Open a website, funding link or show-notes link</td><td>That website, in your browser</td><td>Whatever your browser sends</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p>Podcast hosts, Apple, fyyd and Expo receive these requests directly and handle them under their own privacy policies. Podcast hosts often log downloads to count listeners. The app can't control that.</p>
+
+          <h2 id="notifications">Notifications</h2>
+          <p>New-episode and download notifications are created on your phone. The app does not use a push-notification service.</p>
+
+          <h2 id="children">Children</h2>
+          <p>Sage Pod is not directed at children and collects no personal information from anyone.</p>
+
+          <h2 id="choices">Your choices</h2>
+          <p>Uninstalling the app deletes everything it stored. Inside the app you can also reset statistics, delete downloads and remove podcasts.</p>
+
+          <h2 id="changes">Changes</h2>
+          <p>This policy is kept in the app's <a href="https://github.com/sagefromtheeast/Sage-Pod/blob/main/PRIVACY.md">source repository</a>, so every change to it is public.</p>
+
+          <h2 id="contact">Contact</h2>
+          <p class="note">Email <a href="mailto:faithsoul.feed@gmail.com">faithsoul.feed@gmail.com</a> or open an issue on <a href="https://github.com/sagefromtheeast/Sage-Pod/issues">GitHub</a>.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="wrap footer-row">
+      <p>Sage Pod · Free software under the <a href="https://github.com/sagefromtheeast/Sage-Pod/blob/main/LICENSE">GNU GPL v3 or later</a></p>
+      <ul class="footer-links">
+        <li><a href="/privacy">Privacy</a></li>
+        <li><a href="/security">Security</a></li>
+        <li><a href="https://github.com/sagefromtheeast/Sage-Pod">GitHub</a></li>
+        <li><a href="/fonts/OFL.txt">Font licence</a></li>
+      </ul>
+    </div>
+  </footer>
+</body>
+</html>

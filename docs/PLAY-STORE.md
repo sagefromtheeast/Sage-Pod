@@ -28,12 +28,11 @@ python3 tool/store_assets.py    # needs Pillow
 
 ## Before the first submission
 
-1. **Fill in the support email.** Replace every `SUPPORT_EMAIL` in
-   `PRIVACY.md`, `SECURITY.md` and `CODE_OF_CONDUCT.md` with a real address,
-   and merge.
-2. **Make the repository public** (see [`GOING-PUBLIC.md`](GOING-PUBLIC.md)),
-   so the privacy policy has a public URL:
-   `https://github.com/sagefromtheeast/Sage-Pod/blob/main/PRIVACY.md`.
+1. **Support email**: faithsoul.feed@gmail.com (done; it is in `PRIVACY.md`,
+   `SECURITY.md`, `CODE_OF_CONDUCT.md` and on the website).
+2. **Privacy policy URL**: `https://sage-pod-site.vercel.app/privacy`. It is
+   public even while the repository is private. Keep it in step with
+   `PRIVACY.md` when either changes.
 3. **Google Play developer account**: <https://play.google.com/console>
    (one-time US$25 fee, identity verification). Personal accounts created
    after November 2023 must run a **closed test with at least 12 testers for
@@ -47,7 +46,7 @@ python3 tool/store_assets.py    # needs Pillow
    Category: **Music & Audio**. Tags: Podcasts. Contact email: your support
    address. Website: the GitHub repository.
 3. **App content** (Policy › App content):
-   - **Privacy policy**: the `PRIVACY.md` URL above.
+   - **Privacy policy**: the privacy policy URL above.
    - **Ads**: No, the app contains no ads.
    - **App access**: All functionality is available without special access
      (no login).
