@@ -91,8 +91,16 @@ def feature_graphic() -> None:
     x = 380
     draw.text((x, 150), "Sage Pod", font=font(92), fill=TEXT)
     draw.text((x, 262), "Free, open-source podcasts.", font=font(38, "Medium"), fill=MUTED)
-    draw.text((x, 312), "No account. No ads. No tracking.", font=font(38, "Medium"), fill=ACCENT)
+    draw.text((x, 312), "Your listening stays on your phone.", font=font(38, "Medium"), fill=ACCENT)
     img.save(OUT / "featureGraphic.png", optimize=True)
+
+
+def og_image() -> None:
+    """1200 x 630 link preview for the website, from the feature graphic."""
+    graphic = Image.open(OUT / "featureGraphic.png").convert("RGB")
+    canvas = Image.new("RGB", (1200, 630), BG)
+    canvas.paste(graphic.resize((1200, 586), Image.LANCZOS), (0, 22))
+    canvas.save(ROOT / "website" / "img" / "og.png", optimize=True)
 
 
 def main() -> None:
@@ -101,6 +109,7 @@ def main() -> None:
     feature_graphic()
     screenshots(PHONE, "phone", "phoneScreenshots")
     screenshots(TABLET, "tablet-land", "tenInchScreenshots")
+    og_image()
     print(f"wrote {OUT.relative_to(ROOT)}")
 
 
