@@ -1,0 +1,38 @@
+# Dependency updates. Expo and React Native packages move together and are
+# updated with `npx expo install --fix` (expo-doctor checks them in CI), so
+# Dependabot leaves them alone. Security alerts still cover every package.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    commit-message:
+      prefix: ci
+    groups:
+      actions:
+        patterns: ['*']
+
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: fix
+      prefix-development: chore
+    ignore:
+      - dependency-name: 'expo'
+      - dependency-name: 'expo-*'
+      - dependency-name: '@expo/*'
+      - dependency-name: 'react'
+      - dependency-name: 'react-dom'
+      - dependency-name: 'react-native'
+      - dependency-name: 'react-native-*'
+      - dependency-name: '@react-native/*'
+      - dependency-name: '@react-native-community/*'
+      # Pinned to the Chromium the screenshot harness was built against.
+      - dependency-name: 'playwright'
+    groups:
+      minor-and-patch:
+        update-types: [minor, patch]
