@@ -9,6 +9,7 @@ uploaded there by hand.
 
 | Play Console field | File |
 |---|---|
+| Package name (permanent once uploaded) | `com.sagefromtheeast.sagepodplayer` (`android.package` in `app.json`) |
 | App name (30 chars) | `fastlane/metadata/android/en-US/title.txt` |
 | Short description (80) | `fastlane/metadata/android/en-US/short_description.txt` |
 | Full description (4000) | `fastlane/metadata/android/en-US/full_description.txt` |
@@ -43,8 +44,8 @@ python3 tool/store_assets.py    # needs Pillow
 1. **Create app**: name "Sage Pod: Podcast Player", default language English
    (United States), App, Free.
 2. **Main store listing**: paste the texts and upload the graphics above.
-   Category: **Music & Audio**. Tags: Podcasts. Contact email: your support
-   address. Website: the GitHub repository.
+   Category: **Music & Audio**. Tags: Podcasts. Contact email: faithsoul.feed@gmail.com.
+   Website: https://sage-pod-site.vercel.app
 3. **App content** (Policy › App content):
    - **Privacy policy**: the privacy policy URL above.
    - **Ads**: No, the app contains no ads.
