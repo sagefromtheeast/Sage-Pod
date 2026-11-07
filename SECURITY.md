@@ -11,7 +11,7 @@ Google Play) gets security fixes.
 
 Report it privately through GitHub: on this repository's **Security** tab,
 choose **Report a vulnerability**. If that isn't available, email
-**SUPPORT_EMAIL** with "Sage Pod security" in the subject.
+**faithsoul.feed@gmail.com** with "Sage Pod security" in the subject.
 
 Please include:
 

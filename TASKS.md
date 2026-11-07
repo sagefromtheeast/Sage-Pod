@@ -213,7 +213,7 @@ destructive.
 - [x] GPL-3.0-or-later licence; CONTRIBUTING, CODE_OF_CONDUCT, SECURITY, PRIVACY; issue and PR templates
 - [x] CI: actions pinned to commits, `permissions: {}` by default, CodeQL (public repos only), Dependabot (Expo/RN excluded)
 - [x] Play listing in `fastlane/metadata/android/en-US` (texts, icon, feature graphic, screenshots via `tool/store_assets.py`); `docs/PLAY-STORE.md`
-- [ ] Owner: replace `SUPPORT_EMAIL` in PRIVACY, SECURITY and CODE_OF_CONDUCT
+- [x] Owner: replace `SUPPORT_EMAIL` in PRIVACY, SECURITY and CODE_OF_CONDUCT (faithsoul.feed@gmail.com)
 - [ ] Owner: make the repository public and switch on the settings in `docs/GOING-PUBLIC.md`
 - [ ] Owner: Play developer account, create the app, upload the first production `.aab` by hand (`docs/PLAY-STORE.md`)
 - [ ] EAS Submit: service account key in EAS, then `eas submit` for later builds

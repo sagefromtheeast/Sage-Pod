@@ -33,7 +33,7 @@ and wherever someone represents the project.
 
 ## Enforcement
 
-Report problems to **SUPPORT_EMAIL**. Reports are handled privately and
+Report problems to **faithsoul.feed@gmail.com**. Reports are handled privately and
 promptly. Maintainers may remove comments, commits or other contributions
 that break this code, and may ban anyone from the project temporarily or
 permanently.

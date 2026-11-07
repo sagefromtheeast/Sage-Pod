@@ -3,7 +3,7 @@
 _Last updated: 7 November 2026_
 
 Sage Pod is a podcast player for Android and iOS, published as free software
-under the GNU GPL by its developer (contact: **SUPPORT_EMAIL**). This policy
+under the GNU GPL by its developer (contact: **faithsoul.feed@gmail.com**). This policy
 covers the app as published on Google Play and built from this repository.
 
 ## The short version
@@ -66,5 +66,5 @@ in the repository.
 
 ## Contact
 
-**SUPPORT_EMAIL**, or an issue at
+**faithsoul.feed@gmail.com**, or an issue at
 <https://github.com/sagefromtheeast/Sage-Pod/issues>.
