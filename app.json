@@ -30,7 +30,7 @@
       "buildNumber": "2501"
     },
     "android": {
-      "package": "app.sagepod.player",
+      "package": "com.sagefromtheeast.sagepodplayer",
       "predictiveBackGestureEnabled": false,
       "adaptiveIcon": {
         "backgroundColor": "#0E1512",
