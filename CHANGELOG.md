@@ -1,3 +1,30 @@
+## [0.25.2](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.25.1...v0.25.2) (2026-11-07)
+
+### 🐛 Bug Fixes
+
+* stop asking Android for activity recognition ([3940152](https://github.com/sagefromtheeast/Sage-Pod/commit/3940152ae616735d0895d521b81f399292c135d0))
+
+### 📚 Documentation
+
+* add device-framed store screenshots for Google Play and the App Store ([a5f2b8a](https://github.com/sagefromtheeast/Sage-Pod/commit/a5f2b8aa7e3f4621ea0feaea8ce96ece8a857cc3))
+* add privacy and security pages to the site and tighten its copy ([c1dcd39](https://github.com/sagefromtheeast/Sage-Pod/commit/c1dcd3967bb9e5df0235260b375e170c7b0b9ce4))
+* add the Sage Pod landing page ([317864a](https://github.com/sagefromtheeast/Sage-Pod/commit/317864a72c9736a5a50258eeaeadfe02924f24cd))
+* add the support email to the privacy, security and conduct policies ([532a446](https://github.com/sagefromtheeast/Sage-Pod/commit/532a4460281810d22b91290ced1d352d704c3354))
+* answers for Play's foreground service and health declarations ([cc34898](https://github.com/sagefromtheeast/Sage-Pod/commit/cc34898148ff82a8e55ed6c7e097820d2cd7fbda))
+* record the first Play upload and the upload key ([29d5b96](https://github.com/sagefromtheeast/Sage-Pod/commit/29d5b9629b3abef78267587d72b9ca1a693930b9))
+* restart a site demo that comes back on screen during a wait ([29c2e1f](https://github.com/sagefromtheeast/Sage-Pod/commit/29c2e1fd0d2b48369afdfad953167d134bee9d54))
+* say what Sage Pod keeps on your phone instead of listing what it lacks ([11a5689](https://github.com/sagefromtheeast/Sage-Pod/commit/11a568910b2a4a746f9bf8873b166866567dd2cf))
+* track the new production build and the iOS bundle identifier ([aebf034](https://github.com/sagefromtheeast/Sage-Pod/commit/aebf034a6d430dc598e6d1109f939be1ee2ca416))
+
+### 📦 Build & Dependencies
+
+* publish the Android app as com.sagefromtheeast.sagepodplayer ([13ccc6a](https://github.com/sagefromtheeast/Sage-Pod/commit/13ccc6afc246ca14f68fd0d9c600d3eb3a4530af))
+
+### 🔧 Maintenance
+
+* enable the marketing-skills plugin for Claude Code ([962916d](https://github.com/sagefromtheeast/Sage-Pod/commit/962916dc8b31284ade9d04f1e57645d3197fdd43))
+* let the screenshot harness capture at store resolution ([4d2a28b](https://github.com/sagefromtheeast/Sage-Pod/commit/4d2a28b51bb0fa8c836f8801b6266a4d6e36a21a))
+
 ## [0.25.1](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.25.0...v0.25.1) (2026-11-07)
 
 ### 🐛 Bug Fixes
