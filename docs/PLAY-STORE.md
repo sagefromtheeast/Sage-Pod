@@ -125,8 +125,14 @@ python3 tool/store_assets.py    # needs Pillow
   verified it. That keystore's certificate had empty name fields
   (`CN=, OU=, O=, …`) and its signature files sat at the end of the archive.
   The same bundle, re-signed with `jarsigner` and a key with a real name, was
-  accepted. If a future EAS-generated key is ever needed, check its
+  accepted. 0.25.2 (versionCode 2502), built by EAS with that named key and
+  EAS's usual file order, was accepted too, so the empty certificate name was
+  the cause. If a future EAS-generated key is ever needed, check its
   certificate first.
+- EAS can hold several Android keystores; the production build uses the
+  default one. Before uploading a new build, compare its SHA-1 with the one
+  above (a 0.25.2 build signed with a fresh EAS-generated key, SHA-1
+  `35:3E:1D:E1:…:1F:34:C4`, had to be rebuilt).
 - Lost key: Play Console › App integrity › App signing › Request upload key
   reset, with a new certificate (`.pem`).
 3. **Later uploads with EAS Submit**:
