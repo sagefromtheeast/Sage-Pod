@@ -5,7 +5,11 @@ dependencies, no third-party requests (fonts are self-hosted, there is no
 analytics). Deployed to Vercel as a static site.
 
 - `index.html`: the page. Copy was agreed in the copywriting review
-  (headline "Podcasts that stay on your phone.").
+  (headline "Podcasts that stay on your phone.") and edited with the
+  `copy-editing` skill from the marketing-skills plugin.
+- `privacy.html`, `security.html`: the privacy policy (the URL given to
+  Google Play) and the security policy. They are the web versions of
+  `PRIVACY.md` and `SECURITY.md`; change both together.
 - `styles.css`: design tokens and layout (forest ink and lime, after the
   Wise-style reference).
 - `main.js`: the demos, each a piece of the app replayed while on screen:
