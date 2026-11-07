@@ -215,7 +215,9 @@ destructive.
 - [x] Play listing in `fastlane/metadata/android/en-US` (texts, icon, feature graphic, screenshots via `tool/store_assets.py`); `docs/PLAY-STORE.md`
 - [x] Owner: replace `SUPPORT_EMAIL` in PRIVACY, SECURITY and CODE_OF_CONDUCT (faithsoul.feed@gmail.com)
 - [ ] Owner: make the repository public and switch on the settings in `docs/GOING-PUBLIC.md`
-- [ ] Owner: Play developer account, create the app, upload the first production `.aab` by hand (`docs/PLAY-STORE.md`) — package `com.sagefromtheeast.sagepodplayer`; use build `8d24cea5`, not the 7 Nov build `e8e3c82b` (old package `app.sagepod.player`)
+- [x] Owner: Play developer account, create the app, first internal-testing upload (versionCode 2501, 7 Nov 2026). Build `8d24cea5` re-signed with the new upload key (SHA-1 `CB:CF:CF:C7:…:AD:5D`), which is now in EAS — see `docs/PLAY-STORE.md` › Upload key
+- [ ] Next EAS production build: confirm it is signed with the upload key (SHA-1 `CB:CF:CF:C7:…:AD:5D`) before uploading
+- [ ] Owner: closed test with at least 12 testers for 14 days before production (new personal accounts)
 - [ ] Before the first iOS build (needs a paid Apple developer account): change `ios.bundleIdentifier` in `app.json` to `com.sagefromtheeast.sagepodplayer` to match Android. Apple fixes it at registration.
 - [ ] EAS Submit: service account key in EAS, then `eas submit` for later builds
 - [ ] `decode-uri-component` advisory (via expo-router): fixed by the SDK 58 upgrade

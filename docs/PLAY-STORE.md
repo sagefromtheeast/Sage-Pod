@@ -83,14 +83,32 @@ python3 tool/store_assets.py    # needs Pillow
 
 ## Build and upload
 
-1. **Production build** (Android App Bundle, signed with the EAS-managed key):
+1. **Production build** (Android App Bundle, signed with the upload key stored in EAS):
    `eas build --platform android --profile production`
    (or the Expo dashboard / MCP `build_run`). The version and versionCode come
    from the latest release (`tool/set_app_version.sh`), never from EAS.
-2. **First upload, by hand**: Play Console › Testing › Internal testing ›
-   Create release › upload the `.aab` from the build page. Accept **Play App
-   Signing** (Google holds the app signing key; EAS's key becomes the upload
-   key).
+2. **First upload, by hand** (done 7 Nov 2026, versionCode 2501): Play Console ›
+   Testing › Internal testing › Create release › upload the `.aab`. Google
+   holds the app signing key (Play App Signing); the key that signed the first
+   upload became the **upload key**.
+
+### Upload key
+
+- Upload key certificate SHA-1: `CB:CF:CF:C7:51:53:20:55:BB:E9:F2:94:94:84:D9:D8:5F:33:AD:5D`
+  (`CN=Sage Pod Upload, O=sagefromtheeast`, alias `upload`). The owner holds
+  the keystore and password; a copy is in EAS (Credentials › Android ›
+  `com.sagefromtheeast.sagepodplayer`). It is never in this repository.
+- Every build uploaded to Play must carry that SHA-1. Check before uploading:
+  `keytool -printcert -jarfile app.aab | grep SHA1`.
+- Why not the keystore EAS generated: Play rejected the EAS-signed bundle as
+  "invalid signature" from both a tablet and a laptop, although `jarsigner`
+  verified it. That keystore's certificate had empty name fields
+  (`CN=, OU=, O=, …`) and its signature files sat at the end of the archive.
+  The same bundle, re-signed with `jarsigner` and a key with a real name, was
+  accepted. If a future EAS-generated key is ever needed, check its
+  certificate first.
+- Lost key: Play Console › App integrity › App signing › Request upload key
+  reset, with a new certificate (`.pem`).
 3. **Later uploads with EAS Submit**:
    - In Google Cloud, create a service account with access to the Play
      Developer API, and invite it in Play Console › Users and permissions
