@@ -27,17 +27,24 @@
     }
     let running = false;
     let token = 0;
+    const live = () => el.classList.contains('is-live');
+    // One run at a time. A run cancelled by scrolling away finishes its
+    // current wait first; if the demo is back on screen by then, it restarts.
+    const start = () => {
+      running = true;
+      const mine = ++token;
+      const alive = () => mine === token && live();
+      (async () => {
+        while (alive()) await loop(alive);
+        running = false;
+        if (live()) start();
+      })();
+    };
     const observer = new IntersectionObserver(
       ([entry]) => {
         el.classList.toggle('is-live', entry.isIntersecting);
         if (entry.isIntersecting && !running) {
-          running = true;
-          const mine = ++token;
-          const alive = () => mine === token && el.classList.contains('is-live');
-          (async () => {
-            while (alive()) await loop(alive);
-            running = false;
-          })();
+          start();
         } else if (!entry.isIntersecting) {
           token++;
         }
