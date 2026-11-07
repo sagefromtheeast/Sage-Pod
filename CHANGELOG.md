@@ -1,3 +1,24 @@
+## [0.25.1](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.25.0...v0.25.1) (2026-11-07)
+
+### 🐛 Bug Fixes
+
+* update node-forge and shell-quote past their security advisories ([673a459](https://github.com/sagefromtheeast/Sage-Pod/commit/673a459e8d088e2e737e6759370cb4ab6246b4cc))
+
+### 📚 Documentation
+
+* Google Play listing, store graphics and the going-public checklist ([7b4297e](https://github.com/sagefromtheeast/Sage-Pod/commit/7b4297e8daa000b7479368896d10c40c5fa759ce))
+* license Sage Pod under the GPL v3 or later, with contributor, security and privacy policies ([b4244eb](https://github.com/sagefromtheeast/Sage-Pod/commit/b4244eb0befabdf954220cd35348ace521979437))
+* record the first over-the-air updates ([1ef6005](https://github.com/sagefromtheeast/Sage-Pod/commit/1ef6005dd6d0eb0be8c0f510a092a667d0be3cb0))
+* track the open-source and Google Play steps ([5c7f749](https://github.com/sagefromtheeast/Sage-Pod/commit/5c7f749fb86f2c54ffd6d02f31051ce668195374))
+
+### 📦 Build & Dependencies
+
+* let the release script own Android version codes and add an EAS Submit profile ([c9c8cf1](https://github.com/sagefromtheeast/Sage-Pod/commit/c9c8cf17bdfb31619753cc477923270e91d8d574))
+
+### 🤖 CI/CD
+
+* pin actions to commits, deny token access by default, and add CodeQL and Dependabot ([c109de4](https://github.com/sagefromtheeast/Sage-Pod/commit/c109de4e0b26f9be350a87d0f63fe15be4463466))
+
 ## [0.25.0](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.24.1...v0.25.0) (2026-11-06)
 
 ### 🚀 New Features

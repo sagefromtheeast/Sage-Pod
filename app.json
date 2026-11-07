@@ -3,7 +3,7 @@
     "name": "Sage Pod",
     "slug": "sage-pod",
     "owner": "sag3-technologies",
-    "version": "0.25.0",
+    "version": "0.25.1",
     "orientation": "default",
     "scheme": [
       "sagepod",
@@ -27,7 +27,7 @@
         "UIFileSharingEnabled": true,
         "LSSupportsOpeningDocumentsInPlace": true
       },
-      "buildNumber": "2500"
+      "buildNumber": "2501"
     },
     "android": {
       "package": "app.sagepod.player",
@@ -46,7 +46,7 @@
         "android.permission.FOREGROUND_SERVICE_DATA_SYNC",
         "android.permission.POST_NOTIFICATIONS"
       ],
-      "versionCode": 2500
+      "versionCode": 2501
     },
     "web": {
       "bundler": "metro",
