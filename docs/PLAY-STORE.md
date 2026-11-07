@@ -17,6 +17,7 @@ uploaded there by hand.
 | Feature graphic 1024 × 500 | `fastlane/metadata/android/en-US/images/featureGraphic.png` |
 | Phone screenshots (8) | `fastlane/metadata/android/en-US/images/phoneScreenshots/` |
 | 10-inch tablet screenshots (4) | `fastlane/metadata/android/en-US/images/tenInchScreenshots/` |
+| Framed screenshots with captions (phone 8, tablet 4) | `store-assets/google-play/` (see [`store-assets/README.md`](../store-assets/README.md)) |
 | Privacy policy | [`PRIVACY.md`](../PRIVACY.md) |
 
 The layout is the one `fastlane supply` and F-Droid read. After a UI change,
