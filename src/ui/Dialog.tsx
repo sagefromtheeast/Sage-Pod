@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import Animated, { FadeIn, ZoomIn } from 'react-native-reanimated';
 
 import { createStore, useStore } from '@/util/store';
@@ -79,6 +79,7 @@ function buttonColors(button: DialogButton, last: boolean, theme: Palette) {
 /** Mounted once, at the root, next to the toast host. */
 export function DialogHost() {
   const theme = useTheme();
+  const { height: windowHeight } = useWindowDimensions();
   const request = useStore(store);
   // Keep the last dialog on screen while the modal fades out.
   const [shown, setShown] = useState<DialogRequest | null>(request);
@@ -116,25 +117,29 @@ export function DialogHost() {
         <Animated.View
           key={dialog.id}
           entering={ZoomIn.duration(170).withInitialValues({ transform: [{ scale: 0.94 }] })}
-          style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}
+          // Never taller than the screen: the text scrolls, the buttons stay in view.
+          style={[
+            styles.card,
+            { backgroundColor: theme.surface, borderColor: theme.border, maxHeight: windowHeight - 2 * space.xl },
+          ]}
           accessibilityRole="alert"
           accessibilityViewIsModal
         >
-          <Animated.View entering={FadeIn.delay(60)} style={[styles.icon, { backgroundColor: tint(iconColor, 0.14) }]}>
-            <Ionicons
-              name={danger ? 'warning-outline' : 'information-circle-outline'}
-              size={24}
-              color={iconColor}
-            />
-          </Animated.View>
-          <Text style={[styles.title, { color: theme.text }]} accessibilityRole="header">
-            {dialog.title}
-          </Text>
-          {dialog.message ? (
-            <ScrollView style={styles.messageScroll} bounces={false}>
+          <ScrollView style={styles.body} bounces={false}>
+            <Animated.View entering={FadeIn.delay(60)} style={[styles.icon, { backgroundColor: tint(iconColor, 0.14) }]}>
+              <Ionicons
+                name={danger ? 'warning-outline' : 'information-circle-outline'}
+                size={24}
+                color={iconColor}
+              />
+            </Animated.View>
+            <Text style={[styles.title, { color: theme.text }]} accessibilityRole="header">
+              {dialog.title}
+            </Text>
+            {dialog.message ? (
               <Text style={[styles.message, { color: theme.textMuted }]}>{dialog.message}</Text>
-            </ScrollView>
-          ) : null}
+            ) : null}
+          </ScrollView>
           <View style={layout === 'row' ? styles.row : styles.stack}>
             {(layout === 'stack' ? [...dialog.buttons].reverse() : dialog.buttons).map((button, index, all) => {
               const isConfirm = layout === 'stack' ? index === 0 : index === all.length - 1;
@@ -201,8 +206,9 @@ const styles = StyleSheet.create({
     ...typography.heading,
     marginBottom: space.sm,
   },
-  messageScroll: {
-    maxHeight: 280,
+  body: {
+    flexGrow: 0,
+    flexShrink: 1,
   },
   message: {
     ...typography.body,

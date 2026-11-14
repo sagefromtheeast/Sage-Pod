@@ -139,8 +139,11 @@ export const SwipeableEpisodeRow = memo(function SwipeableEpisodeRow({
         .onUpdate((event) => {
           offset.value = rowOffset(event.translationX, canRight, canLeft, width.value);
         })
-        .onEnd((event) => {
-          const direction = releaseDirection(offset.value, event.velocityX, canRight, canLeft, width.value);
+        .onEnd((event, success) => {
+          // A cancelled gesture (the system took the touch) never commits.
+          const direction = success
+            ? releaseDirection(offset.value, event.velocityX, canRight, canLeft, width.value)
+            : null;
           if (direction) {
             const target = direction === 'right' ? width.value : -width.value;
             offset.value = withTiming(target, { duration: 160 }, (finished) => {
