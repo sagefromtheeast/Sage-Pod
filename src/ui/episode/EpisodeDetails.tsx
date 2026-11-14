@@ -3,7 +3,7 @@ import * as Clipboard from 'expo-clipboard';
 import { useRouter } from 'expo-router';
 import * as WebBrowser from 'expo-web-browser';
 import { useCallback, useMemo, useState } from 'react';
-import { Alert, Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, Share, StyleSheet, Text, View } from 'react-native';
 
 import { deleteDownloadByUser } from '@/actions/deleteDownloads';
 import { startDownloads } from '@/actions/startDownloads';
@@ -18,6 +18,7 @@ import {
   useDownloadProgress,
 } from '@/player/downloads';
 import { Artwork } from '@/ui/Artwork';
+import { showDialog } from '@/ui/Dialog';
 import { ProgressBar } from '@/ui/ProgressBar';
 import { ActionSheet } from '@/ui/ActionSheet';
 import { useMiniPlayerDockPadding } from '@/ui/MiniPlayerDock';
@@ -34,7 +35,7 @@ const copy = (text: string, what: string) => {
 };
 
 const openLink = (url: string) =>
-  WebBrowser.openBrowserAsync(url).catch(() => Alert.alert('Could not open link', url));
+  WebBrowser.openBrowserAsync(url).catch(() => showDialog('Could not open link', url));
 
 /**
  * One episode's details: header, play, actions, download state and the show
@@ -73,7 +74,7 @@ export function EpisodeDetails({ episodeId }: { episodeId: number }) {
       if (isCurrent) {
         void player.seekTo(seconds);
       } else {
-        Alert.alert(
+        showDialog(
           'Play this episode?',
           `Jump to ${formatDuration(seconds)} and start listening to this episode.`,
           [

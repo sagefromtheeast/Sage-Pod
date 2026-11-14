@@ -1,5 +1,3 @@
-import { Alert } from 'react-native';
-
 import {
   dismissManyFromInbox,
   getEpisode,
@@ -16,6 +14,7 @@ import type { EpisodeWithFeed } from '@/db/types';
 import { player } from '@/player';
 import { cancelDownload } from '@/player/downloads';
 import type { IconName } from '@/ui/ActionSheet';
+import { showDialog } from '@/ui/Dialog';
 import { showToast } from '@/ui/UndoToast';
 import { shareEpisode } from '@/util/share';
 
@@ -160,7 +159,7 @@ export async function runEpisodeAction(
       return;
 
     case 'delete':
-      Alert.alert(
+      showDialog(
         n === 1 ? 'Delete download?' : `Delete ${n} downloads?`,
         'The audio file is removed from this device. You can download it again later.',
         [

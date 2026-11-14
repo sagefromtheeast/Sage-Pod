@@ -3,7 +3,6 @@ import { useRouter } from 'expo-router';
 import { Tabs } from 'expo-router/js-tabs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Alert,
   FlatList,
   Pressable,
   RefreshControl,
@@ -29,6 +28,7 @@ import type { EpisodeWithFeed } from '@/db/types';
 import { useQuery } from '@/db/useQuery';
 import { refreshAllFeeds } from '@/feed/sync';
 import { player } from '@/player';
+import { showDialog } from '@/ui/Dialog';
 import { EpisodeList } from '@/ui/episode/EpisodeList';
 import { ActionSheet } from '@/ui/ActionSheet';
 import { EmptyState } from '@/ui/EmptyState';
@@ -105,7 +105,7 @@ export default function InboxScreen() {
 
   const confirmAndRemoveAll = useCallback(() => {
     if (!confirmRemoveAll) return void removeAll();
-    Alert.alert(
+    showDialog(
       selectedFeedId === null ? 'Remove all from inbox?' : 'Remove this podcast from the inbox?',
       'The episodes stay in their podcasts; they just leave the inbox. You can undo this.',
       [

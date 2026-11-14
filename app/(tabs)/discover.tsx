@@ -3,7 +3,6 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Keyboard,
   Pressable,
@@ -23,6 +22,7 @@ import { CHART_COUNTRIES, countryName, feedUrlKey, parseCountry } from '@/discov
 import { previewFeed } from '@/feed/sync';
 import { BottomSheet } from '@/ui/ActionSheet';
 import { Artwork } from '@/ui/Artwork';
+import { showDialog } from '@/ui/Dialog';
 import { GlassSurface } from '@/ui/glass';
 import { importOpmlFile } from '@/ui/opmlImport';
 import { MINI_PLAYER_HEIGHT, radius, space, type as typography } from '@/ui/theme';
@@ -278,7 +278,7 @@ function PodcastResultRow({ podcast, subscribedId }: { podcast: PodcastResult; s
       const { feedId } = await previewFeed(podcast.feedUrl);
       router.push(`/feed/${feedId}`);
     } catch (error) {
-      Alert.alert(
+      showDialog(
         'Could not open podcast',
         error instanceof Error ? error.message : 'That feed could not be loaded.'
       );

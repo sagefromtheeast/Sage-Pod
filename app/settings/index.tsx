@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
-import { Alert } from 'react-native';
 
 import { DEFAULT_SETTINGS, resetSettings } from '@/db/settings';
+import { showDialog } from '@/ui/Dialog';
 import { SettingsScreen } from '@/ui/settings/SettingsScreen';
 import { SettingsAction, SettingsLink, SettingsSection } from '@/ui/SettingsRow';
 import { useSetThemePreference } from '@/ui/useTheme';
@@ -15,7 +15,7 @@ export default function SettingsIndex() {
   const setThemePreference = useSetThemePreference();
 
   const resetDefaults = () => {
-    Alert.alert('Reset settings?', 'Every preference returns to its default. Podcasts and episodes are kept.', [
+    showDialog('Reset settings?', 'Every preference returns to its default. Podcasts and episodes are kept.', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Reset',

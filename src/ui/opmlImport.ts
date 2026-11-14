@@ -1,9 +1,9 @@
 import * as Clipboard from 'expo-clipboard';
 import { File } from 'expo-file-system';
 import type { useRouter } from 'expo-router';
-import { Alert } from 'react-native';
 
 import { parseOpml, setOpmlDraft } from '@/feed/opml';
+import { showDialog } from '@/ui/Dialog';
 
 type Router = ReturnType<typeof useRouter>;
 
@@ -11,7 +11,7 @@ type Router = ReturnType<typeof useRouter>;
 export function openOpmlChecklist(xml: string, router: Router): void {
   const outlines = parseOpml(xml);
   if (outlines.length === 0) {
-    Alert.alert('No podcasts found', "That doesn't look like an OPML subscription list.");
+    showDialog('No podcasts found', "That doesn't look like an OPML subscription list.");
     return;
   }
   setOpmlDraft(outlines);
@@ -27,7 +27,7 @@ export async function importOpmlFile(router: Router): Promise<void> {
     if (!picked || picked.canceled) return;
     openOpmlChecklist(await picked.result.text(), router);
   } catch (error) {
-    Alert.alert("Couldn't read that file", error instanceof Error ? error.message : String(error));
+    showDialog("Couldn't read that file", error instanceof Error ? error.message : String(error));
   }
 }
 

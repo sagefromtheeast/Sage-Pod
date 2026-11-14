@@ -1,5 +1,6 @@
 import * as Sharing from 'expo-sharing';
-import { Alert, Share } from 'react-native';
+import { Share } from 'react-native';
+import { showDialog } from '@/ui/Dialog';
 
 export type ShareEpisodeParams = {
   title: string;
@@ -29,7 +30,7 @@ export async function shareEpisode({
       title,
     });
   } catch (error) {
-    Alert.alert('Could not share', error instanceof Error ? error.message : String(error));
+    showDialog('Could not share', error instanceof Error ? error.message : String(error));
   }
 }
 
@@ -37,11 +38,11 @@ export async function shareEpisode({
 export async function shareEpisodeFile(fileUri: string, title: string): Promise<void> {
   try {
     if (!(await Sharing.isAvailableAsync())) {
-      Alert.alert('Could not share', 'Sharing files isn’t available on this device.');
+      showDialog('Could not share', 'Sharing files isn’t available on this device.');
       return;
     }
     await Sharing.shareAsync(fileUri, { dialogTitle: title, mimeType: 'audio/*' });
   } catch (error) {
-    Alert.alert('Could not share', error instanceof Error ? error.message : String(error));
+    showDialog('Could not share', error instanceof Error ? error.message : String(error));
   }
 }

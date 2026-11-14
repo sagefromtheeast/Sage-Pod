@@ -1,6 +1,5 @@
-import { Alert } from 'react-native';
-
 import { onMeteredWhileWifiOnly, queueDownload } from '@/player/downloads';
+import { showDialog } from '@/ui/Dialog';
 
 /**
  * Starts manual downloads. On mobile data with "Download on Wi-Fi only" on,
@@ -11,7 +10,7 @@ export async function startDownloads(episodeIds: readonly number[]): Promise<boo
   if (episodeIds.length === 0) return false;
   if (await onMeteredWhileWifiOnly()) {
     const proceed = await new Promise<boolean>((resolve) =>
-      Alert.alert(
+      showDialog(
         'Download on mobile data?',
         episodeIds.length === 1
           ? 'You are not on Wi-Fi, and downloads are set to Wi-Fi only.'

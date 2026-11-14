@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated, { FadeInDown, FadeOutDown } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { createStore, useStore } from '@/util/store';
@@ -41,34 +42,38 @@ export function UndoToastHost() {
     return () => clearTimeout(handle);
   }, [toast]);
 
-  if (!toast) return null;
-
+  // The dock stays mounted so the toast can slide out as well as in.
   return (
     <View
       style={[styles.dock, { bottom: insets.bottom + BOTTOM_CHROME }]}
       pointerEvents="box-none"
     >
-      <View
-        style={[styles.toast, { backgroundColor: theme.surfaceAlt, borderColor: theme.border }]}
-        accessibilityLiveRegion="polite"
-        accessibilityRole="alert"
-      >
-        <Text style={[styles.message, { color: theme.text }]} numberOfLines={2}>
-          {toast.message}
-        </Text>
-        {toast.onUndo ? (
-          <Pressable
-            onPress={() => {
-              dismiss(toast.id);
-              void toast.onUndo?.();
-            }}
-            hitSlop={8}
-            accessibilityRole="button"
-          >
-            <Text style={[styles.undo, { color: theme.accent }]}>Undo</Text>
-          </Pressable>
-        ) : null}
-      </View>
+      {toast ? (
+        <Animated.View
+          key={toast.id}
+          entering={FadeInDown.duration(200)}
+          exiting={FadeOutDown.duration(160)}
+          style={[styles.toast, { backgroundColor: theme.surfaceAlt, borderColor: theme.border }]}
+          accessibilityLiveRegion="polite"
+          accessibilityRole="alert"
+        >
+          <Text style={[styles.message, { color: theme.text }]} numberOfLines={2}>
+            {toast.message}
+          </Text>
+          {toast.onUndo ? (
+            <Pressable
+              onPress={() => {
+                dismiss(toast.id);
+                void toast.onUndo?.();
+              }}
+              hitSlop={8}
+              accessibilityRole="button"
+            >
+              <Text style={[styles.undo, { color: theme.accent }]}>Undo</Text>
+            </Pressable>
+          ) : null}
+        </Animated.View>
+      ) : null}
     </View>
   );
 }
@@ -91,6 +96,11 @@ const styles = StyleSheet.create({
     paddingVertical: space.md,
     borderRadius: radius.lg,
     borderWidth: StyleSheet.hairlineWidth,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 8,
   },
   message: {
     ...typography.label,

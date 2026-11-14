@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { Alert } from 'react-native';
 
 import { useSetting } from '@/db/settings';
 import { refreshAllFeeds } from '@/feed/sync';
 import { formatCleanup } from '@/player/cleanup';
 import { downloadedBytes, formatBytes } from '@/player/downloads';
 import { formatRefresh, NEW_EPISODE_LABELS, SETTING_OPTIONS } from '@/settings/options';
+import { showDialog } from '@/ui/Dialog';
 import { SettingsNote, SettingsScreen } from '@/ui/settings/SettingsScreen';
 import { useUpdateSetting } from '@/ui/settings/useUpdateSetting';
 import { SettingsAction, SettingsChoice, SettingsOptions, SettingsSection, SettingsSwitch } from '@/ui/SettingsRow';
@@ -32,7 +32,7 @@ export default function DownloadSettings() {
     setRefreshing(true);
     try {
       const result = await refreshAllFeeds({ force: true });
-      Alert.alert(
+      showDialog(
         'Refresh complete',
         [
           `${result.refreshed} feed${result.refreshed === 1 ? '' : 's'} checked.`,
