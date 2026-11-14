@@ -12,11 +12,13 @@ export type SwipeAction =
   | 'toggleQueue'
   | 'removeFromQueue'
   | 'moveToTop'
+  | 'moveToBottom'
   | 'removeFromInbox'
   | 'togglePlayed'
   | 'toggleFavorite'
   | 'download'
-  | 'delete';
+  | 'delete'
+  | 'share';
 
 export type SwipeScreen = 'inbox' | 'queue' | 'episodes' | 'downloads';
 
@@ -28,11 +30,13 @@ export const SWIPE_LABELS: Record<SwipeAction, string> = {
   toggleQueue: 'Add to / remove from queue',
   removeFromQueue: 'Remove from queue',
   moveToTop: 'Move to top of queue',
+  moveToBottom: 'Move to bottom of queue',
   removeFromInbox: 'Remove from inbox',
   togglePlayed: 'Mark played / unplayed',
   toggleFavorite: 'Add to / remove from favourites',
   download: 'Download',
   delete: 'Delete download',
+  share: 'Share',
 };
 
 /** Ionicons names for the strip revealed behind the row. */
@@ -41,11 +45,13 @@ export const SWIPE_ICONS: Record<SwipeAction, string> = {
   toggleQueue: 'add-circle-outline',
   removeFromQueue: 'remove-circle-outline',
   moveToTop: 'arrow-up-circle-outline',
+  moveToBottom: 'arrow-down-circle-outline',
   removeFromInbox: 'checkmark-done-outline',
   togglePlayed: 'checkmark-circle-outline',
   toggleFavorite: 'heart-outline',
   download: 'arrow-down-circle-outline',
   delete: 'trash-outline',
+  share: 'share-social-outline',
 };
 
 export const SWIPE_SCREENS: Record<
@@ -61,26 +67,27 @@ export const SWIPE_SCREENS: Record<
   inbox: {
     label: 'Inbox',
     setting: 'swipeInbox',
-    actions: ['none', 'toggleQueue', 'removeFromInbox', 'togglePlayed', 'toggleFavorite', 'download'],
+    actions: ['none', 'toggleQueue', 'removeFromInbox', 'togglePlayed', 'toggleFavorite', 'download', 'share'],
     defaults: { right: 'toggleQueue', left: 'removeFromInbox' },
   },
   // Sage Pod's original queue swipes.
   queue: {
     label: 'Queue',
     setting: 'swipeQueue',
-    actions: ['none', 'moveToTop', 'removeFromQueue', 'togglePlayed', 'toggleFavorite', 'download', 'delete'],
+    // Move to bottom and Share: AntennaPod 3.13's queue swipes.
+    actions: ['none', 'moveToTop', 'moveToBottom', 'removeFromQueue', 'togglePlayed', 'toggleFavorite', 'download', 'delete', 'share'],
     defaults: { right: 'moveToTop', left: 'removeFromQueue' },
   },
   episodes: {
     label: 'Episodes',
     setting: 'swipeEpisodes',
-    actions: ['none', 'toggleQueue', 'togglePlayed', 'toggleFavorite', 'download', 'delete'],
+    actions: ['none', 'toggleQueue', 'togglePlayed', 'toggleFavorite', 'download', 'delete', 'share'],
     defaults: { right: 'toggleQueue', left: 'togglePlayed' },
   },
   downloads: {
     label: 'Downloads',
     setting: 'swipeDownloads',
-    actions: ['none', 'toggleQueue', 'togglePlayed', 'toggleFavorite', 'delete'],
+    actions: ['none', 'toggleQueue', 'togglePlayed', 'toggleFavorite', 'delete', 'share'],
     defaults: { right: 'toggleQueue', left: 'delete' },
   },
 };
