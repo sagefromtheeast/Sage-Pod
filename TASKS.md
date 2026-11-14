@@ -209,6 +209,14 @@ destructive.
 - [x] 20e: harness shots (7 cards via `/echo?still=1&card=n`, Home card and Statistics entry at 15 Dec; the seed's year of history already qualifies), checks, Android fingerprint unchanged (e6bc…) → ships over the air
 - [x] On device after the update: Home card from 10 Dec; tap, hold and back on the cards; Share; reduce motion keeps the timer but stills the shapes; TalkBack stops auto-advance
 
+## Phase 21 — Solid bars, Sage Pod's own dialogs, rebuilt swipes (D-031) ✅
+- [x] 21a: solid docked tab bar (`TabBar`, Material 3 pill) and player bar; glass opt-in (Settings › User interface › Glass effects, `glassEffects`)
+- [x] 21b: `showDialog` replaces all 34 `Alert.alert` calls (themed card, Cancel/confirm/destructive buttons, Back = Cancel, queued); `dialogModel` tests
+- [x] 21c: swipes rebuilt on Reanimated (`swipeMath` tests): labelled strip, commit point with colour fill and haptic tick, slide-off, spring back, screen-reader actions
+- [x] 21d: Move to bottom and Share swipes (AntennaPod 3.13); undo toast slides in and out
+- [x] 21e: harness shots for both dialogs and a held swipe; every screen re-shot (`screenshots/before` → `after`)
+- [ ] On device: tab bar and player bar on phone and tablet; each list's swipes (strip, tick, Undo); clear the queue, unsubscribe, reset settings; Glass effects on and off
+
 ## Open source and Google Play
 - [x] GPL-3.0-or-later licence; CONTRIBUTING, CODE_OF_CONDUCT, SECURITY, PRIVACY; issue and PR templates
 - [x] CI: actions pinned to commits, `permissions: {}` by default, CodeQL (public repos only), Dependabot (Expo/RN excluded)
@@ -225,7 +233,9 @@ destructive.
 
 ## Phase 18 — Optional (one proposal each)
 - [x] Echo (Phase 20, D-030)
-- [ ] Sync, Cast, Auto/Wear, video, nav customisation, parental control
+- [ ] Sync, Cast, Auto/Wear, video, nav customisation, parental control (3.13 adds a password on the Add podcast screen)
+- [ ] Podcast Index and gPodder.net as extra Discover search sources (Podcast Index needs an API key; both add a host to PRIVACY.md)
+- [ ] Resizable home-screen widget (AntennaPod 3.13)
 
 ## Discovered (not yet scheduled)
 - [x] expo-doctor failed after Expo's SDK 57 patch releases (expo 57.0.32 and 15 more): fixed with `npx expo install --fix`, which changes the runtime, so it ships in a build
