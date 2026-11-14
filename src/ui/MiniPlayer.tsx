@@ -5,14 +5,16 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { player, usePlayerState } from '@/player';
 
 import { Artwork } from './Artwork';
-import { GlassSurface } from './glass';
+import { GlassSurface, useGlassEffects } from './glass';
 import { MINI_PLAYER_HEIGHT, radius, space, type as typography } from './theme';
 import { useTheme } from './useTheme';
 
 /**
  * The persistent player bar above the tab bar.
  *
- * Renders as a floating Liquid Glass capsule above the tab bar.
+ * Docked by default: a solid strip across the full width with the progress
+ * line along its top, AntennaPod's player bar. With Settings › User interface ›
+ * Glass effects on, it floats as a glass capsule instead.
  * Renders nothing when no episode is loaded.
  * Tapping it opens the full player.
  */
@@ -20,15 +22,17 @@ export function MiniPlayer() {
   const theme = useTheme();
   const router = useRouter();
   const { episode, playing, position, duration, buffering } = usePlayerState();
+  const glass = useGlassEffects();
 
   if (!episode) return null;
 
   const progress = duration > 0 ? Math.min(1, position / duration) : 0;
   const artwork = episode.image_url ?? episode.feed_image_url;
 
+  const Surface = glass ? GlassSurface : DockedSurface;
   return (
-    <View style={styles.container}>
-      <GlassSurface
+    <View style={glass ? styles.container : undefined}>
+      <Surface
         glassEffectStyle="regular"
         isInteractive={true}
         borderRadius={radius.lg}
@@ -114,9 +118,15 @@ export function MiniPlayer() {
             <Ionicons name="play-forward" size={20} color={theme.textMuted} />
           </Pressable>
         </Pressable>
-      </GlassSurface>
+      </Surface>
     </View>
   );
+}
+
+/** The solid strip used when glass is off. */
+function DockedSurface({ children }: { children: React.ReactNode } & Record<string, unknown>) {
+  const theme = useTheme();
+  return <View style={[styles.docked, { backgroundColor: theme.surface }]}>{children}</View>;
 }
 
 const styles = StyleSheet.create({
@@ -132,6 +142,9 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.12,
     shadowRadius: 8,
     elevation: 6,
+  },
+  docked: {
+    overflow: 'hidden',
   },
   progressTrack: {
     height: 2,

@@ -40,6 +40,8 @@ export type Settings = {
   refreshIntervalMinutes: number;
   /** UI appearance mode: system, light, dark, or OLED true black. */
   themePreference: 'system' | 'light' | 'dark' | 'oled';
+  /** Translucent glass tab bar and mini player (off: solid, docked bars, as AntennaPod draws them). */
+  glassEffects: boolean;
   /** Speed preset chips in the speed sheet, comma-separated (see src/player/speed.ts). */
   speedPresets: string;
   /** Player's right-hand time shows time remaining (true) or total length (false). */
@@ -147,6 +149,7 @@ export const DEFAULT_SETTINGS: Settings = {
   deleteAfterFinished: false,
   refreshIntervalMinutes: 60,
   themePreference: 'system',
+  glassEffects: false,
   speedPresets: '0.8,1,1.2,1.5,1.75,2,2.5,3',
   showRemainingTime: true,
   sleepMinutes: 15,

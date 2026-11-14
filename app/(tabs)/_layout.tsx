@@ -6,8 +6,10 @@ import { Pressable, StyleSheet, View } from 'react-native';
 
 import { getInboxCount } from '@/db/episodes';
 import { useQuery } from '@/db/useQuery';
-import { GlassContainer, GlassTabBar } from '@/ui/glass';
+import { usePlayerState } from '@/player';
+import { GlassContainer, GlassTabBar, useGlassEffects } from '@/ui/glass';
 import { MiniPlayer } from '@/ui/MiniPlayer';
+import { TabBar } from '@/ui/TabBar';
 import { space } from '@/ui/theme';
 import { useTheme } from '@/ui/useTheme';
 
@@ -23,6 +25,24 @@ const TABS: { name: string; title: string; icon: IconName; iconActive: IconName 
 
 function TabBarWithMiniPlayer(props: BottomTabBarProps) {
   const insets = props.insets;
+  const theme = useTheme();
+  const glass = useGlassEffects();
+  const hasEpisode = usePlayerState().episode !== null;
+  if (!glass) {
+    // Solid and docked, AntennaPod's layout: player bar, a hairline, the tabs.
+    return (
+      <View
+        style={[
+          styles.docked,
+          { backgroundColor: theme.surface, borderTopColor: theme.border, paddingBottom: insets.bottom },
+        ]}
+      >
+        <MiniPlayer />
+        {hasEpisode ? <View style={[styles.divider, { backgroundColor: theme.border }]} /> : null}
+        <TabBar {...props} />
+      </View>
+    );
+  }
   return (
     <View
       style={[
@@ -114,5 +134,11 @@ const styles = StyleSheet.create({
   },
   glassContainer: {
     paddingTop: space.xs,
+  },
+  docked: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  divider: {
+    height: StyleSheet.hairlineWidth,
   },
 });

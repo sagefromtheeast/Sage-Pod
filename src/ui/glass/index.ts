@@ -5,5 +5,5 @@ export {
   type GlassSegmentedControlProps,
   type SegmentOption,
 } from './GlassSegmentedControl';
-export { useGlassCapability, type GlassCapabilityLevel } from './useGlassCapability';
+export { useGlassCapability, useGlassEffects, type GlassCapabilityLevel } from './useGlassCapability';
 export { GlassTabBar } from './GlassTabBar';

@@ -12,6 +12,7 @@ export default function InterfaceSettings() {
   const router = useRouter();
   const update = useUpdateSetting();
   const theme = useSetting('themePreference');
+  const glass = useSetting('glassEffects');
   const showRemaining = useSetting('showRemainingTime');
   const adjust = useSetting('adjustTimesToSpeed');
   const preferStreaming = useSetting('streamOverDownload');
@@ -27,6 +28,12 @@ export default function InterfaceSettings() {
         options={SETTING_OPTIONS.themePreference}
         format={formatTheme}
         onChange={(value) => void update('themePreference', value)}
+      />
+      <SettingsSwitch
+        label="Glass effects"
+        description="The tab bar and player bar float as translucent glass. Off docks them as solid bars along the bottom edge."
+        value={glass}
+        onValueChange={(value) => void update('glassEffects', value)}
       />
 
       <SettingsSection title="Player" />
