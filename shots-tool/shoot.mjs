@@ -51,6 +51,17 @@ async function touchDrag(page, x, y, dx, dy, steps = 15) {
   await cdp.detach();
 }
 
+// Starts a finger drag and doesn't lift it, to capture a swipe mid-gesture.
+async function touchHold(page, x, y, dx, steps = 12) {
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
+  for (let i = 1; i <= steps; i++) {
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: x + (dx * i) / steps, y }] });
+    await page.waitForTimeout(16);
+  }
+  await page.waitForTimeout(250);
+}
+
 // [name, route, optional interaction run after the screen settles]
 // A day inside Echo's window, for the Home card and the Statistics menu entry.
 const ECHO_NOW = Date.UTC(2026, 11, 15, 15, 0, 0);
@@ -244,6 +255,29 @@ const ROUTES = [
   }],
   ['feed-banner', '/feed/6'],
   ['feed-preview', '/feed/7'],
+  // Sage Pod's own dialogs (D-031): a destructive one and a plain one.
+  ['queue-clear-dialog', '/queue', async (page) => {
+    await page.getByRole('button', { name: 'More options' }).first().click();
+    await page.getByText('Clear queue').first().click();
+    await page.getByText('Clear queue?').waitFor({ timeout: 10000 });
+  }],
+  ['settings-reset-dialog', '/settings', async (page) => {
+    await page.getByText('Reset settings').first().click();
+    await page.getByText('Reset settings?').waitFor({ timeout: 10000 });
+  }],
+  // A swipe held past the commit point: the strip names the action in its colour.
+  ['queue-swipe-hold', '/queue', async (page) => {
+    const row = page.getByText(/^118\. The art of doing less/).first();
+    const box = await row.boundingBox();
+    await page.clock.setSystemTime(NOW);
+    await touchHold(page, box.x + box.width / 2, box.y + box.height / 2, -170);
+  }],
+  ['inbox-swipe-hold', '/inbox', async (page) => {
+    const row = page.getByText(/^120\. Inside the chip shortage/).first();
+    const box = await row.boundingBox();
+    await page.clock.setSystemTime(NOW);
+    await touchHold(page, box.x + box.width / 2, box.y + box.height / 2, 90);
+  }],
   ['feed-menu', '/feed/1', async (page) => {
     await page.getByRole('button', { name: 'More options' }).first().click();
     await page.getByText('Refresh complete podcast').first().waitFor({ timeout: 10000 });
