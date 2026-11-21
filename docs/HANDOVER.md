@@ -267,8 +267,11 @@ Step skips previews when the site didn't change.
   cursor (`src/feed/pageCursor.ts`).
 - **Builds**: v0.29.1 is EAS production build `9a105a05` (versionCode 2901),
   submitted to Play's internal track as a draft by the release workflow.
-  JavaScript-only changes reach that runtime over the air ("Publish OTA
-  update", `.eas/workflows/publish-update.yml`).
+  Production builds use the `production` update channel, but "Publish OTA
+  update" (`.eas/workflows/publish-update.yml`) publishes only to `preview`,
+  so a fix reaches Play testers and users only in a new store build
+  (`docs/PLAY-STORE.md` › Over-the-air updates). Adding a production update
+  job is the owner's call.
 - **Play**: closed test with 12 testers for 14 days is the owner's job, then
   Apply for production. Owner items are listed in TASKS.md › Open source and
   Google Play.
