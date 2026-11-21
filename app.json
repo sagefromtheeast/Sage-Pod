@@ -47,7 +47,8 @@
         "android.permission.POST_NOTIFICATIONS"
       ],
       "blockedPermissions": [
-        "android.permission.ACTIVITY_RECOGNITION"
+        "android.permission.ACTIVITY_RECOGNITION",
+        "android.permission.ACCESS_WIFI_STATE"
       ],
       "versionCode": 2900
     },
