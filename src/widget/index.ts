@@ -32,6 +32,7 @@ if (Platform.OS === 'android') {
         if (clickAction === WIDGET_ACTIONS.toggle) player.togglePlayPause();
         else if (clickAction === WIDGET_ACTIONS.back) await player.skipBackward();
         else if (clickAction === WIDGET_ACTIONS.forward) await player.skipForward();
+        else if (clickAction === WIDGET_ACTIONS.next) await player.skipToNext();
       }
     } finally {
       // Draw whatever the player has, even when restoring it failed.
