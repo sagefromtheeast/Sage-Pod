@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { GestureDetector, useCompetingGestures, usePanGesture, useTapGesture } from 'react-native-gesture-handler';
 
 import { setSetting, useSetting } from '@/db/settings';
 import { chapterTicks, currentChapterIndex, type Chapter } from '@/player/chapters';
@@ -54,27 +54,30 @@ export function SeekBar({ position, duration, rate = 1, chapters, onSeek, onScru
 
   // The player scrolls vertically, so a drag only becomes a scrub once it
   // moves sideways; a tap seeks straight to the spot.
-  const pan = Gesture.Pan()
-    .runOnJS(true)
-    .enabled(usable)
-    .activeOffsetX([-4, 4])
-    .failOffsetY([-12, 12])
-    .onStart((event) => update(toSeconds(event.x)))
-    .onUpdate((event) => update(toSeconds(event.x)))
-    .onEnd((event) => {
+  const pan = usePanGesture({
+    runOnJS: true,
+    enabled: usable,
+    activeOffsetX: [-4, 4],
+    failOffsetY: [-12, 12],
+    onActivate: (event) => update(toSeconds(event.x)),
+    onUpdate: (event) => update(toSeconds(event.x)),
+    onDeactivate: (event) => {
+      if (event.canceled) return;
       triggerHaptic('selection');
       onSeek(toSeconds(event.x));
-    })
-    .onFinalize(() => update(null));
-  const tap = Gesture.Tap()
-    .runOnJS(true)
-    .enabled(usable)
-    .onEnd((event, success) => {
-      if (!success) return;
+    },
+    onFinalize: () => update(null),
+  });
+  const tap = useTapGesture({
+    runOnJS: true,
+    enabled: usable,
+    onDeactivate: (event) => {
+      if (event.canceled) return;
       triggerHaptic('selection');
       onSeek(toSeconds(event.x));
-    });
-  const gesture = Gesture.Race(pan, tap);
+    },
+  });
+  const gesture = useCompetingGestures(pan, tap);
 
   const chapterIndex = currentChapterIndex(chapters, shown);
   const chapterTitle = chapterIndex >= 0 ? chapters[chapterIndex].title : null;

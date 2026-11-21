@@ -8,7 +8,7 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { GestureDetector, useCompetingGestures, usePanGesture, useTapGesture } from 'react-native-gesture-handler';
 import Animated, {
   runOnJS,
   useAnimatedStyle,
@@ -96,8 +96,8 @@ export function GlassSegmentedControl<T extends string>({
     }
   };
 
-  const panGesture = Gesture.Pan()
-    .onUpdate((e) => {
+  const panGesture = usePanGesture({
+    onUpdate: (e) => {
       'worklet';
       if (segWidth.value <= 0) return;
       const rawX = e.x - segWidth.value / 2;
@@ -109,28 +109,28 @@ export function GlassSegmentedControl<T extends string>({
         activeIndex.value = idx;
         runOnJS(handleBoundaryHaptic)();
       }
-    })
-    .onEnd(() => {
+    },
+    onDeactivate: () => {
       'worklet';
       if (segWidth.value <= 0) return;
       x.value = withSpring(activeIndex.value * segWidth.value, SPRING_CONFIG);
       runOnJS(handleSelectKey)(activeIndex.value);
-    });
-
-  const tapGesture = Gesture.Tap().onEnd((e) => {
-    'worklet';
-    if (segWidth.value <= 0) return;
-    const idx = Math.max(
-      0,
-      Math.min(Math.floor(e.x / segWidth.value), numSegments.value - 1)
-    );
-    activeIndex.value = idx;
-    x.value = withSpring(idx * segWidth.value, SPRING_CONFIG);
-    runOnJS(handleBoundaryHaptic)();
-    runOnJS(handleSelectKey)(idx);
+    },
   });
 
-  const composedGesture = Gesture.Race(panGesture, tapGesture);
+  const tapGesture = useTapGesture({
+    onDeactivate: (e) => {
+      'worklet';
+      if (e.canceled || segWidth.value <= 0) return;
+      const idx = Math.max(0, Math.min(Math.floor(e.x / segWidth.value), numSegments.value - 1));
+      activeIndex.value = idx;
+      x.value = withSpring(idx * segWidth.value, SPRING_CONFIG);
+      runOnJS(handleBoundaryHaptic)();
+      runOnJS(handleSelectKey)(idx);
+    },
+  });
+
+  const composedGesture = useCompetingGestures(panGesture, tapGesture);
 
   const thumbAnimatedStyle = useAnimatedStyle(() => {
     return {

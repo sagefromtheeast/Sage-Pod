@@ -10,6 +10,7 @@ import {
   type ReactElement,
   type ReactNode,
   type Ref,
+  type RefObject,
 } from 'react';
 import {
   Animated,
@@ -25,7 +26,7 @@ import {
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
-import { FlatList, Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { FlatList, GestureDetector, usePanGesture } from 'react-native-gesture-handler';
 
 import { dropIndex, moveItem } from '@/player/queueSorting';
 import { triggerHaptic } from '@/ui/haptics';
@@ -217,42 +218,33 @@ export function DraggableList<T>({
     [items, keys, keyOf, onReorder],
   );
 
-  // The screen re-renders often (twice a second while audio plays). A new
-  // gesture object per render would be a new native handler and could cancel
-  // a drag in progress, so each row keeps one gesture that calls through to
-  // the latest handlers.
-  const handlers = useRef({ begin, track, edgeScroll, finish });
-  handlers.current = { begin, track, edgeScroll, finish };
-  const gestures = useRef(new Map<number, ReturnType<typeof Gesture.Pan>>());
-  const gestureFor = (key: number) => {
-    let pan = gestures.current.get(key);
-    if (!pan) {
-      pan = Gesture.Pan()
-        .runOnJS(true)
-        .minDistance(0)
-        .onStart(() => handlers.current.begin(key))
-        .onUpdate((event) => {
-          const state = drag.current;
-          if (!state) return;
-          state.translation = event.translationY;
-          state.fingerY = event.absoluteY - viewport.current.top;
-          handlers.current.track();
-          handlers.current.edgeScroll();
-        })
-        .onEnd((_event, success) => handlers.current.finish(success))
-        .onFinalize(() => {
-          if (drag.current) handlers.current.finish(false);
-        });
-      gestures.current.set(key, pan);
-    }
-    return pan;
+  // The screen re-renders often (twice a second while audio plays). Each
+  // handle keeps one gesture (the hook keeps it across renders) that calls
+  // through this ref to the latest handlers, so a re-render never cancels a
+  // drag in progress.
+  const dragApi = useRef<DragApi>(null as unknown as DragApi);
+  dragApi.current = {
+    begin,
+    move: (translationY, absoluteY) => {
+      const state = drag.current;
+      if (!state) return;
+      state.translation = translationY;
+      state.fingerY = absoluteY - viewport.current.top;
+      track();
+      edgeScroll();
+    },
+    finish,
+    finalize: () => {
+      if (drag.current) finish(false);
+    },
   };
 
   const handleFor = (key: number, index: number) => {
     if (!dragEnabled) return null;
     return (
       <DragHandle
-        gesture={gestureFor(key)}
+        itemKey={key}
+        api={dragApi}
         index={index}
         count={keys.length}
         onMove={(to) => moveBy(key, to)}
@@ -342,18 +334,36 @@ function Cell({
   );
 }
 
+/** What a row's drag handle calls; the list refreshes it every render. */
+type DragApi = {
+  begin: (key: number) => void;
+  move: (translationY: number, absoluteY: number) => void;
+  finish: (success: boolean) => void;
+  finalize: () => void;
+};
+
 function DragHandle({
-  gesture,
+  itemKey,
+  api,
   index,
   count,
   onMove,
 }: {
-  gesture: ReturnType<typeof Gesture.Pan>;
+  itemKey: number;
+  api: RefObject<DragApi>;
   index: number;
   count: number;
   onMove: (to: number) => void;
 }) {
   const theme = useTheme();
+  const gesture = usePanGesture({
+    runOnJS: true,
+    minDistance: 0,
+    onActivate: () => api.current.begin(itemKey),
+    onUpdate: (event) => api.current.move(event.translationY, event.absoluteY),
+    onDeactivate: (event) => api.current.finish(!event.canceled),
+    onFinalize: () => api.current.finalize(),
+  });
   const actions = [
     index > 0 ? { name: 'moveUp', label: 'Move up' } : null,
     index < count - 1 ? { name: 'moveDown', label: 'Move down' } : null,

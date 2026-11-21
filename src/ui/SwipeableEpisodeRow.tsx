@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
-import React, { memo, useCallback, useMemo } from 'react';
+import React, { memo, useCallback } from 'react';
 import { StyleSheet, View, type LayoutChangeEvent } from 'react-native';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { GestureDetector, usePanGesture } from 'react-native-gesture-handler';
 import Animated, {
   interpolateColor,
   runOnJS,
@@ -129,32 +129,31 @@ export const SwipeableEpisodeRow = memo(function SwipeableEpisodeRow({
     [run, right, left, offset]
   );
 
-  const pan = useMemo(
-    () =>
-      Gesture.Pan()
-        .enabled(enabled)
-        // Horizontal only: a vertical drag still scrolls the list.
-        .activeOffsetX([-14, 14])
-        .failOffsetY([-12, 12])
-        .onUpdate((event) => {
-          offset.value = rowOffset(event.translationX, canRight, canLeft, width.value);
-        })
-        .onEnd((event, success) => {
-          // A cancelled gesture (the system took the touch) never commits.
-          const direction = success
-            ? releaseDirection(offset.value, event.velocityX, canRight, canLeft, width.value)
-            : null;
-          if (direction) {
-            const target = direction === 'right' ? width.value : -width.value;
-            offset.value = withTiming(target, { duration: 160 }, (finished) => {
-              if (finished) runOnJS(commit)(direction);
-            });
-          } else {
-            offset.value = withSpring(0, { damping: 20, stiffness: 260 });
-          }
-        }),
-    [enabled, canRight, canLeft, commit, offset, width]
-  );
+  const pan = usePanGesture({
+    enabled,
+    // Horizontal only: a vertical drag still scrolls the list.
+    activeOffsetX: [-14, 14],
+    failOffsetY: [-12, 12],
+    onUpdate: (event) => {
+      'worklet';
+      offset.value = rowOffset(event.translationX, canRight, canLeft, width.value);
+    },
+    onDeactivate: (event) => {
+      'worklet';
+      // A cancelled gesture (the system took the touch) never commits.
+      const direction = event.canceled
+        ? null
+        : releaseDirection(offset.value, event.velocityX, canRight, canLeft, width.value);
+      if (direction) {
+        const target = direction === 'right' ? width.value : -width.value;
+        offset.value = withTiming(target, { duration: 160 }, (finished) => {
+          if (finished) runOnJS(commit)(direction);
+        });
+      } else {
+        offset.value = withSpring(0, { damping: 20, stiffness: 260 });
+      }
+    },
+  });
 
   // One tick each time the swipe crosses the commit point, either way.
   useAnimatedReaction(
