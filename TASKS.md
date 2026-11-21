@@ -246,10 +246,12 @@ destructive.
 - [ ] Owner: set the "protect main" ruleset (block deletion and force pushes) from Disabled to Active
 - [x] Owner: Play developer account, create the app, first internal-testing upload (versionCode 2501, 7 Nov 2026). Build `8d24cea5` re-signed with the new upload key (SHA-1 `CB:CF:CF:C7:…:AD:5D`), which is now in EAS — see `docs/PLAY-STORE.md` › Upload key
 - [x] Next EAS production build: 0.25.2 (versionCode 2502, build `e2b2d60a`) signed with the upload key `CB:CF:CF:C7:…:AD:5D`, accepted on internal testing; drops `ACTIVITY_RECOGNITION` so the Health apps form no longer applies
-- [ ] Owner: closed test with at least 12 testers for 14 days before production (new personal accounts). Set up on 21 Nov 2026 with v0.29.0 (versionCode 2900); then Dashboard › Apply for production
+- [ ] Owner: closed test with at least 12 testers for 14 days before production (new personal accounts). Set up on 21 Nov 2026 with v0.29.0 (versionCode 2900); then Dashboard › Apply for production. v0.29.1 (2901) drops the Wi-Fi hardware requirement Play warned about
 - [ ] Before the first iOS build (needs a paid Apple developer account): change `ios.bundleIdentifier` in `app.json` to `com.sagefromtheeast.sagepodplayer` to match Android. Apple fixes it at registration.
 - [x] EAS Submit: `eas-submit` service account (Play: release to testing tracks) and its JSON key in EAS (owner, 21 Nov 2026)
-- [ ] First `eas submit` with the next release build: internal track, draft; confirm it appears in Play Console
+- [x] First EAS Submit: v0.29.1 (versionCode 2901) uploaded to the internal track as a draft (21 Nov 2026). Uploads skip the store listing: the screenshots in `fastlane/metadata` are under Play's 1080 px minimum
+- [x] `.eas/workflows/release-play.yml`: build and submit in one manual run, from a release tag
+- [ ] Replace `fastlane/metadata/android/en-US/images` screenshots with Play-sized ones (`store-assets/google-play`) so listing uploads can be turned back on
 - [x] `decode-uri-component` advisory (via expo-router): fixed by the SDK 58 upgrade (Phase 24)
 - [ ] Consider R8 minification and EAS Update code signing for release builds (each needs a device test)
 

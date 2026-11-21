@@ -1,0 +1,32 @@
+name: Build and submit to Google Play
+
+# Run by hand (it spends EAS build credit), from a release tag such as v0.30.0:
+# builds the production Android App Bundle, then uploads it to Play's internal
+# track as a draft (eas.json › submit.production) with the EAS Submit key.
+# Promote it in Play Console after testing.
+on:
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    name: Production build (Android)
+    type: build
+    params:
+      platform: android
+      profile: production
+
+  submit:
+    name: Submit to Play (internal, draft)
+    needs: [build]
+    type: submit
+    # Upload only the app bundle. Without these, fastlane also pushes the store
+    # listing from fastlane/metadata, which the owner manages in Play Console.
+    env:
+      SUPPLY_SKIP_UPLOAD_METADATA: 'true'
+      SUPPLY_SKIP_UPLOAD_IMAGES: 'true'
+      SUPPLY_SKIP_UPLOAD_SCREENSHOTS: 'true'
+      SUPPLY_SKIP_UPLOAD_CHANGELOGS: 'true'
+    params:
+      platform: android
+      build_id: ${{ needs.build.outputs.build_id }}
+      profile: production

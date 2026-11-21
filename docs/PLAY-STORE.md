@@ -141,7 +141,10 @@ python3 tool/store_assets.py    # needs Pillow
      with release rights.
    - Upload its JSON key to EAS (`eas credentials` › Android › Google Service
      Account Key). **Never commit the key.**
-   - `eas submit --platform android --profile production --latest` uploads
+   - Easiest: run the **Build and submit to Google Play** workflow
+     (`.eas/workflows/release-play.yml`) on expo.dev from a release tag.
+     It builds, then uploads only the app bundle (not the store listing).
+   - Or `eas submit --platform android --profile production --latest`, which uploads
      to the **internal** track as a **draft** (`eas.json`). Promote it in
      Play Console after testing.
 
