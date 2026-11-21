@@ -264,7 +264,7 @@ export default function InboxScreen() {
             if (episodes.length >= limit) setLimit((value) => value + PAGE_SIZE);
           }}
           ListEmptyComponent={
-            loading ? null : term ? (
+            loading ? undefined : term ? (
               <NoMatches message={`No inbox episodes match “${term}”.`} term={term} />
             ) : (
               <EmptyState

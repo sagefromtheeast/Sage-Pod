@@ -204,12 +204,12 @@ export default function DiscoverScreen() {
                 </Pressable>
               </View>
             </View>
-          ) : null
+          ) : undefined
         }
         ListEmptyComponent={
           error ? (
             <Text style={[styles.message, { color: theme.danger }]}>{error}</Text>
-          ) : searching ? null : term.trim() ? (
+          ) : searching ? undefined : term.trim() ? (
             <Text style={[styles.message, { color: theme.textMuted }]}>
               Nothing found for “{term.trim()}”.
             </Text>
@@ -220,7 +220,7 @@ export default function DiscoverScreen() {
         ListFooterComponent={
           !showCharts && results.length > 0 ? (
             <Text style={[styles.credit, { color: theme.textFaint }]}>Results from Apple Podcasts and fyyd</Text>
-          ) : null
+          ) : undefined
         }
         renderItem={({ item }) => (
           <PodcastResultRow podcast={item} subscribedId={subscribed.get(feedUrlKey(item.feedUrl)) ?? null} />

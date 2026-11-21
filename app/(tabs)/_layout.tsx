@@ -113,7 +113,7 @@ export default function TabsLayout() {
             options={{
               title,
               tabBarIcon: ({ color, size, focused }) => (
-                <Ionicons name={focused ? iconActive : icon} size={size} color={color} />
+                <Ionicons name={focused ? iconActive : icon} size={size} color={color as string} />
               ),
               tabBarBadge: badgeValue,
               tabBarBadgeStyle: { backgroundColor: theme.danger, color: '#fff' },

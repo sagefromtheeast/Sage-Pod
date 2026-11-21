@@ -107,7 +107,7 @@ export default function EpisodesScreen() {
             </View>
           }
           ListEmptyComponent={
-            loading ? null : (
+            loading ? undefined : (
               <EmptyState
                 icon={filtered ? 'funnel-outline' : 'albums-outline'}
                 title={filtered ? 'No matching episodes' : 'No episodes yet'}

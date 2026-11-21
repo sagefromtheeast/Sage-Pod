@@ -169,7 +169,7 @@ export default function DownloadsScreen() {
             <Text style={[styles.heading, { color: theme.textMuted }]}>{section.title}</Text>
           )}
           ListEmptyComponent={
-            loading ? null : term ? (
+            loading ? undefined : term ? (
               <NoMatches message={`No downloads match “${term}”.`} term={term} />
             ) : (
               <EmptyState
