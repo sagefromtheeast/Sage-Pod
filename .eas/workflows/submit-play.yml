@@ -9,6 +9,13 @@ jobs:
   submit:
     name: Submit to Play (internal, draft)
     type: submit
+    # Upload only the app bundle. Without these, fastlane also pushes the store
+    # listing from fastlane/metadata, which the owner manages in Play Console.
+    env:
+      SUPPLY_SKIP_UPLOAD_METADATA: 'true'
+      SUPPLY_SKIP_UPLOAD_IMAGES: 'true'
+      SUPPLY_SKIP_UPLOAD_SCREENSHOTS: 'true'
+      SUPPLY_SKIP_UPLOAD_CHANGELOGS: 'true'
     params:
       platform: android
       build_id: 9a105a05-38ef-4e85-a3ff-3d6f93805220
