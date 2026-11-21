@@ -1,3 +1,18 @@
+## [0.29.0](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.28.0...v0.29.0) (2026-11-21)
+
+### 🚀 New Features
+
+* taller home-screen widget with a Next episode button ([faa0ba0](https://github.com/sagefromtheeast/Sage-Pod/commit/faa0ba0b3b12eb1646ea4235edede5ab691c1d02))
+* upgrade to Expo SDK 58 ([e80c9d2](https://github.com/sagefromtheeast/Sage-Pod/commit/e80c9d23b82246fc630bf07c6d8827a5322018cb))
+
+### 🐛 Bug Fixes
+
+* Clear filter clears a podcast's saved filter again ([e5072bf](https://github.com/sagefromtheeast/Sage-Pod/commit/e5072bf68b9b7e65dbfb3c961f635c62594fee74))
+
+### 📚 Documentation
+
+* Phase 24 and D-032 (SDK 58, expo-audio patch, widget) ([669bde5](https://github.com/sagefromtheeast/Sage-Pod/commit/669bde5ea0032c2e4e1a79988acdd2965fb920c2))
+
 ## [0.28.0](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.27.0...v0.28.0) (2026-11-21)
 
 ### 🚀 New Features
