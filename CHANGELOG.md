@@ -1,3 +1,18 @@
+## [0.29.1](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.29.0...v0.29.1) (2026-11-21)
+
+### 🐛 Bug Fixes
+
+* don't require Wi-Fi hardware on Google Play ([8643b86](https://github.com/sagefromtheeast/Sage-Pod/commit/8643b8699dda5c4daa85745fd193e829ce2f3978))
+
+### ♻️ Refactoring
+
+* use Gesture Handler 3's gesture hooks ([14d9433](https://github.com/sagefromtheeast/Sage-Pod/commit/14d94337fa798dba6feb4b0af9d7b1c2e5bd8b3f))
+
+### 📚 Documentation
+
+* record the gesture hook migration in TASKS.md and D-032 ([07282b2](https://github.com/sagefromtheeast/Sage-Pod/commit/07282b2dbcfce93d2a3ce413b06651b87d0bc565))
+* record the owner's Play, EAS Submit and GitHub setup in TASKS.md ([05077ad](https://github.com/sagefromtheeast/Sage-Pod/commit/05077ada56e63d0aa5c71aced2253830d74633bd))
+
 ## [0.29.0](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.28.0...v0.29.0) (2026-11-21)
 
 ### 🚀 New Features
