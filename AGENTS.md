@@ -8,9 +8,9 @@ authority, workflow), then `TASKS.md` (what's next), `docs/DECISIONS.md`
 
 ## Expo has changed
 
-This project is on **Expo SDK 57**. Several APIs moved recently — check the
+This project is on **Expo SDK 58** (React Native 0.88). Several APIs moved recently — check the
 installed type definitions in `node_modules` or the versioned docs at
-https://docs.expo.dev/versions/v57.0.0/ before writing code against them.
+https://docs.expo.dev/versions/v58.0.0/ before writing code against them.
 In particular:
 
 - `expo-router` no longer depends on React Navigation. `Tabs`, `BottomTabBar`
@@ -20,6 +20,10 @@ In particular:
 - Audio is **`expo-audio`**, not `expo-av`. It provides lock-screen and
   notification controls directly via `setActiveForLockScreen()`.
 - `expo-file-system` uses the `File` / `Directory` / `Paths` classes.
+- Gestures use Gesture Handler 3's hooks (`usePanGesture`, `useTapGesture`,
+  `useCompetingGestures`), not the old `Gesture.*` builders.
+- React Native 0.88 list props (`ListHeaderComponent`, `ListEmptyComponent`)
+  take `undefined`, not `null`; a native view ref is typed `HostInstance`.
 
 ## Conventions
 
