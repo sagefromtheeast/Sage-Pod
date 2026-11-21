@@ -4,7 +4,7 @@ import type { SQLiteDatabase } from 'expo-sqlite';
  * Bump this when adding a migration below. `migrate()` walks from the
  * database's stored `user_version` up to this number, applying each step once.
  */
-export const LATEST_SCHEMA_VERSION = 7;
+export const LATEST_SCHEMA_VERSION = 8;
 
 const V1 = `
 CREATE TABLE IF NOT EXISTS feeds (
@@ -149,7 +149,12 @@ const V7 = `
 ALTER TABLE feeds ADD COLUMN notify INTEGER NOT NULL DEFAULT 0;
 `;
 
-const MIGRATIONS: string[] = [V1, V2, V3, V4, V5, V6, V7];
+// Podlove Simple Chapters from the feed, as a JSON array of chapters.
+const V8 = `
+ALTER TABLE episodes ADD COLUMN chapters_json TEXT;
+`;
+
+const MIGRATIONS: string[] = [V1, V2, V3, V4, V5, V6, V7, V8];
 
 /**
  * Applies any pending migrations.

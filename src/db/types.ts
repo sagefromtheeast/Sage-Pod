@@ -76,6 +76,8 @@ export type EpisodeRow = {
   downloaded_bytes: number | null;
   created_at: number;
   chapters_url: string | null;
+  /** Podlove Simple Chapters from the feed: a JSON array of `Chapter`. */
+  chapters_json: string | null;
 };
 
 /**

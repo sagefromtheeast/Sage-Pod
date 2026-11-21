@@ -23,6 +23,8 @@ export function seedSql() {
   s.push('DELETE FROM download_log;', 'DELETE FROM queue;', 'DELETE FROM playback_history;', 'DELETE FROM episodes;', 'DELETE FROM feeds;',
     "DELETE FROM settings WHERE key LIKE 'meta:%';", "DELETE FROM sqlite_sequence WHERE name IN ('feeds','episodes','playback_history');");
   // Schema 7 adds feeds.notify (default 0, so the inserts below need nothing new).
+  // Schema 8 adds episodes.chapters_json (Podlove chapters from the feed); NULL here, so
+  // episode 3 keeps its chapters file.
   let epId = 0;
   FEEDS.forEach(([title, author, , desc], fi) => {
     const id = fi + 1;
