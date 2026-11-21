@@ -409,7 +409,7 @@ export default function FeedScreen() {
                 message={term ? `No episodes match “${term}”.` : 'None of the episodes match the filter.'}
                 action={
                   filtered
-                    ? { label: 'Clear filter', onPress: () => void setFeedViewPrefs(feed.id, { episodeFilter: undefined }) }
+                    ? { label: 'Clear filter', onPress: () => void setFeedViewPrefs(feed.id, { episodeFilter: null }) }
                     : { label: 'Search all podcasts', onPress: () => router.push({ pathname: '/search', params: { q: term } }) }
                 }
               />
