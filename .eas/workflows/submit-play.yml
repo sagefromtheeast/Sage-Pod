@@ -1,0 +1,15 @@
+name: Submit build to Google Play
+
+# One-off: uploads EAS build 9a105a05 (v0.29.1) to Play's internal track as a
+# draft (eas.json › submit.production), to test the EAS Submit key.
+on:
+  workflow_dispatch: {}
+
+jobs:
+  submit:
+    name: Submit to Play (internal, draft)
+    type: submit
+    params:
+      platform: android
+      build_id: 9a105a05-38ef-4e85-a3ff-3d6f93805220
+      profile: production
