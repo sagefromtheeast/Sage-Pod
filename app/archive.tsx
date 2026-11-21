@@ -30,7 +30,7 @@ export default function ArchiveScreen() {
         keyExtractor={(feed) => String(feed.id)}
         contentContainerStyle={{ paddingHorizontal: layout.gutter, paddingBottom: dockPadding }}
         ListEmptyComponent={
-          loading ? null : (
+          loading ? undefined : (
             <EmptyState
               icon="archive-outline"
               title="Nothing archived"

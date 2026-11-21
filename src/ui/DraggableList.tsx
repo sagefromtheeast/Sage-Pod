@@ -18,6 +18,7 @@ import {
   View,
   type FlatList as RNFlatList,
   type FlatListProps,
+  type HostInstance,
   type LayoutChangeEvent,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
@@ -89,7 +90,7 @@ export function DraggableList<T>({
   const scrollY = useRef(0);
   /** The list's height and its top edge on screen, for edge scrolling. */
   const viewport = useRef({ height: 0, top: 0 });
-  const container = useRef<View>(null);
+  const container = useRef<HostInstance>(null);
   const innerRef = useRef<RNFlatList<T> | null>(null);
   const edgeTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 

@@ -1,21 +1,15 @@
-import type { AudioPlayer } from 'expo-audio';
+import type { AudioLockScreenOptions, AudioPlayer } from 'expo-audio';
 
 /**
- * What patches/expo-audio+57.0.5.patch adds to expo-audio (D-025): skip
- * silence and volume boost (Android), the listener's skip amounts and a next
- * button on the lock screen, and a "remoteNext" event when it is pressed.
+ * What the expo-audio patch adds (D-025, `patches/expo-audio+*.patch`): skip
+ * silence and volume boost (Android), and a "remoteNext" event when a single
+ * player's Next button is pressed (notification, lock screen, headset).
+ * expo-audio 58 draws the listener's skip amounts and the Next button itself.
  * Every call checks the patched function exists, so web and an unpatched
  * build simply go without.
  */
 
-export type LockScreenOptions = {
-  showSeekForward: boolean;
-  showSeekBackward: boolean;
-  isLiveStream?: boolean;
-  seekForwardSeconds?: number;
-  seekBackwardSeconds?: number;
-  showNext?: boolean;
-};
+export type LockScreenOptions = AudioLockScreenOptions;
 
 type PatchedPlayer = AudioPlayer & {
   setSkipSilence?: (enabled: boolean) => void;
@@ -45,8 +39,8 @@ export function lockScreenOptions(skipForward: number, skipBackward: number): Lo
     showSeekForward: true,
     showSeekBackward: true,
     isLiveStream: false,
-    seekForwardSeconds: skipForward,
-    seekBackwardSeconds: skipBackward,
-    showNext: true,
+    seekForwardIntervalSeconds: skipForward,
+    seekBackwardIntervalSeconds: skipBackward,
+    showNextTrack: true,
   };
 }

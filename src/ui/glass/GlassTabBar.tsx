@@ -27,7 +27,8 @@ const SPRING_CONFIG = {
 export function GlassTabBar({
   state,
   descriptors,
-  navigation,
+  emitter,
+  navigateToTab,
 }: BottomTabBarProps) {
   const theme = useTheme();
   const [trackWidth, setTrackWidth] = useState(0);
@@ -117,19 +118,19 @@ export function GlassTabBar({
 
               const onPress = () => {
                 triggerHaptic('selection');
-                const event = navigation.emit({
+                const event = emitter.emit({
                   type: 'tabPress',
                   target: route.key,
                   canPreventDefault: true,
                 });
 
                 if (!isFocused && !event.defaultPrevented) {
-                  navigation.navigate(route.name);
+                  navigateToTab(route.key);
                 }
               };
 
               const onLongPress = () => {
-                navigation.emit({
+                emitter.emit({
                   type: 'tabLongPress',
                   target: route.key,
                 });

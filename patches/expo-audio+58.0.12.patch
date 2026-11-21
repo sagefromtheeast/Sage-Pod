@@ -1,0 +1,161 @@
+diff --git a/node_modules/expo-audio/android/src/main/java/expo/modules/audio/AudioModule.kt b/node_modules/expo-audio/android/src/main/java/expo/modules/audio/AudioModule.kt
+index 6c81fce..07e6d7c 100644
+--- a/node_modules/expo-audio/android/src/main/java/expo/modules/audio/AudioModule.kt
++++ b/node_modules/expo-audio/android/src/main/java/expo/modules/audio/AudioModule.kt
+@@ -730,6 +730,19 @@ class AudioModule : Module() {
+         }
+       }
+ 
++      // Sage Pod: skip silence and volume boost.
++      Function("setSkipSilence") { player: AudioPlayer, enabled: Boolean ->
++        runOnMain {
++          player.setSkipSilence(enabled)
++        }
++      }
++
++      Function("setVolumeBoost") { player: AudioPlayer, millibels: Int ->
++        runOnMain {
++          player.setVolumeBoost(millibels)
++        }
++      }
++
+       Function("setAudioSamplingEnabled") { player: AudioPlayer, enabled: Boolean ->
+         runOnMain {
+           player.setSamplingEnabled(enabled)
+diff --git a/node_modules/expo-audio/android/src/main/java/expo/modules/audio/AudioPlayer.kt b/node_modules/expo-audio/android/src/main/java/expo/modules/audio/AudioPlayer.kt
+index fb2d0b5..985ce06 100644
+--- a/node_modules/expo-audio/android/src/main/java/expo/modules/audio/AudioPlayer.kt
++++ b/node_modules/expo-audio/android/src/main/java/expo/modules/audio/AudioPlayer.kt
+@@ -3,6 +3,7 @@ package expo.modules.audio
+ import android.Manifest
+ import android.content.Context
+ import android.content.pm.PackageManager
++import android.media.audiofx.LoudnessEnhancer
+ import android.media.audiofx.Visualizer
+ import android.util.Log
+ import androidx.core.content.ContextCompat
+@@ -14,6 +15,7 @@ import androidx.media3.common.Player
+ import androidx.media3.common.util.UnstableApi
+ import androidx.media3.exoplayer.DefaultLoadControl
+ import androidx.media3.exoplayer.ExoPlayer
++import androidx.media3.exoplayer.analytics.AnalyticsListener
+ import androidx.media3.exoplayer.source.MediaSource
+ import androidx.media3.session.MediaSession
+ import expo.modules.audio.service.AudioPlaybackServiceConnection
+@@ -23,6 +25,7 @@ import java.lang.ref.WeakReference
+ 
+ private const val PLAYBACK_STATUS_UPDATE = "playbackStatusUpdate"
+ private const val AUDIO_SAMPLE_UPDATE = "audioSampleUpdate"
++private const val EVENT_REMOTE_NEXT = "remoteNext"
+ private const val SEEK_JUMP_INTERVAL_MS: Long = 10_000
+ 
+ @UnstableApi
+@@ -72,6 +75,52 @@ class AudioPlayer(
+   override val isLive: Boolean
+     get() = ref.isCurrentMediaItemLive
+ 
++  // Sage Pod: a single player's Next button (notification, lock screen,
++  // headset) plays the next queued episode in JS.
++  override val supportsNextTrack: Boolean
++    get() = lockScreenOptions?.showNextTrack == true
++
++  override fun nextTrack() {
++    emit(EVENT_REMOTE_NEXT)
++  }
++
++  // Sage Pod: skip silence and volume boost.
++  private var loudnessEnhancer: LoudnessEnhancer? = null
++  private var boostMillibels = 0
++
++  fun setSkipSilence(enabled: Boolean) {
++    ref.skipSilenceEnabled = enabled
++  }
++
++  fun setVolumeBoost(millibels: Int) {
++    boostMillibels = millibels
++    applyVolumeBoost()
++  }
++
++  private fun applyVolumeBoost() {
++    if (boostMillibels <= 0) {
++      releaseVolumeBoost()
++      return
++    }
++    // Until the player has its own session, wait for onAudioSessionIdChanged.
++    val sessionId = ref.audioSessionId
++    if (sessionId == C.AUDIO_SESSION_ID_UNSET) return
++    try {
++      val enhancer = loudnessEnhancer ?: LoudnessEnhancer(sessionId).also { loudnessEnhancer = it }
++      enhancer.setTargetGain(boostMillibels)
++      enhancer.enabled = true
++    } catch (e: RuntimeException) {
++      // Some devices refuse audio effects; play at normal volume instead.
++      Log.w("ExpoAudio", "Volume boost unavailable", e)
++      releaseVolumeBoost()
++    }
++  }
++
++  private fun releaseVolumeBoost() {
++    loudnessEnhancer?.release()
++    loudnessEnhancer = null
++  }
++
+   val currentOffsetFromLive: Double?
+     get() {
+       val offset = ref.currentLiveOffset
+@@ -91,6 +140,13 @@ class AudioPlayer(
+ 
+   init {
+     installPlayerListeners()
++    // Sage Pod: an audio effect is tied to one session; follow the player's.
++    ref.addAnalyticsListener(object : AnalyticsListener {
++      override fun onAudioSessionIdChanged(eventTime: AnalyticsListener.EventTime, audioSessionId: Int) {
++        releaseVolumeBoost()
++        applyVolumeBoost()
++      }
++    })
+     source?.let {
+       setMediaSource(source)
+     }
+@@ -264,6 +320,7 @@ class AudioPlayer(
+     }
+     serviceConnection.unbind()
+     visualizer?.release()
++    releaseVolumeBoost()
+     super.releasePlayer()
+   }
+ 
+diff --git a/node_modules/expo-audio/ios/AudioPlayer.swift b/node_modules/expo-audio/ios/AudioPlayer.swift
+index 0f68a52..d8ec53a 100644
+--- a/node_modules/expo-audio/ios/AudioPlayer.swift
++++ b/node_modules/expo-audio/ios/AudioPlayer.swift
+@@ -13,6 +13,15 @@ public class AudioPlayer: SharedRef<AVPlayer>, Playable, LockScreenPlayable {
+   var isActiveForLockScreen = false
+   var metadata: Metadata?
+   var lockScreenOptions: LockScreenOptions?
++
++  // Sage Pod: a single player's Next button plays the next queued episode in JS.
++  var supportsNextTrack: Bool {
++    lockScreenOptions?.showNextTrack ?? false
++  }
++
++  func nextTrack() {
++    emit(event: "remoteNext")
++  }
+   var currentRate: Float = 1.0 {
+     didSet {
+       currentRate = max(0, currentRate)
+diff --git a/node_modules/expo-audio/ios/MediaController.swift b/node_modules/expo-audio/ios/MediaController.swift
+index 9b66e45..3e3e275 100644
+--- a/node_modules/expo-audio/ios/MediaController.swift
++++ b/node_modules/expo-audio/ios/MediaController.swift
+@@ -406,7 +406,8 @@ class MediaController {
+     let showNextTrack = (options?.showNextTrack ?? false) && supportsNextTrack
+     let showPreviousTrack = (options?.showPreviousTrack ?? false) && supportsPreviousTrack
+ 
+-    remoteCommandCenter.skipForwardCommand.isEnabled = (options?.showSeekForward ?? false) && !showNextTrack
++    // Sage Pod: keep skip forward on the lock screen; Next still reaches headphones and CarPlay.
++    remoteCommandCenter.skipForwardCommand.isEnabled = options?.showSeekForward ?? false
+     remoteCommandCenter.skipBackwardCommand.isEnabled = (options?.showSeekBackward ?? false) && !showPreviousTrack
+     remoteCommandCenter.nextTrackCommand.isEnabled = showNextTrack
+     remoteCommandCenter.previousTrackCommand.isEnabled = showPreviousTrack

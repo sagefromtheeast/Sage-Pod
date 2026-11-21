@@ -14,7 +14,7 @@ import { useTheme } from './useTheme';
  * The glass capsule (`GlassTabBar`) is the opt-in alternative
  * (Settings › User interface › Glass effects).
  */
-export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
+export function TabBar({ state, descriptors, emitter, navigateToTab }: BottomTabBarProps) {
   const theme = useTheme();
   return (
     <View style={styles.row}>
@@ -25,14 +25,14 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
         const color = focused ? theme.accent : theme.textMuted;
         const onPress = () => {
           triggerHaptic('selection');
-          const event = navigation.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
-          if (!focused && !event.defaultPrevented) navigation.navigate(route.name);
+          const event = emitter.emit({ type: 'tabPress', target: route.key, canPreventDefault: true });
+          if (!focused && !event.defaultPrevented) navigateToTab(route.key);
         };
         return (
           <Pressable
             key={route.key}
             onPress={onPress}
-            onLongPress={() => navigation.emit({ type: 'tabLongPress', target: route.key })}
+            onLongPress={() => emitter.emit({ type: 'tabLongPress', target: route.key })}
             accessibilityRole="tab"
             accessibilityState={{ selected: focused }}
             accessibilityLabel={options.tabBarAccessibilityLabel ?? label}

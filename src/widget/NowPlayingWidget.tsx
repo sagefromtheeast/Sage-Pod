@@ -2,15 +2,19 @@ import { FlexWidget, ImageWidget, SvgWidget, TextWidget } from 'react-native-and
 import type { ColorProp } from 'react-native-android-widget';
 
 import { palettes, type Palette } from '@/ui/theme';
+import { COMPACT_WIDTH, isTall } from '@/widget/layout';
 import type { WidgetModel } from '@/widget/model';
 
 export const WIDGET_NAME = 'NowPlaying';
 /** Widget button actions, handled in `src/widget/index.ts`. */
-export const WIDGET_ACTIONS = { toggle: 'TOGGLE', back: 'SKIP_BACK', forward: 'SKIP_FORWARD' } as const;
+export const WIDGET_ACTIONS = {
+  toggle: 'TOGGLE',
+  back: 'SKIP_BACK',
+  forward: 'SKIP_FORWARD',
+  next: 'NEXT',
+} as const;
 
 const ICON = require('../../assets/icon.png');
-/** Below this width (dp) the skip buttons give way to the title. */
-const COMPACT_WIDTH = 250;
 /** Below this height (dp) the padding tightens, and art and buttons shrink to fit. */
 const SHORT_HEIGHT = 76;
 
@@ -18,10 +22,17 @@ type Props = { model: WidgetModel; palette: Palette; width: number; height: numb
 
 /**
  * AntennaPod's player widget: cover, title, podcast, progress, and skip back /
- * play-pause / skip forward. Tapping anywhere else opens the player.
+ * play-pause / skip forward. Tapping anywhere else opens the player. Resized
+ * taller, the buttons move to a row of their own and gain Next episode.
  */
-export function NowPlayingWidget({ model, palette, width, height }: Props) {
-  const color = (value: string) => value as ColorProp;
+export function NowPlayingWidget(props: Props) {
+  if (isTall(props.width, props.height)) return <TallWidget {...props} />;
+  return <RowWidget {...props} />;
+}
+
+const color = (value: string) => value as ColorProp;
+
+function RowWidget({ model, palette, width, height }: Props) {
   const padding = height < SHORT_HEIGHT ? 6 : 12;
   const inner = Math.max(28, height - 2 * padding);
   const art = Math.min(inner, 96);
@@ -100,6 +111,81 @@ export function NowPlayingWidget({ model, palette, width, height }: Props) {
   );
 }
 
+/** Cover and text on top, then back, play-pause, forward and next across the bottom. */
+function TallWidget({ model, palette, width, height }: Props) {
+  const loaded = model.episodeId != null;
+  const padding = 14;
+  // The button row takes about 48 dp; the cover fills what is left above it.
+  const art = Math.max(40, Math.min(120, height - 2 * padding - 60));
+  const button = Math.min(48, Math.floor((width - 2 * padding) / 5));
+
+  return (
+    <FlexWidget
+      clickAction="OPEN_URI"
+      clickActionData={{ uri: loaded ? 'sagepod://player' : 'sagepod://' }}
+      accessibilityLabel={loaded ? `${model.title}, ${model.podcast}. Open the player` : 'Open Sage Pod'}
+      style={{
+        height: 'match_parent',
+        width: 'match_parent',
+        flexDirection: 'column',
+        justifyContent: 'space-between',
+        backgroundColor: color(palette.surface),
+        borderRadius: 20,
+        padding,
+        flexGap: 10,
+      }}
+    >
+      <FlexWidget style={{ width: 'match_parent', flexDirection: 'row', alignItems: 'center', flexGap: 12 }}>
+        <ImageWidget
+          image={model.artwork ? (model.artwork as `https:${string}`) : ICON}
+          imageWidth={art}
+          imageHeight={art}
+          radius={14}
+          resizeMode="cover"
+        />
+        <FlexWidget style={{ flex: 1, flexDirection: 'column', justifyContent: 'center', flexGap: 2 }}>
+          <TextWidget
+            text={model.title}
+            maxLines={2}
+            truncate="END"
+            style={{ fontSize: 16, fontWeight: '600', color: color(palette.text) }}
+          />
+          <TextWidget
+            text={model.remaining ? `${model.podcast} · ${model.remaining}` : model.podcast}
+            maxLines={1}
+            truncate="END"
+            style={{ fontSize: 12, color: color(palette.textMuted) }}
+          />
+          {loaded ? <Progress value={model.progress} palette={palette} /> : null}
+        </FlexWidget>
+      </FlexWidget>
+      {loaded ? (
+        <FlexWidget
+          style={{ width: 'match_parent', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around' }}
+        >
+          <Button action={WIDGET_ACTIONS.back} svg={SKIP_BACK} label="Skip back" palette={palette} size={button - 6} />
+          <Button
+            action={WIDGET_ACTIONS.toggle}
+            svg={model.playing ? PAUSE : PLAY}
+            label={model.playing ? 'Pause' : 'Play'}
+            palette={palette}
+            size={button}
+            primary
+          />
+          <Button
+            action={WIDGET_ACTIONS.forward}
+            svg={SKIP_FORWARD}
+            label="Skip forward"
+            palette={palette}
+            size={button - 6}
+          />
+          <Button action={WIDGET_ACTIONS.next} svg={NEXT} label="Next episode" palette={palette} size={button - 6} />
+        </FlexWidget>
+      ) : null}
+    </FlexWidget>
+  );
+}
+
 /** Both schemes, so the launcher follows the system's light or dark mode. */
 export function nowPlayingWidget(model: WidgetModel, width: number, height: number) {
   return {
@@ -168,3 +254,4 @@ const PLAY = svgIcon('M8 5.14v13.72a1 1 0 0 0 1.5.86l11-6.86a1 1 0 0 0 0-1.72l-1
 const PAUSE = svgIcon('M7 5h3.5v14H7zM13.5 5H17v14h-3.5z');
 const SKIP_BACK = svgIcon('M11 6.5v11L3.5 12zM20 6.5v11L12.5 12z');
 const SKIP_FORWARD = svgIcon('M13 6.5v11l7.5-5.5zM4 6.5v11l7.5-5.5z');
+const NEXT = svgIcon('M5 6.5v11l8.5-5.5zM16 6h2.5v12H16z');

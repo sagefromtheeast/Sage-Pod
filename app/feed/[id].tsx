@@ -399,10 +399,10 @@ export default function FeedScreen() {
                   {loadingOlder ? 'Loading older episodes…' : 'Load older episodes'}
                 </Text>
               </Pressable>
-            ) : null
+            ) : undefined
           }
           ListEmptyComponent={
-            episodesLoading ? null : filtered || term ? (
+            episodesLoading ? undefined : filtered || term ? (
               <EmptyState
                 icon="filter-outline"
                 title="No matching episodes"
@@ -413,7 +413,7 @@ export default function FeedScreen() {
                     : { label: 'Search all podcasts', onPress: () => router.push({ pathname: '/search', params: { q: term } }) }
                 }
               />
-            ) : null
+            ) : undefined
           }
           renderItem={({ item }) => (
             <EpisodeRow

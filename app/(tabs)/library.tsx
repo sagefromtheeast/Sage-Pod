@@ -256,7 +256,7 @@ export default function LibraryScreen() {
           </View>
         }
         ListEmptyComponent={
-          loading ? null : feeds.length > 0 ? (
+          loading ? undefined : feeds.length > 0 ? (
             <EmptyState
               icon="funnel-outline"
               title="No matching podcasts"

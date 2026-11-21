@@ -269,10 +269,10 @@ releasing, so a red check on `main` blocks the release.
   `src/actions/` and `src/ui/`). New settings go in `src/db/settingsSchema.ts`;
   multiple-choice ones also list their choices in `src/settings/options.ts`.
 - **Device build**: one EAS build at the end (D-011).
-- **expo-audio is patched** (D-025, `patches/expo-audio+57.0.5.patch`).
+- **expo-audio is patched** (D-025, D-032, `patches/expo-audio+58.0.12.patch`).
   To change the patch: edit `node_modules/expo-audio`, then
   `npx patch-package expo-audio`. To compile the Android half locally:
-  install the Android SDK (platform 36, build-tools 36.0.0 and 35.0.0),
+  install the Android SDK (platform `android-37.0`, build-tools 37.0.0 and 36.0.0),
   `npx expo prebuild --platform android --no-install`, put
   `sdk.dir=/path/to/sdk` in `android/local.properties`, then
   `cd android && ./gradlew :expo-audio:compileReleaseKotlin`. If Maven

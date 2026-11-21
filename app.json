@@ -115,13 +115,14 @@
               "minHeight": "60dp",
               "targetCellWidth": 4,
               "targetCellHeight": 1,
-              "maxResizeHeight": "140dp",
+              "maxResizeHeight": "260dp",
               "resizeMode": "horizontal|vertical"
             }
           ]
         }
       ],
-      "./plugins/playback-tile"
+      "./plugins/playback-tile",
+      "expo-status-bar"
     ],
     "experiments": {
       "typedRoutes": true

@@ -36,6 +36,8 @@ Format: context → decision → consequences → when to revisit.
 | D-028 | Over-the-air updates with EAS Update | Accepted |
 | D-029 | Phase 19: Android downloads in a WorkManager worker (local Expo module), resumable with Range | Accepted |
 | D-030 | Phase 20: Echo year in review, in TypeScript, shipped over the air; text sharing only | Accepted |
+| D-031 | Phase 21: solid bars by default, Sage Pod's own dialogs, rebuilt swipes | Accepted |
+| D-032 | Phase 24: Expo SDK 58, expo-audio patch rewritten on top of 58's own lock-screen options; taller widget layout | Accepted |
 
 ---
 
@@ -817,3 +819,43 @@ Move to bottom and Share as queue swipes.
 
 **Revisit** if the owner wants glass back by default, or AntennaPod's
 swipe-then-confirm behaviour for deletions.
+
+
+## D-032 — Phase 24: Expo SDK 58, a smaller expo-audio patch, a taller widget
+
+**Context.** Expo SDK 58 (React Native 0.88, Gesture Handler 3) fixes the
+`decode-uri-component` advisory and brings expo-audio 58, which now does much
+of what the D-025 patch added: lock-screen skip intervals
+(`seekForwardIntervalSeconds`, `seekBackwardIntervalSeconds`, with 5/10/15/30 s
+icons on Android), a Next button (`showNextTrack`), pause on headphone unplug
+(Android) and properly removed remote-command targets (iOS). The 57 patch no
+longer applied (18 of its hunks failed). AntennaPod 3.13 made its widget
+resizable, with more controls when larger.
+
+**Decision (lead developer, owner asked for SDK 58 and the widget in one build).**
+- `expo-audio` pinned at `58.0.12`, still built from source on Android.
+  `patches/expo-audio+58.0.12.patch` (161 lines, was 973) only adds what 58
+  lacks: a single player's Next (notification, lock screen, headset) emits
+  `remoteNext` to JS; `setSkipSilence` and `setVolumeBoost` (Android); and on
+  iOS skip forward stays enabled next to Next (58 would hide it), as before.
+  `audioExtras.ts` uses 58's option names.
+- Sage Pod's own notification icons are dropped: 58 draws numbered skip icons
+  itself.
+- Gesture Handler 3 keeps the `Gesture.*` builder API but deprecates it; the
+  swipes, queue drag, seek bar and segmented control use it unchanged for now.
+- RN 0.88 types: list header/empty props take `undefined`, not `null`; the tab
+  bars use `emitter` and `navigateToTab` (expo-router 58's tab bar props).
+- The widget may be resized up to 260 dp tall. From 120 dp tall and 250 dp
+  wide it switches to a two-row layout: cover, title and progress on top;
+  skip back, play-pause, skip forward and **Next episode** across the bottom.
+  The library's config can't set a minimum resize size, so the smallest size
+  stays 180 × 60 dp.
+
+**Consequences.** Native runtime changes, so this ships in a new EAS build.
+Kotlin (the patched expo-audio, the downloads module, the app) compiles
+locally against SDK 58; the Swift half only in the EAS build. Not verified on
+a device yet.
+
+**Revisit** when Gesture Handler removes the builder API (move to its hooks),
+or when expo-audio emits single-player Next and skip silence itself (drop the
+patch).

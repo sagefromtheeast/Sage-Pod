@@ -167,7 +167,7 @@ export default function SearchScreen() {
               <Text style={[styles.hint, { color: theme.textMuted }]}>
                 Search titles, authors and show notes in the podcasts you follow.
               </Text>
-            ) : loading || feeds.length > 0 ? null : (
+            ) : loading || feeds.length > 0 ? undefined : (
               <Text style={[styles.hint, { color: theme.textMuted }]}>Nothing in your library matches “{query}”.</Text>
             )
           }

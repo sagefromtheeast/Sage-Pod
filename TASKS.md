@@ -228,6 +228,14 @@ destructive.
 - [x] 23a: `src/player/embedded/vorbis.ts` reads `CHAPTERxxx` / `CHAPTERxxxNAME` / `CHAPTERxxxURL` Vorbis comments from the Ogg comment header (Vorbis and Opus, across pages) and FLAC's VORBIS_COMMENT block; cover art in the comments is skipped unread; tests build Ogg and FLAC files
 - [ ] On device: an Opus podcast with chapters, downloaded and streamed
 
+## Phase 24 — Expo SDK 58 and a taller widget (D-032)
+- [x] 24a: Expo SDK 58 (React Native 0.88, Gesture Handler 3, expo-router 58); type fixes for RN 0.88 and the new tab bar props; expo-doctor clean
+- [x] 24b: expo-audio patch rewritten for 58.0.12 (161 lines, was 973): single-player Next → `remoteNext`, skip silence, volume boost, iOS skip forward kept; 58's own skip intervals, Next button and unplug pause used instead of ours; Kotlin compiled locally
+- [x] 24c: widget resizable up to 260 dp tall; two-row layout with Next episode from 120 × 250 dp (`src/widget/layout.ts`, tests)
+- [ ] One EAS production build (owner approved: SDK 58 and widget together)
+- [ ] On device: lock-screen and notification skip amounts and Next; skip silence; volume boost; unplug pauses; swipes, queue drag and seek bar on Gesture Handler 3; widget resized taller, Next from the widget
+- [ ] Later: move `Gesture.*` to Gesture Handler 3's hook API before it is removed
+
 ## Open source and Google Play
 - [x] GPL-3.0-or-later licence; CONTRIBUTING, CODE_OF_CONDUCT, SECURITY, PRIVACY; issue and PR templates
 - [x] CI: actions pinned to commits, `permissions: {}` by default, CodeQL (public repos only), Dependabot (Expo/RN excluded)
@@ -240,14 +248,14 @@ destructive.
 - [ ] Owner: closed test with at least 12 testers for 14 days before production (new personal accounts)
 - [ ] Before the first iOS build (needs a paid Apple developer account): change `ios.bundleIdentifier` in `app.json` to `com.sagefromtheeast.sagepodplayer` to match Android. Apple fixes it at registration.
 - [ ] EAS Submit: service account key in EAS, then `eas submit` for later builds
-- [ ] `decode-uri-component` advisory (via expo-router): fixed by the SDK 58 upgrade
+- [x] `decode-uri-component` advisory (via expo-router): fixed by the SDK 58 upgrade (Phase 24)
 - [ ] Consider R8 minification and EAS Update code signing for release builds (each needs a device test)
 
 ## Phase 18 — Optional (one proposal each)
 - [x] Echo (Phase 20, D-030)
 - [ ] Sync, Cast, Auto/Wear, video, nav customisation, parental control (3.13 adds a password on the Add podcast screen)
 - [ ] Podcast Index and gPodder.net as extra Discover search sources (Podcast Index needs an API key; both add a host to PRIVACY.md)
-- [ ] Resizable home-screen widget (AntennaPod 3.13)
+- [x] Resizable home-screen widget (AntennaPod 3.13): Phase 24c
 
 ## Discovered (not yet scheduled)
 - [x] expo-doctor failed after Expo's SDK 57 patch releases (expo 57.0.32 and 15 more): fixed with `npx expo install --fix`, which changes the runtime, so it ships in a build

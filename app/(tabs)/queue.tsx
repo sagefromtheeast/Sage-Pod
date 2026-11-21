@@ -239,7 +239,7 @@ export default function QueueScreen() {
           ListEmptyComponent={
             term ? (
               <NoMatches message={`No queued episodes match “${search}”.`} term={search ?? ''} />
-            ) : null
+            ) : undefined
           }
           renderItem={(item, _index, handle) => (
             <SwipeableEpisodeRow

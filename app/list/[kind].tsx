@@ -87,7 +87,7 @@ export default function ListScreen() {
             { paddingBottom: selection.active ? SELECTION_BAR_HEIGHT + space.xl : dockPadding },
           ]}
           ListEmptyComponent={
-            loading ? null : <EmptyState icon={view.icon} title={view.title} message={view.empty} />
+            loading ? undefined : <EmptyState icon={view.icon} title={view.title} message={view.empty} />
           }
           renderItem={({ item }) => (
             <EpisodeRow
