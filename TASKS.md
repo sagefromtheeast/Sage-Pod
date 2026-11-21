@@ -224,6 +224,10 @@ destructive.
 - [x] 22c: Podlove Simple Chapters (`<psc:chapters>`) from the feed, stored in `episodes.chapters_json` (schema 8); the chapters file wins, the audio's chapters are the fallback
 - [ ] On device: leave an episode 10 s before the end with Delete after finished on; a Podlove feed (e.g. Freak Show) shows chapters
 
+## Phase 23 — Ogg, Opus and FLAC chapters (D-027)
+- [x] 23a: `src/player/embedded/vorbis.ts` reads `CHAPTERxxx` / `CHAPTERxxxNAME` / `CHAPTERxxxURL` Vorbis comments from the Ogg comment header (Vorbis and Opus, across pages) and FLAC's VORBIS_COMMENT block; cover art in the comments is skipped unread; tests build Ogg and FLAC files
+- [ ] On device: an Opus podcast with chapters, downloaded and streamed
+
 ## Open source and Google Play
 - [x] GPL-3.0-or-later licence; CONTRIBUTING, CODE_OF_CONDUCT, SECURITY, PRIVACY; issue and PR templates
 - [x] CI: actions pinned to commits, `permissions: {}` by default, CodeQL (public repos only), Dependabot (Expo/RN excluded)
@@ -252,7 +256,7 @@ destructive.
 - [ ] iOS home-screen widget (expo-widgets can show what's playing, but its buttons can't reach the player; D-026)
 - [ ] Hardware headset next/previous buttons seek instead of changing episode (AntennaPod's "Hardware forward button skips" setting). Blocked: expo-audio sends the headset's and the notification's Next as the same `remoteNext` event, so telling them apart needs the expo-audio patch (D-025) extended
 - [ ] Skip silence and volume boost on iOS (needs an audio tap; D-025)
-- [ ] Ogg / Opus chapters (Vorbis comments) (D-027)
+- [x] Ogg / Opus chapters (Vorbis comments) (D-027): Phase 23
 - [x] Podlove Simple Chapters in the feed (Phase 22c)
 - [x] `flushPosition` marks an episode played inside the smart-mark tail but doesn't dequeue or delete it like `onFinished` does (Phase 22b)
 - [x] A speed chosen in the player isn't saved (fixed by Phase 4's speed sheet)

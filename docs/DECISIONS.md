@@ -643,7 +643,8 @@ exposes no metadata, and a streamed episode isn't on disk.
   http(s).
 
 **Consequences.** Episodes from many hosts now show chapters with no feed
-change. Ogg / Opus chapters (Vorbis comments) and ID3v2.2 aren't read.
+change. ID3v2.2 isn't read. (Phase 23 added Vorbis-comment chapters in Ogg
+Vorbis, Ogg Opus and FLAC, read the same way: only the comment header.)
 Opening the player on a streamed episode without a chapters file costs one
 or two small range requests, once per session.
 
