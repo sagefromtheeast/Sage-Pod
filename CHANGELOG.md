@@ -1,3 +1,18 @@
+## [0.27.0](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.26.0...v0.27.0) (2026-11-21)
+
+### 🚀 New Features
+
+* read Podlove Simple Chapters from the feed ([ad921fd](https://github.com/sagefromtheeast/Sage-Pod/commit/ad921fdac8446415b383df3b43773c641abc5879))
+
+### 🐛 Bug Fixes
+
+* don't re-fetch older feed pages after a refresh ([fa37fec](https://github.com/sagefromtheeast/Sage-Pod/commit/fa37fec3304f0adc153caad0d3c7eea9d4be0807))
+* finish an episode left in its last seconds ([2cfaba9](https://github.com/sagefromtheeast/Sage-Pod/commit/2cfaba96dcc1ff9ee1fb4ecc19b35dd3ef36e3ef))
+
+### 📚 Documentation
+
+* Phase 22 in TASKS.md; record the repository going public ([fcc495d](https://github.com/sagefromtheeast/Sage-Pod/commit/fcc495d85983d97062ba8d3b46fa55c174ea4e91))
+
 ## [0.26.0](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.25.2...v0.26.0) (2026-11-21)
 
 ### 🚀 New Features
