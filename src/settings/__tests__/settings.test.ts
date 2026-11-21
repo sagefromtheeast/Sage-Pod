@@ -4,7 +4,7 @@ import { describe, it } from 'node:test';
 import { subjectFor } from '../../actions/episodeActions';
 import { DEFAULT_SETTINGS } from '../../db/settingsSchema';
 import { cleanupCandidates, formatCleanup, parseCleanup } from '../../player/cleanup';
-import { afterSkip, almostEnded } from '../../player/playedRules';
+import { afterLeaving, afterSkip, almostEnded } from '../../player/playedRules';
 import { adjustForSpeed, parsePresets } from '../../player/speed';
 import { SETTING_OPTIONS } from '../options';
 import { parseSwipes, resolveSwipe, serializeSwipes, SWIPE_SCREEN_KEYS, SWIPE_SCREENS } from '../swipes';
@@ -89,7 +89,10 @@ describe('played rules', () => {
     smartMarkSeconds: 30,
     keepSkipped: true,
     removeFinishedFromQueue: true,
+    autoDelete: false,
+    downloaded: true,
   };
+  const nothing = { markPlayed: false, dequeue: false, deleteDownload: false };
 
   it('treats the last N seconds as the end', () => {
     assert.equal(almostEnded(975, 1000, 30), true);
@@ -101,16 +104,35 @@ describe('played rules', () => {
   });
 
   it('keeps a skipped episode unless told not to', () => {
-    assert.deepEqual(afterSkip(base), { markPlayed: false, dequeue: false });
-    assert.deepEqual(afterSkip({ ...base, keepSkipped: false }), { markPlayed: true, dequeue: true });
+    assert.deepEqual(afterSkip(base), nothing);
+    // Skipped, not finished: the download stays even with "Delete after finished".
+    assert.deepEqual(afterSkip({ ...base, keepSkipped: false, autoDelete: true }), {
+      markPlayed: true,
+      dequeue: true,
+      deleteDownload: false,
+    });
   });
 
   it('marks an almost-finished skip played like a finished episode', () => {
-    assert.deepEqual(afterSkip({ ...base, position: 990 }), { markPlayed: true, dequeue: true });
-    assert.deepEqual(afterSkip({ ...base, position: 990, removeFinishedFromQueue: false }), {
+    assert.deepEqual(afterSkip({ ...base, position: 990 }), { markPlayed: true, dequeue: true, deleteDownload: false });
+    assert.deepEqual(afterSkip({ ...base, position: 990, removeFinishedFromQueue: false, autoDelete: true }), {
       markPlayed: true,
       dequeue: false,
+      deleteDownload: true,
     });
+  });
+
+  it('finishes an episode left in its last seconds', () => {
+    const leaving = { ...base, position: 990, autoDelete: true };
+    assert.deepEqual(afterLeaving(leaving), { markPlayed: true, dequeue: true, deleteDownload: true });
+    // Nothing to delete when it was streamed.
+    assert.deepEqual(afterLeaving({ ...leaving, downloaded: false }), {
+      markPlayed: true,
+      dequeue: true,
+      deleteDownload: false,
+    });
+    assert.deepEqual(afterLeaving({ ...leaving, position: 500 }), nothing);
+    assert.deepEqual(afterLeaving({ ...leaving, smartMarkSeconds: 0 }), nothing);
   });
 });
 

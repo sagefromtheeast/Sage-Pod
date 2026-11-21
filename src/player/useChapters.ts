@@ -20,13 +20,26 @@ async function fetchChapters(url: string): Promise<Chapter[]> {
   return parseChapters(await res.json());
 }
 
+/** Podlove Simple Chapters stored from the feed, as `Chapter`s. */
+function storedChapters(json: string): Chapter[] {
+  try {
+    return parseChapters({ chapters: JSON.parse(json) });
+  } catch {
+    return [];
+  }
+}
+
 /**
  * The episode's chapters: the feed's chapters file when it names one, as
- * AntennaPod prefers it, otherwise any chapters stored in the audio (D-027).
+ * AntennaPod prefers it, then chapters written into the feed (Podlove Simple
+ * Chapters), otherwise any chapters stored in the audio (D-027).
  */
 export function useChapters(episode: EpisodeWithFeed | null | undefined) {
   const chaptersUrl = episode?.chapters_url ?? null;
-  const key = episode ? (chaptersUrl ?? `embedded:${episode.id}`) : null;
+  const chaptersJson = episode?.chapters_json ?? null;
+  const key = episode
+    ? (chaptersUrl ?? (chaptersJson ? `feed:${episode.id}:${chaptersJson}` : `embedded:${episode.id}`))
+    : null;
   const latest = useRef(episode);
   latest.current = episode;
 
@@ -50,6 +63,13 @@ export function useChapters(episode: EpisodeWithFeed | null | undefined) {
       return;
     }
 
+    if (!chaptersUrl && chaptersJson) {
+      const parsed = storedChapters(chaptersJson);
+      cache.set(key, parsed);
+      setChapters(parsed);
+      return;
+    }
+
     setChapters([]);
     setLoading(true);
     (chaptersUrl ? fetchChapters(chaptersUrl) : loadEmbeddedChapters(current))
@@ -67,7 +87,7 @@ export function useChapters(episode: EpisodeWithFeed | null | undefined) {
     return () => {
       cancelled = true;
     };
-  }, [key, chaptersUrl]);
+  }, [key, chaptersUrl, chaptersJson]);
 
   return { chapters, loading, error };
 }

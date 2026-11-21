@@ -20,6 +20,7 @@ import { splitCredentials, type FeedCredentials } from './auth';
 import { episodeUpdateBatches, UPDATE_CHANGED_EPISODES } from './episodeWrites';
 import { feedCredentialsFor, setFeedCredentials } from './credentials';
 import { fetchFeed, normalizeFeedUrl } from './fetch';
+import { ADVANCE_PAGE_CURSOR, cursorAfterPage, REFRESH_PAGE_CURSOR } from './pageCursor';
 import type { ParsedEpisode, ParsedFeed } from './parser';
 
 export type SyncResult = {
@@ -38,6 +39,11 @@ export type SyncResult = {
  * alone on update: a publisher re-uploading an episode must never wipe the
  * listener's progress.
  */
+/** Feed chapters as stored in `episodes.chapters_json`. */
+function chaptersJson(ep: ParsedEpisode): string | null {
+  return ep.chapters ? JSON.stringify(ep.chapters) : null;
+}
+
 async function upsertEpisodes(
   feedId: number,
   episodes: ParsedEpisode[],
@@ -69,13 +75,13 @@ async function upsertEpisodes(
   const now = Date.now();
 
   await db.withTransactionAsync(async () => {
-    // Multi-row batch inserts: 40 episodes * 16 parameters = 640 parameters,
+    // Multi-row batch inserts: 40 episodes * 17 parameters = 680 parameters,
     // safely below SQLite's parameter limits while cutting bridge trips 40x.
     const BATCH_SIZE = 40;
     for (let i = 0; i < toInsert.length; i += BATCH_SIZE) {
       const chunk = toInsert.slice(i, i + BATCH_SIZE);
       const placeholders = chunk
-        .map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
+        .map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)')
         .join(', ');
       const params: (string | number | null)[] = [];
       for (const ep of chunk) {
@@ -94,6 +100,7 @@ async function upsertEpisodes(
           ep.season,
           ep.episodeNumber,
           ep.chaptersUrl,
+          chaptersJson(ep),
           markAsNew ? 1 : 0,
           now
         );
@@ -102,7 +109,7 @@ async function upsertEpisodes(
         `INSERT INTO episodes
            (feed_id, guid, title, description, link, published_at, duration,
             media_url, media_type, media_size, image_url, season, episode_number,
-            chapters_url, is_new, created_at)
+            chapters_url, chapters_json, is_new, created_at)
          VALUES ${placeholders}`,
         ...params
       );
@@ -123,6 +130,7 @@ async function upsertEpisodes(
       season: ep.season,
       episodeNumber: ep.episodeNumber,
       chaptersUrl: ep.chaptersUrl,
+      chaptersJson: chaptersJson(ep),
     }));
     for (const batch of episodeUpdateBatches(metadata)) {
       await db.runAsync(UPDATE_CHANGED_EPISODES, batch);
@@ -136,13 +144,15 @@ async function updateFeedRow(
   feedId: number,
   parsed: ParsedFeed,
   etag: string | null,
-  lastModified: string | null
+  lastModified: string | null,
+  full = false
 ): Promise<void> {
+  await getDb().runAsync(REFRESH_PAGE_CURSOR, full ? 1 : 0, parsed.nextPageUrl ?? null, feedId);
   await getDb().runAsync(
     `UPDATE feeds
         SET title = ?, author = ?, description = ?, image_url = ?, link = ?,
             language = ?, explicit = ?, etag = ?, last_modified = ?, last_refreshed_at = ?,
-            next_page_url = COALESCE(?, next_page_url), funding = ?, last_refresh_error = NULL
+            funding = ?, last_refresh_error = NULL
       WHERE id = ?`,
     parsed.title,
     parsed.author,
@@ -154,7 +164,6 @@ async function updateFeedRow(
     etag,
     lastModified,
     Date.now(),
-    parsed.nextPageUrl ?? null,
     fundingJson(parsed),
     feedId
   );
@@ -325,7 +334,7 @@ async function refreshFeedNow(feed: FeedRow, options: { full?: boolean; quiet?: 
     parsed.episodes,
     subscribed && action === 'inbox'
   );
-  await updateFeedRow(feed.id, parsed, etag, lastModified);
+  await updateFeedRow(feed.id, parsed, etag, lastModified, options.full);
 
   const addToQueue = subscribed && action === 'queue';
   // AntennaPod's per-podcast "Episode notifications".
@@ -465,11 +474,7 @@ export async function fetchOlderFeedEpisodes(
     await feedCredentialsFor(feedId, feed.next_page_url)
   );
   const { count: inserted } = await upsertEpisodes(feedId, parsed.episodes, false);
-  await db.runAsync(
-    'UPDATE feeds SET next_page_url = ? WHERE id = ?',
-    parsed.nextPageUrl ?? null,
-    feedId
-  );
+  await db.runAsync(ADVANCE_PAGE_CURSOR, cursorAfterPage(parsed.nextPageUrl), feedId);
 
   return {
     newEpisodes: inserted,

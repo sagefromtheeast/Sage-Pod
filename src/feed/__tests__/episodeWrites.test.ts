@@ -41,6 +41,7 @@ function episode(id: number, overrides: Partial<EpisodeMetadata> = {}): EpisodeM
     season: null,
     episodeNumber: id,
     chaptersUrl: null,
+    chaptersJson: null,
     ...overrides,
   };
 }

@@ -19,7 +19,7 @@ import { deleteDownload, getLocalEpisodePath } from '@/player/downloads';
 import { getMeta, getSettings, setMeta, setSetting, subscribeSettings } from '@/db/settings';
 import type { EpisodeWithFeed } from '@/db/types';
 import { confirmMeteredStreaming } from '@/player/meteredGuard';
-import { afterSkip, almostEnded } from '@/player/playedRules';
+import { afterLeaving, afterSkip, almostEnded, finishEffects } from '@/player/playedRules';
 import { positionAfterPause } from '@/player/resumeRewind';
 import { clampSpeed } from '@/player/speed';
 import { basicAuthHeader } from '@/feed/auth';
@@ -213,7 +213,7 @@ class PlayerService {
     }
 
     await this.ensureAudioMode();
-    await this.flushPosition();
+    await this.flushPosition(0, { leaving: true });
     this.markedPlayedId = null;
     this.teardownPlayer();
 
@@ -563,14 +563,7 @@ class PlayerService {
       // play instead, jumping back if it was played from mid-queue (or
       // sorted there by Keep sorted).
       const next = await nextInQueue(finished.id);
-      if (settings.removeFromQueueWhenFinished) await dequeue(finished.id);
-
-      // Reclaim the space a finished episode's audio was using, if the
-      // listener asked us to.
-      const autoDelete = resolveOverride(boolOverride(finished.feed_auto_delete), settings.deleteAfterFinished).value;
-      if (autoDelete && finished.download_state === 'done') {
-        await deleteDownload(finished.id);
-      }
+      await this.tidyFinished(finished, finishEffects(this.housekeeping(finished)));
 
       // An episodes sleep timer counts finished episodes; on the last one,
       // stop here instead of advancing.
@@ -611,19 +604,39 @@ class PlayerService {
         duration: this.state.duration,
         smartMarkSeconds: settings.smartMarkSeconds,
         keepSkipped: settings.keepSkippedEpisodes,
-        removeFinishedFromQueue: settings.removeFromQueueWhenFinished,
+        ...this.housekeeping(current),
       });
       if (outcome.markPlayed) {
         await markPlayed(current.id, true);
         this.markedPlayedId = current.id;
       }
-      if (outcome.dequeue) await dequeue(current.id);
+      await this.tidyFinished(current, outcome);
     }
     if (next) {
       await this.load(next, { autoPlay: true });
     } else {
       this.pause();
     }
+  }
+
+  /** The settings that decide what finishing `episode` does to it. */
+  private housekeeping(episode: EpisodeWithFeed) {
+    const settings = getSettings();
+    return {
+      removeFinishedFromQueue: settings.removeFromQueueWhenFinished,
+      // "Delete after finished", per podcast or global.
+      autoDelete: resolveOverride(boolOverride(episode.feed_auto_delete), settings.deleteAfterFinished).value,
+      downloaded: episode.download_state === 'done',
+    };
+  }
+
+  /** Takes a finished episode out of the queue and reclaims its download, as the settings ask. */
+  private async tidyFinished(
+    episode: EpisodeWithFeed,
+    effects: { dequeue: boolean; deleteDownload: boolean }
+  ): Promise<void> {
+    if (effects.dequeue) await dequeue(episode.id);
+    if (effects.deleteDownload) await deleteDownload(episode.id);
   }
 
   // -------------------------------------------------------- position persistence
@@ -655,9 +668,13 @@ class PlayerService {
    * Runs on a timer while playing and on every pause, seek and track change, so
    * that a force-quit or a battery death loses at most a few seconds. The
    * timer's saves are `quiet`; the others repaint the lists, so a row that
-   * stops following the player shows where it was left.
+   * stops following the player shows where it was left. `leaving` is the last
+   * save before another episode replaces this one or playback stops.
    */
-  async flushPosition(listenedSeconds: number = 0, options: { quiet?: boolean } = {}): Promise<void> {
+  async flushPosition(
+    listenedSeconds: number = 0,
+    options: { quiet?: boolean; leaving?: boolean } = {}
+  ): Promise<void> {
     const { episode, position, duration } = this.state;
     if (!episode || position <= 0 || episode.id === this.markedPlayedId) return;
 
@@ -671,7 +688,19 @@ class PlayerService {
     // finishing, so the episode doesn't linger in Continue Listening with only
     // an outro left. Only when stopped — the periodic save while playing must
     // keep the real position, or a long threshold would lose it mid-listen.
-    if (!this.state.playing && almostEnded(position, duration, getSettings().smartMarkSeconds)) {
+    const smartMarkSeconds = getSettings().smartMarkSeconds;
+    if (options.leaving) {
+      // Left for good (another episode, or Stop): finished, as at the real end,
+      // so it also leaves the queue and its download goes if the settings say so.
+      const outcome = afterLeaving({ position, duration, smartMarkSeconds, ...this.housekeeping(episode) });
+      if (outcome.markPlayed) {
+        await markPlayed(episode.id, true);
+        this.markedPlayedId = episode.id;
+        await this.tidyFinished(episode, outcome);
+        return;
+      }
+    } else if (!this.state.playing && almostEnded(position, duration, smartMarkSeconds)) {
+      // Only paused: it stays queued and downloaded, in case it's resumed.
       await markPlayed(episode.id, true);
       return;
     }
@@ -806,7 +835,7 @@ class PlayerService {
 
   /** Stops playback and unloads the current episode. */
   async stop(): Promise<void> {
-    await this.flushPosition();
+    await this.flushPosition(0, { leaving: true });
     this.cancelSleepTimer();
     this.teardownPlayer();
     this.setState({ ...INITIAL_STATE });

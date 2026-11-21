@@ -14,7 +14,7 @@ export const EPISODE_WITH_FEED_COLUMNS = `
   e.id, e.feed_id, e.guid, e.title, e.link, e.published_at, e.duration,
   e.media_url, e.media_type, e.media_size, e.image_url, e.season, e.episode_number,
   e.position, e.is_played, e.is_favorite, e.is_new, e.played_at, e.local_path,
-  e.download_state, e.downloaded_bytes, e.created_at, e.chapters_url,
+  e.download_state, e.downloaded_bytes, e.created_at, e.chapters_url, e.chapters_json,
   COALESCE(f.custom_title, f.title) AS feed_title,
   f.image_url AS feed_image_url,
   f.author AS feed_author,

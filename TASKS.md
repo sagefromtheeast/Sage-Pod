@@ -216,13 +216,21 @@ destructive.
 - [x] 21d: Move to bottom and Share swipes (AntennaPod 3.13); undo toast slides in and out
 - [x] 21e: harness shots for both dialogs and a held swipe; every screen re-shot (`screenshots/before` → `after`)
 - [ ] On device: tab bar and player bar on phone and tablet; each list's swipes (strip, tick, Undo); clear the queue, unsubscribe, reset settings; Glass effects on and off
+- [x] Released as v0.26.0 (21 Nov 2026), with the clean-up before going public: `fast-xml-parser` 5.12.1 (GHSA-474x-hrwr-fgx4), personal agent files removed, `.gitignore` covers secrets and built packages
+
+## Phase 22 — Fixes from the Discovered list
+- [x] 22a: "Load older episodes" cursor (`src/feed/pageCursor.ts`, node:sqlite test): a refresh no longer rewinds it to page 2; `''` marks the last page; only "Refresh complete podcast" starts over
+- [x] 22b: leaving an episode in the smart-mark tail (another episode, Stop) finishes it like the real end: played, out of the queue, download deleted per settings (`afterLeaving`); a pause there only marks it played; a skip there now also deletes the download, as in AntennaPod
+- [x] 22c: Podlove Simple Chapters (`<psc:chapters>`) from the feed, stored in `episodes.chapters_json` (schema 8); the chapters file wins, the audio's chapters are the fallback
+- [ ] On device: leave an episode 10 s before the end with Delete after finished on; a Podlove feed (e.g. Freak Show) shows chapters
 
 ## Open source and Google Play
 - [x] GPL-3.0-or-later licence; CONTRIBUTING, CODE_OF_CONDUCT, SECURITY, PRIVACY; issue and PR templates
 - [x] CI: actions pinned to commits, `permissions: {}` by default, CodeQL (public repos only), Dependabot (Expo/RN excluded)
 - [x] Play listing in `fastlane/metadata/android/en-US` (texts, icon, feature graphic, screenshots via `tool/store_assets.py`); `docs/PLAY-STORE.md`
 - [x] Owner: replace `SUPPORT_EMAIL` in PRIVACY, SECURITY and CODE_OF_CONDUCT (faithsoul.feed@gmail.com)
-- [ ] Owner: make the repository public and switch on the settings in `docs/GOING-PUBLIC.md`
+- [x] Owner: make the repository public (21 Nov 2026; the 5 early commits with the owner's email kept, by choice)
+- [ ] Owner: switch on the remaining settings in `docs/GOING-PUBLIC.md` (Code security, Actions, rulesets); Vercel › Ignored Build Step command from PR #53
 - [x] Owner: Play developer account, create the app, first internal-testing upload (versionCode 2501, 7 Nov 2026). Build `8d24cea5` re-signed with the new upload key (SHA-1 `CB:CF:CF:C7:…:AD:5D`), which is now in EAS — see `docs/PLAY-STORE.md` › Upload key
 - [x] Next EAS production build: 0.25.2 (versionCode 2502, build `e2b2d60a`) signed with the upload key `CB:CF:CF:C7:…:AD:5D`, accepted on internal testing; drops `ACTIVITY_RECOGNITION` so the Health apps form no longer applies
 - [ ] Owner: closed test with at least 12 testers for 14 days before production (new personal accounts)
@@ -242,10 +250,11 @@ destructive.
 - [x] "Publish OTA update" never ran: fixed by the owner reconnecting the repo on expo.dev (6 Nov); the PR #35 merge started the first run
 - [x] Confirm the first "Publish OTA update" runs succeed: 6 Nov, PR #35 at 16:53 UTC and v0.25.0 at 17:26 UTC, for runtime `f069fcd…` (the 0.24.1 APK). Each run waits roughly 20 minutes in the EAS queue
 - [ ] iOS home-screen widget (expo-widgets can show what's playing, but its buttons can't reach the player; D-026)
-- [ ] Hardware headset next/previous buttons seek instead of changing episode (AntennaPod's "Hardware forward button skips" setting)
+- [ ] Hardware headset next/previous buttons seek instead of changing episode (AntennaPod's "Hardware forward button skips" setting). Blocked: expo-audio sends the headset's and the notification's Next as the same `remoteNext` event, so telling them apart needs the expo-audio patch (D-025) extended
 - [ ] Skip silence and volume boost on iOS (needs an audio tap; D-025)
-- [ ] Ogg / Opus chapters (Vorbis comments) and Podlove Simple Chapters in the feed (D-027)
-- [ ] `flushPosition` marks an episode played inside the smart-mark tail but doesn't dequeue or delete it like `onFinished` does
+- [ ] Ogg / Opus chapters (Vorbis comments) (D-027)
+- [x] Podlove Simple Chapters in the feed (Phase 22c)
+- [x] `flushPosition` marks an episode played inside the smart-mark tail but doesn't dequeue or delete it like `onFinished` does (Phase 22b)
 - [x] A speed chosen in the player isn't saved (fixed by Phase 4's speed sheet)
 - [x] Refresh interval is only checked when the app opens (fixed by Phase 17a's background refresh)
-- [ ] `fetchOlderFeedEpisodes`: a later refresh restores the first page's `next_page_url` (COALESCE), so older pages can be re-fetched; harmless (upserts dedupe) but wasteful
+- [x] `fetchOlderFeedEpisodes`: a later refresh restores the first page's `next_page_url` (COALESCE), so older pages can be re-fetched (Phase 22a)

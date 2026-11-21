@@ -1,6 +1,9 @@
 import { XMLParser } from 'fast-xml-parser';
 
+import type { Chapter } from '../player/chapters';
 import { parseDate, parseDuration } from '../util/time';
+
+import { parsePodloveChapters } from './podloveChapters';
 
 export type ParsedEpisode = {
   guid: string;
@@ -16,6 +19,8 @@ export type ParsedEpisode = {
   season: number | null;
   episodeNumber: number | null;
   chaptersUrl: string | null;
+  /** Podlove Simple Chapters written into the feed, if any. */
+  chapters: Chapter[] | null;
 };
 
 export type ParsedFeed = {
@@ -214,6 +219,7 @@ function parseItem(item: Node, base: string, feedImage: string | null): ParsedEp
     season: toInt(item['itunes:season']),
     episodeNumber: toInt(item['itunes:episode']),
     chaptersUrl,
+    chapters: parsePodloveChapters(item['psc:chapters'], base),
   };
 }
 
