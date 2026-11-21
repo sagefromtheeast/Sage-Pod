@@ -775,3 +775,44 @@ item with no native code.
 
 **Revisit** if the owner wants the shared PNG, or a recap for other periods.
 
+
+## D-031 — Solid bars by default, Sage Pod's own dialogs, and a rebuilt swipe
+
+**Context.** After using the app on an Android tablet, the owner found the
+interface "too liquid": the tab bar and the player bar float over the lists
+as translucent capsules, which on Android are a blurred imitation of iOS 26
+glass and cover the last rows of every list. Swipe actions felt weak (they
+fired as soon as the row opened 50 px, with only an icon to say what would
+happen), and confirmations used the system `Alert` dialog. AntennaPod 3.13
+(November 2026) made its solid bottom navigation the only layout and added
+Move to bottom and Share as queue swipes.
+
+**Decision (lead developer, owner asked for it).**
+- The tab bar and player bar dock as solid bars along the bottom edge
+  (`TabBar`, a docked `MiniPlayer`), with a Material 3 pill behind the
+  selected tab. Glass stays available as Settings › User interface › Glass
+  effects (`glassEffects`, default off); with it on, everything is as
+  before. Reduce Transparency still forces solid surfaces.
+- Every `Alert.alert` goes through `showDialog` (`src/ui/Dialog.tsx`), which
+  takes the same arguments: a card in the theme's colours with an icon,
+  Cancel as a text button, the confirming action filled green and a
+  destructive one filled red, Back and the scrim running Cancel. Dialogs
+  queue rather than stack. The logic (`dialogModel.ts`) is unit-tested.
+- Swipes are a Reanimated pan (`swipeMath.ts`, unit-tested): the row follows
+  the finger over a strip that names the action; past a commit point (a third
+  of the row, 72–160 dp) the strip fills with the action's colour and the
+  phone ticks; letting go there slides the row off and runs the action,
+  letting go short springs back. A vertical drag still scrolls. Screen
+  readers get the swipes as row actions.
+- Queue swipes gain Move to bottom and Share (Share on every list), as in
+  AntennaPod 3.13; a kept-sorted queue disables both moves.
+- The undo toast slides in and out.
+
+**Consequences.**
+- No new dependency or native code: everything ships over the air.
+- One new setting key, `glassEffects`; no schema change.
+- Not taken from 3.13: the password on the Add podcast screen (parental
+  control) and resizable widgets, listed in `TASKS.md` under later.
+
+**Revisit** if the owner wants glass back by default, or AntennaPod's
+swipe-then-confirm behaviour for deletions.

@@ -1,8 +1,12 @@
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { usePlayerState } from '@/player';
+
+import { useGlassEffects } from './glass';
 import { MiniPlayer } from './MiniPlayer';
 import { MINI_PLAYER_HEIGHT, space } from './theme';
+import { useTheme } from './useTheme';
 
 /**
  * The mini player on pushed screens (podcast, episode, lists), where there is
@@ -11,7 +15,24 @@ import { MINI_PLAYER_HEIGHT, space } from './theme';
  */
 export function MiniPlayerDock({ hidden = false }: { hidden?: boolean }) {
   const insets = useSafeAreaInsets();
-  if (hidden) return null;
+  const theme = useTheme();
+  const glass = useGlassEffects();
+  const hasEpisode = usePlayerState().episode !== null;
+  if (hidden || !hasEpisode) return null;
+  if (!glass) {
+    // Docked to the bottom edge, solid down through the gesture area.
+    return (
+      <View
+        style={[
+          styles.dock,
+          styles.solid,
+          { backgroundColor: theme.surface, borderTopColor: theme.border, paddingBottom: insets.bottom },
+        ]}
+      >
+        <MiniPlayer />
+      </View>
+    );
+  }
   return (
     <View style={[styles.dock, { paddingBottom: Math.max(insets.bottom, space.sm) }]} pointerEvents="box-none">
       <MiniPlayer />
@@ -31,5 +52,8 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
+  },
+  solid: {
+    borderTopWidth: StyleSheet.hairlineWidth,
   },
 });

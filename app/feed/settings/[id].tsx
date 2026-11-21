@@ -1,6 +1,6 @@
 import { Stack, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Alert, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import { Platform, ScrollView, StyleSheet, View } from 'react-native';
 
 import { getFeed, setFeedPrefs, setFeedUrl, type FeedPrefs } from '@/db/feeds';
 import { useSetting } from '@/db/settings';
@@ -25,6 +25,7 @@ import { refreshFeed } from '@/feed/sync';
 import { askForNotifications } from '@/notify';
 import { PLAYBACK_RATES, player } from '@/player';
 import { supportsAudioEffects } from '@/player/audioExtras';
+import { showDialog } from '@/ui/Dialog';
 import { SettingsOptions, SettingsSection, SettingsSwitch, SettingsTextInput } from '@/ui/SettingsRow';
 import { space } from '@/ui/theme';
 import { showToast } from '@/ui/UndoToast';
@@ -94,7 +95,7 @@ export default function FeedSettingsScreen() {
     try {
       await setFeedCredentials(feedId, feed.feed_url, next);
     } catch (error) {
-      Alert.alert("Couldn't save the login", error instanceof Error ? error.message : String(error));
+      showDialog("Couldn't save the login", error instanceof Error ? error.message : String(error));
       return;
     }
     // Tried at once; a refusal shows on the podcast page's banner.
@@ -117,7 +118,7 @@ export default function FeedSettingsScreen() {
         // Reads the new address now; a failure shows on the podcast page's banner.
         await refreshFeed({ ...feed, feed_url: url, etag: null, last_modified: null }).catch(() => undefined);
       } catch (error) {
-        Alert.alert("Couldn't change the address", error instanceof Error ? error.message : String(error));
+        showDialog("Couldn't change the address", error instanceof Error ? error.message : String(error));
       }
     },
     [feed, feedId]

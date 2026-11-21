@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { AccessibilityInfo, Platform } from 'react-native';
 
+import { useSetting } from '@/db/settings';
+
 export type GlassCapabilityLevel =
   | 'native_liquid_glass' // iOS 26+ native UIGlassEffect and GlassContainer
   | 'blur_fallback'       // Android & iOS < 26 with BlurView
@@ -26,6 +28,7 @@ function checkNativeGlass(): boolean {
  * Listens for system "Reduce Transparency" accessibility changes dynamically.
  */
 export function useGlassCapability(): GlassCapabilityLevel {
+  const enabled = useSetting('glassEffects');
   const [reduceTransparency, setReduceTransparency] = useState(false);
   const [hasNativeGlass] = useState(() => checkNativeGlass());
 
@@ -49,7 +52,8 @@ export function useGlassCapability(): GlassCapabilityLevel {
     };
   }, []);
 
-  if (reduceTransparency) {
+  // Glass is opt-in (Settings › User interface › Glass effects).
+  if (!enabled || reduceTransparency) {
     return 'solid_surface';
   }
 
@@ -57,10 +61,10 @@ export function useGlassCapability(): GlassCapabilityLevel {
     return 'native_liquid_glass';
   }
 
-  // Web and platforms without blur support can fallback to solid surface if needed
-  if (Platform.OS === 'web') {
-    return 'blur_fallback';
-  }
-
   return 'blur_fallback';
+}
+
+/** Whether the tab bar and mini player float as glass capsules (opt-in) or dock as solid bars. */
+export function useGlassEffects(): boolean {
+  return useSetting('glassEffects');
 }

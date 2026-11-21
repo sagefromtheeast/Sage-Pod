@@ -2,7 +2,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Alert,
   FlatList,
   Linking,
   Pressable,
@@ -34,6 +33,7 @@ import { useQuery } from '@/db/useQuery';
 import { describeFilter, isFiltered, parseEpisodeFilter } from '@/feed/episodeFilter';
 import { fetchOlderFeedEpisodes, refreshFeed, refreshFeedCompletely, subscribe } from '@/feed/sync';
 import { player } from '@/player';
+import { showDialog } from '@/ui/Dialog';
 import { EpisodeList } from '@/ui/episode/EpisodeList';
 import { ActionSheet, type IconName } from '@/ui/ActionSheet';
 import { Artwork } from '@/ui/Artwork';
@@ -107,7 +107,7 @@ export default function FeedScreen() {
     try {
       await fetchOlderFeedEpisodes(feedId);
     } catch (error) {
-      Alert.alert(
+      showDialog(
         "Couldn't load older episodes",
         error instanceof Error ? error.message : 'Check your connection and try again.'
       );
@@ -152,7 +152,7 @@ export default function FeedScreen() {
       await subscribe(feed.feed_url);
       showToast(`Subscribed to ${feed.title}`);
     } catch (error) {
-      Alert.alert('Could not subscribe', error instanceof Error ? error.message : String(error));
+      showDialog('Could not subscribe', error instanceof Error ? error.message : String(error));
     } finally {
       setSubscribing(false);
     }
@@ -205,7 +205,7 @@ export default function FeedScreen() {
             icon: 'trash-outline' as IconName,
             destructive: true,
             onPress: () =>
-              Alert.alert(`Delete ${feed.title}?`, 'Its episodes, your progress, and any downloads are removed from this device.', [
+              showDialog(`Delete ${feed.title}?`, 'Its episodes, your progress, and any downloads are removed from this device.', [
                 { text: 'Cancel', style: 'cancel' },
                 {
                   text: 'Delete',
@@ -237,7 +237,7 @@ export default function FeedScreen() {
             label: 'Mark all as played',
             icon: 'checkmark-done-circle-outline' as IconName,
             onPress: () =>
-              Alert.alert('Mark all as played?', `All ${feed.episode_count} episodes.`, [
+              showDialog('Mark all as played?', `All ${feed.episode_count} episodes.`, [
                 { text: 'Cancel', style: 'cancel' },
                 { text: 'Mark all', onPress: () => void markFeedPlayed(feed.id) },
               ]),

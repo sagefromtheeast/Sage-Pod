@@ -1,6 +1,5 @@
 import { reloadAppAsync } from 'expo';
 import { Directory, File } from 'expo-file-system';
-import { Alert } from 'react-native';
 
 import { createIn } from '@/backup/files';
 import { exportFileName, exportMimeType, favouritesHtml, subscriptionsHtml, type ExportKind } from '@/backup/formats';
@@ -17,6 +16,7 @@ import { isRefreshing } from '@/feed/sync';
 import { player } from '@/player';
 import { isDownloading } from '@/player/downloads';
 import { showToast } from '@/ui/UndoToast';
+import { showDialog } from './Dialog';
 
 /** The pickers reject, rather than resolve, when the listener backs out. */
 function wasCancelled(error: unknown): boolean {
@@ -24,7 +24,7 @@ function wasCancelled(error: unknown): boolean {
 }
 
 function explain(title: string, error: unknown): void {
-  Alert.alert(title, error instanceof Error ? error.message : String(error));
+  showDialog(title, error instanceof Error ? error.message : String(error));
 }
 
 async function contentFor(kind: ExportKind): Promise<string | Uint8Array> {
@@ -71,7 +71,7 @@ export async function exportToFolder(kind: ExportKind): Promise<boolean> {
  */
 function backgroundWorkBlocksRestore(): boolean {
   if (!isRefreshing() && !isDownloading()) return false;
-  Alert.alert(
+  showDialog(
     'Sage Pod is busy',
     'Podcasts are refreshing or episodes are downloading. Let them finish, or cancel the downloads, then try again.'
   );
@@ -103,12 +103,12 @@ export async function importDatabase(): Promise<void> {
   }
   if (!staged.check.ok) {
     await discardStagedBackup(staged);
-    Alert.alert("Can't restore this file", staged.check.reason);
+    showDialog("Can't restore this file", staged.check.reason);
     return;
   }
 
   const { feeds, episodes } = staged.info;
-  Alert.alert(
+  showDialog(
     'Replace everything?',
     `This backup has ${feeds} podcast${feeds === 1 ? '' : 's'} and ${episodes} episode${episodes === 1 ? '' : 's'}. ` +
       'It replaces all of Sage Pod’s data on this phone: subscriptions, queue, progress, history and settings. ' +
@@ -132,7 +132,7 @@ export async function importDatabase(): Promise<void> {
             } catch (error) {
               // The player has let go of its episode, so restart either way;
               // a failed restore leaves the old data in place.
-              Alert.alert("Couldn't restore the backup", error instanceof Error ? error.message : String(error), [
+              showDialog("Couldn't restore the backup", error instanceof Error ? error.message : String(error), [
                 { text: 'Restart', onPress: () => void reloadAppAsync('Restore failed') },
               ]);
             }

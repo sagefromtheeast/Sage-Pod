@@ -2,7 +2,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useRouter } from 'expo-router';
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import {
-  Alert,
   Pressable,
   RefreshControl,
   StyleSheet,
@@ -20,6 +19,7 @@ import { useQuery } from '@/db/useQuery';
 import { refreshAllFeeds } from '@/feed/sync';
 import { player, useCurrentEpisodeId } from '@/player';
 import { queueTimeLeft } from '@/player/queueSorting';
+import { showDialog } from '@/ui/Dialog';
 import { EpisodeList } from '@/ui/episode/EpisodeList';
 import { DraggableList } from '@/ui/DraggableList';
 import { EmptyState } from '@/ui/EmptyState';
@@ -36,7 +36,8 @@ import { useTheme } from '@/ui/useTheme';
 import { formatDuration } from '@/util/time';
 
 // A constant, so the memoised rows don't see a new array on every render.
-const NO_MOVE_TO_TOP = ['moveToTop'] as const;
+// A kept-sorted queue decides the order itself, so manual moves are off.
+const NO_MANUAL_MOVES = ['moveToTop', 'moveToBottom'] as const;
 
 const matches = (episode: EpisodeWithFeed, term: string) =>
   episode.title.toLowerCase().includes(term) || episode.feed_title.toLowerCase().includes(term);
@@ -79,7 +80,6 @@ export default function QueueScreen() {
     else void player.load(episode, { autoPlay: true });
   }, []);
 
-
   const refresh = useCallback(async () => {
     setRefreshing(true);
     try {
@@ -93,7 +93,7 @@ export default function QueueScreen() {
     void setSetting('queueLocked', !locked);
     if (!locked && !lockExplained) {
       void setSetting('queueLockExplained', true);
-      Alert.alert(
+      showDialog(
         'Queue locked',
         "Episodes can't be dragged or swiped while the queue is locked. Unlock it from this menu."
       );
@@ -101,7 +101,7 @@ export default function QueueScreen() {
   }, [locked, lockExplained]);
 
   const confirmClear = useCallback(() => {
-    Alert.alert('Clear queue?', 'This removes every episode from the queue. Downloads are kept.', [
+    showDialog('Clear queue?', 'This removes every episode from the queue. Downloads are kept.', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Clear',
@@ -247,8 +247,8 @@ export default function QueueScreen() {
               screen="queue"
               onPlay={play}
               swipeEnabled={!locked && !selection.active}
-              // Kept sorted: moving to the top would be undone at once.
-              unavailable={keptSorted ? NO_MOVE_TO_TOP : undefined}
+              // Kept sorted: a manual move would be undone at once.
+              unavailable={keptSorted ? NO_MANUAL_MOVES : undefined}
               actionHooks={actionHooks}
               selecting={selection.active}
               selected={selection.selected.has(item.id)}

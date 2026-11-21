@@ -1,6 +1,6 @@
-import { Alert } from 'react-native';
 
 import { archiveFeeds, deleteFeed } from '@/db/feeds';
+import { showDialog } from '@/ui/Dialog';
 import { showToast } from '@/ui/UndoToast';
 
 /**
@@ -11,7 +11,7 @@ import { showToast } from '@/ui/UndoToast';
 export function askToUnsubscribe(feeds: readonly { id: number; title: string }[], onDone?: () => void): void {
   if (feeds.length === 0) return;
   const what = feeds.length === 1 ? feeds[0].title : `${feeds.length} podcasts`;
-  Alert.alert(
+  showDialog(
     `Unsubscribe from ${what}?`,
     'Archive keeps the episodes, your progress and downloads; you can subscribe again from the archive. Delete removes them from this device.',
     [

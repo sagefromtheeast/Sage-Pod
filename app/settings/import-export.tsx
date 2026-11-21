@@ -1,7 +1,6 @@
 import * as Clipboard from 'expo-clipboard';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Alert } from 'react-native';
 
 import {
   autoBackupFolderIsPicked,
@@ -15,6 +14,7 @@ import { AUTO_BACKUP_KEEP, fileNameFromUri } from '@/backup/schedule';
 import { useSetting } from '@/db/settings';
 import { exportOpml } from '@/feed/opml';
 import { exportToFolder, importDatabase } from '@/ui/backupActions';
+import { showDialog } from '@/ui/Dialog';
 import { importOpmlFile, importOpmlFromClipboard } from '@/ui/opmlImport';
 import { SettingsNote, SettingsScreen } from '@/ui/settings/SettingsScreen';
 import { useUpdateSetting } from '@/ui/settings/useUpdateSetting';
@@ -58,7 +58,7 @@ export default function ImportExportSettings() {
       return true;
     } catch (error) {
       if (!(error instanceof Error && /cancel/i.test(error.message))) {
-        Alert.alert("Couldn't open the folder picker", error instanceof Error ? error.message : String(error));
+        showDialog("Couldn't open the folder picker", error instanceof Error ? error.message : String(error));
       }
       return false;
     } finally {
@@ -75,7 +75,7 @@ export default function ImportExportSettings() {
       try {
         if (await runAutoBackupIfDue()) showToast('Backup saved');
       } catch (error) {
-        Alert.alert("Couldn't write the backup", error instanceof Error ? error.message : String(error));
+        showDialog("Couldn't write the backup", error instanceof Error ? error.message : String(error));
       }
       readAutoBackup();
     });

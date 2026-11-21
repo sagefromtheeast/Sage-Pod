@@ -30,8 +30,25 @@ yarn-error.*
 .DS_Store
 *.pem
 
-# local env files
-.env*.local
+# Secrets and signing: none of these belong in a public repository.
+.env
+.env.*
+!.env.example
+*.keystore
+credentials.json
+credentials/
+*service-account*.json
+google-services.json
+GoogleService-Info.plist
+
+# Built app packages
+*.aab
+*.apk
+*.ipa
+
+# Personal AI-agent settings and installed skills
+.claude/
+skills-lock.json
 
 # typescript
 *.tsbuildinfo

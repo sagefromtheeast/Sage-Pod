@@ -1,12 +1,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
 
 import { listSubscribedUrls } from '@/db/feeds';
 import { useQuery } from '@/db/useQuery';
 import { feedUrlKey } from '@/discover/providers';
 import { getOpmlDraft, importFeeds } from '@/feed/opml';
+import { showDialog } from '@/ui/Dialog';
 import { radius, space, type as typography } from '@/ui/theme';
 import { useLayout } from '@/ui/useLayout';
 import { showToast } from '@/ui/UndoToast';
@@ -67,7 +68,7 @@ export default function OpmlImportScreen() {
         ? `${result.failures.length} couldn't be reached:\n${result.failures.map((f) => `• ${f.title}`).join('\n')}`
         : null,
     ].filter(Boolean);
-    Alert.alert('Import finished', lines.join('\n\n'), [{ text: 'OK', onPress: () => router.back() }]);
+    showDialog('Import finished', lines.join('\n\n'), [{ text: 'OK', onPress: () => router.back() }]);
   };
 
   return (

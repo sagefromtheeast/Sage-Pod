@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Stack } from 'expo-router';
 import { useCallback, useMemo, useState } from 'react';
-import { Alert, Pressable, SectionList, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, SectionList, StyleSheet, Text, TextInput, View } from 'react-native';
 
 import { runEpisodeAction } from '@/actions/runEpisodeAction';
 import { deleteDownloadByUser } from '@/actions/deleteDownloads';
@@ -20,6 +20,7 @@ import {
   sizeOf,
   sortDownloads,
 } from '@/player/downloadView';
+import { showDialog } from '@/ui/Dialog';
 import { EpisodeList } from '@/ui/episode/EpisodeList';
 import { ActionSheet } from '@/ui/ActionSheet';
 import { DownloadLogSheet } from '@/ui/downloads/DownloadLogSheet';
@@ -79,7 +80,7 @@ export default function DownloadsScreen() {
       return;
     }
     const bytes = targets.reduce((sum, episode) => sum + sizeOf(episode), 0);
-    Alert.alert(
+    showDialog(
       `Delete ${targets.length} played download${targets.length === 1 ? '' : 's'}?`,
       `Frees ${formatBytes(bytes)}. Favourites are kept.`,
       [

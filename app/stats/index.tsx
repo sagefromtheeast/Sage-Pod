@@ -1,6 +1,6 @@
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { setSetting, useSetting } from '@/db/settings';
 import {
@@ -32,6 +32,7 @@ import {
 import { ActionSheet } from '@/ui/ActionSheet';
 import { Artwork } from '@/ui/Artwork';
 import { Chip } from '@/ui/Chip';
+import { showDialog } from '@/ui/Dialog';
 import { EmptyState } from '@/ui/EmptyState';
 import { triggerHaptic } from '@/ui/haptics';
 import { OverflowMenu } from '@/ui/OverflowMenu';
@@ -90,7 +91,7 @@ export default function StatisticsScreen() {
   );
 
   const confirmReset = () => {
-    Alert.alert(
+    showDialog(
       'Reset statistics?',
       'Statistics start again from now. Podcasts, episodes, played states and listening history are kept.',
       [
