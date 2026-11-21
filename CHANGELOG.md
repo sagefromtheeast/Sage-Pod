@@ -1,3 +1,17 @@
+## [0.28.0](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.27.0...v0.28.0) (2026-11-21)
+
+### 🚀 New Features
+
+* read chapters from Ogg, Opus and FLAC files ([72c9237](https://github.com/sagefromtheeast/Sage-Pod/commit/72c9237c30867abc220b127c110acd63da78e82e))
+
+### 🐛 Bug Fixes
+
+* find Ogg chapters in multiplexed files and after large cover art ([5976edb](https://github.com/sagefromtheeast/Sage-Pod/commit/5976edbb50f5da8dff82c5175e24159246d3d5d2))
+
+### 📚 Documentation
+
+* Phase 23 in TASKS.md and D-027 ([f3ed635](https://github.com/sagefromtheeast/Sage-Pod/commit/f3ed63596026d899fb8bcd7c89be852fa412d7f5))
+
 ## [0.27.0](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.26.0...v0.27.0) (2026-11-21)
 
 ### 🚀 New Features
