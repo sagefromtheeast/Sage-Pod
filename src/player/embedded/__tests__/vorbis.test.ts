@@ -99,6 +99,31 @@ describe('Ogg and FLAC chapters', () => {
     assert.ok(reads.every(([, length]) => length <= 4096));
   });
 
+  it('follows the audio stream in a multiplexed file', async () => {
+    const opus = ogg([[...ascii('OpusHead')], [...ascii('OpusTags'), ...commentBlock(CHAPTERS)]], 1, 7);
+    const other = ogg([[0x80, ...ascii('theora'), 0], [0x81, ...ascii('theora'), ...commentBlock(['CHAPTER001=00:00:09'])]], 1, 9);
+    // Split both into pages and interleave them, other stream first, as a muxer does.
+    const pages = (file: Uint8Array) => {
+      const out: Uint8Array[] = [];
+      for (let at = 0; at + 27 <= file.length && Buffer.from(file.subarray(at, at + 4)).toString('latin1') === 'OggS'; ) {
+        const end = at + 27 + file[at + 26] + file.subarray(at + 27, at + 27 + file[at + 26]).reduce((a, b) => a + b, 0);
+        out.push(file.subarray(at, end));
+        at = end;
+      }
+      return out;
+    };
+    const a = pages(other);
+    const b = pages(opus);
+    const mixed: number[] = [];
+    // Both first pages (the identification packets) come first, then the rest alternate.
+    for (const page of [a[0], b[0]]) append(mixed, [...page]);
+    for (let i = 1; i < Math.max(a.length, b.length); i++) {
+      if (a[i]) append(mixed, [...a[i]]);
+      if (b[i]) append(mixed, [...b[i]]);
+    }
+    assert.deepEqual(await readEmbeddedChapters(bufferSource(Uint8Array.from(mixed))), EXPECTED);
+  });
+
   it('has none without chapter comments, or for another codec', async () => {
     assert.deepEqual(await readEmbeddedChapters(bufferSource(ogg([[...ascii('OpusHead')], [...ascii('OpusTags'), ...commentBlock(['TITLE=x'])]]))), []);
     assert.deepEqual(await readEmbeddedChapters(bufferSource(ogg([[...ascii('Speex   ')], [...ascii('whatever')]]))), []);

@@ -29,33 +29,56 @@ const le32 = (b: Uint8Array, at: number) => (b[at] | (b[at + 1] << 8) | (b[at + 
 class Spans {
   private readonly src: ByteSource;
   private readonly spans: { offset: number; length: number }[];
+  /** Where each span starts in the joined run, for a binary search. */
+  private readonly starts: number[];
   readonly length: number;
 
   constructor(src: ByteSource, spans: { offset: number; length: number }[]) {
     this.src = src;
     this.spans = spans;
-    this.length = spans.reduce((total, span) => total + span.length, 0);
+    this.starts = [];
+    let total = 0;
+    for (const span of spans) {
+      this.starts.push(total);
+      total += span.length;
+    }
+    this.length = total;
+  }
+
+  /** The span holding position `at` of the joined run. */
+  private spanAt(at: number): number {
+    let low = 0;
+    let high = this.spans.length - 1;
+    while (low < high) {
+      const mid = (low + high + 1) >> 1;
+      if (this.starts[mid] <= at) low = mid;
+      else high = mid - 1;
+    }
+    return low;
   }
 
   async read(at: number, length: number): Promise<Uint8Array> {
     const out = new Uint8Array(Math.max(0, Math.min(length, this.length - at)));
     let filled = 0;
-    let start = 0;
-    for (const span of this.spans) {
-      if (filled === out.length) break;
-      const end = start + span.length;
-      if (at + filled < end) {
-        const from = at + filled - start;
-        const take = Math.min(span.length - from, out.length - filled);
-        const got = await this.src.read(span.offset + from, take);
-        out.set(got, filled);
-        filled += got.length;
-        if (got.length < take) break;
-      }
-      start = end;
+    for (let i = this.spanAt(at); i < this.spans.length && filled < out.length; i++) {
+      const span = this.spans[i];
+      const from = at + filled - this.starts[i];
+      const take = Math.min(span.length - from, out.length - filled);
+      const got = await this.src.read(span.offset + from, take);
+      out.set(got, filled);
+      filled += got.length;
+      if (got.length < take) break;
     }
     return out.subarray(0, filled);
   }
+}
+
+/** Whether a stream's first packet starts a Vorbis or Opus stream. */
+function isAudioIdentification(head: Uint8Array): boolean {
+  return (
+    (head.length >= 7 && head[0] === 1 && ascii(head, 1, 6) === 'vorbis') ||
+    (head.length >= 8 && ascii(head, 0, 8) === 'OpusHead')
+  );
 }
 
 /** Where the Ogg stream's second packet (the comment header) lies in the file. */
@@ -71,13 +94,20 @@ async function oggCommentPacket(src: ByteSource): Promise<Spans | null> {
     const lacing = await src.read(offset + 27, segments);
     if (lacing.length < segments) return null;
     const pageSerial = le32(header, 14);
-    serial ??= pageSerial;
     let at = offset + 27 + segments;
-    // Pages of another stream (a multiplexed file) don't belong to ours.
+    // A multiplexed file starts with every stream's first page (flag 2), each
+    // holding that stream's identification packet: follow the audio one.
+    if (serial === null && header[5] & 2 && isAudioIdentification(await src.read(at, 8))) serial = pageSerial;
+    // Pages of another stream don't belong to ours.
     const ours = pageSerial === serial;
     for (let i = 0; i < segments; i++) {
       const size = lacing[i];
-      if (ours && packet === 1 && size > 0) spans.push({ offset: at, length: size });
+      if (ours && packet === 1 && size > 0) {
+        // Segments of one page sit end to end: keep them as one span.
+        const last = spans[spans.length - 1];
+        if (last && last.offset + last.length === at) last.length += size;
+        else spans.push({ offset: at, length: size });
+      }
       at += size;
       // A lacing value under 255 ends the packet.
       if (ours && size < 255) {
