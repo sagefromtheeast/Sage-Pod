@@ -20,6 +20,7 @@ import { splitCredentials, type FeedCredentials } from './auth';
 import { episodeUpdateBatches, UPDATE_CHANGED_EPISODES } from './episodeWrites';
 import { feedCredentialsFor, setFeedCredentials } from './credentials';
 import { fetchFeed, normalizeFeedUrl } from './fetch';
+import { ADVANCE_PAGE_CURSOR, cursorAfterPage, REFRESH_PAGE_CURSOR } from './pageCursor';
 import type { ParsedEpisode, ParsedFeed } from './parser';
 
 export type SyncResult = {
@@ -136,13 +137,15 @@ async function updateFeedRow(
   feedId: number,
   parsed: ParsedFeed,
   etag: string | null,
-  lastModified: string | null
+  lastModified: string | null,
+  full = false
 ): Promise<void> {
+  await getDb().runAsync(REFRESH_PAGE_CURSOR, full ? 1 : 0, parsed.nextPageUrl ?? null, feedId);
   await getDb().runAsync(
     `UPDATE feeds
         SET title = ?, author = ?, description = ?, image_url = ?, link = ?,
             language = ?, explicit = ?, etag = ?, last_modified = ?, last_refreshed_at = ?,
-            next_page_url = COALESCE(?, next_page_url), funding = ?, last_refresh_error = NULL
+            funding = ?, last_refresh_error = NULL
       WHERE id = ?`,
     parsed.title,
     parsed.author,
@@ -154,7 +157,6 @@ async function updateFeedRow(
     etag,
     lastModified,
     Date.now(),
-    parsed.nextPageUrl ?? null,
     fundingJson(parsed),
     feedId
   );
@@ -325,7 +327,7 @@ async function refreshFeedNow(feed: FeedRow, options: { full?: boolean; quiet?: 
     parsed.episodes,
     subscribed && action === 'inbox'
   );
-  await updateFeedRow(feed.id, parsed, etag, lastModified);
+  await updateFeedRow(feed.id, parsed, etag, lastModified, options.full);
 
   const addToQueue = subscribed && action === 'queue';
   // AntennaPod's per-podcast "Episode notifications".
@@ -465,11 +467,7 @@ export async function fetchOlderFeedEpisodes(
     await feedCredentialsFor(feedId, feed.next_page_url)
   );
   const { count: inserted } = await upsertEpisodes(feedId, parsed.episodes, false);
-  await db.runAsync(
-    'UPDATE feeds SET next_page_url = ? WHERE id = ?',
-    parsed.nextPageUrl ?? null,
-    feedId
-  );
+  await db.runAsync(ADVANCE_PAGE_CURSOR, cursorAfterPage(parsed.nextPageUrl), feedId);
 
   return {
     newEpisodes: inserted,
