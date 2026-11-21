@@ -1,3 +1,35 @@
+## [0.26.0](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.25.2...v0.26.0) (2026-11-21)
+
+### 🚀 New Features
+
+* confirmations and messages in Sage Pod's own dialog ([3575770](https://github.com/sagefromtheeast/Sage-Pod/commit/357577067c270ce90cc4b64c08470ab20d56ecce))
+* dock the tab bar and player bar as solid bars, with glass opt-in ([44fae6c](https://github.com/sagefromtheeast/Sage-Pod/commit/44fae6c2cae655be4e5d3f4f93082d39a1ac4d0b))
+* swipe queue episodes to the bottom, or share them ([5d0e863](https://github.com/sagefromtheeast/Sage-Pod/commit/5d0e8634b89d14d421aa5f5be478c12e9f8495da))
+* swipes that show what they will do and snap when they commit ([a863c5f](https://github.com/sagefromtheeast/Sage-Pod/commit/a863c5f67fc40ddffaa636c654f272aa141a55e6))
+
+### 🐛 Bug Fixes
+
+* **deps:** update fast-xml-parser to 5.12.1 ([6e12053](https://github.com/sagefromtheeast/Sage-Pod/commit/6e12053a1b029c9f46849712d64dedce85211f20))
+* don't commit a cancelled swipe; keep dialog buttons on short screens ([0c556a2](https://github.com/sagefromtheeast/Sage-Pod/commit/0c556a2a0fd6fb532e0e0890dfe8452a7e64a9fd))
+* update Expo SDK 57 packages to their latest patch releases ([c687f6c](https://github.com/sagefromtheeast/Sage-Pod/commit/c687f6c8190d3770d55a55d1d359aba8c429aa7f))
+
+### 📚 Documentation
+
+* record D-031 (solid bars, own dialogs, rebuilt swipes) and Phase 21 ([45cfcc1](https://github.com/sagefromtheeast/Sage-Pod/commit/45cfcc1cb72830d12088ab7fc6ea54c4530c7ffa))
+* record that 0.25.2 from EAS was accepted with the named upload key ([485912d](https://github.com/sagefromtheeast/Sage-Pod/commit/485912d468610f019b847bf7f794af12724f5db2))
+
+### ✅ Tests
+
+* screenshot Sage Pod's dialogs and a swipe held past its commit point ([e4ed7fb](https://github.com/sagefromtheeast/Sage-Pod/commit/e4ed7fb56aa0a05566346a044ec9fdce1dab0bc7))
+
+### 🤖 CI/CD
+
+* don't keep the checkout token in the checks job ([08a2de0](https://github.com/sagefromtheeast/Sage-Pod/commit/08a2de01b66bf8bbfb118cb3dddd623e8c40aed5))
+
+### 🔧 Maintenance
+
+* remove personal agent files and ignore secrets before going public ([0e0e269](https://github.com/sagefromtheeast/Sage-Pod/commit/0e0e2694a70444c3cb76345f85e027004ca52b5b))
+
 ## [0.25.2](https://github.com/sagefromtheeast/Sage-Pod/compare/v0.25.1...v0.25.2) (2026-11-07)
 
 ### 🐛 Bug Fixes
