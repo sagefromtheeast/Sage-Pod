@@ -6,7 +6,7 @@
 
 **A podcast player that keeps your listening on your phone. Built with React Native and Expo.**
 
-[![Expo SDK](https://img.shields.io/badge/Expo_SDK-57-000020?logo=expo&logoColor=white)](https://expo.dev)
+[![Expo SDK](https://img.shields.io/badge/Expo_SDK-58-000020?logo=expo&logoColor=white)](https://expo.dev)
 [![React Native](https://img.shields.io/badge/React_Native-0.86-61DAFB?logo=react&logoColor=black)](https://reactnative.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
 [![New Architecture](https://img.shields.io/badge/New_Arch-Fabric-4ADE80)](https://reactnative.dev/architecture/landing-page)
@@ -63,7 +63,7 @@ npx expo run:ios              # or: npx expo run:android
 
 ## 🧩 Tech stack
 
-- **Expo SDK 57** · **React Native 0.86** · **New Architecture (Fabric)**
+- **Expo SDK 58** · **React Native 0.88** · **New Architecture (Fabric)**
 - **expo-router** for file-based navigation
 - **expo-audio** for playback + lock-screen controls
 - **expo-sqlite** for local, offline-first storage

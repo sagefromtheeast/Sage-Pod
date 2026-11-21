@@ -232,7 +232,7 @@ destructive.
 - [x] 24a: Expo SDK 58 (React Native 0.88, Gesture Handler 3, expo-router 58); type fixes for RN 0.88 and the new tab bar props; expo-doctor clean
 - [x] 24b: expo-audio patch rewritten for 58.0.12 (161 lines, was 973): single-player Next → `remoteNext`, skip silence, volume boost, iOS skip forward kept; 58's own skip intervals, Next button and unplug pause used instead of ours; Kotlin compiled locally
 - [x] 24c: widget resizable up to 260 dp tall; two-row layout with Next episode from 120 × 250 dp (`src/widget/layout.ts`, tests)
-- [ ] One EAS production build (owner approved: SDK 58 and widget together)
+- [x] One EAS production build (owner approved: SDK 58 and widget together): v0.29.0 (versionCode 2900, build `7b83da32`), then v0.29.1 (2901, build `9a105a05`, no Wi-Fi requirement)
 - [ ] On device: lock-screen and notification skip amounts and Next; skip silence; volume boost; unplug pauses; swipes, queue drag and seek bar on Gesture Handler 3; widget resized taller, Next from the widget
 - [x] Move `Gesture.*` to Gesture Handler 3's hook API (`usePanGesture`, `useTapGesture`, `useCompetingGestures`): swipe rows, queue drag handles, seek bar, glass segmented control
 

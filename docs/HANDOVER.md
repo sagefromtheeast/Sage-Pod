@@ -25,8 +25,8 @@ sections, the Queue toolbar, the Now Playing layout); the look stays Sage Pod's
 
 | | |
 |---|---|
-| Repo | `sagefromtheeast/Sage-Pod` (GitHub, private) |
-| Stack | Expo SDK 57, React Native 0.86 (New Architecture), expo-router, expo-audio, expo-sqlite, TypeScript strict |
+| Repo | `sagefromtheeast/Sage-Pod` (GitHub, public since 21 Nov 2026, GPL-3.0-or-later) |
+| Stack | Expo SDK 58, React Native 0.88 (New Architecture), expo-router 58, expo-audio 58 (patched), expo-sqlite, Gesture Handler 3, Reanimated 4, TypeScript strict |
 | Node | 22+ (the test runner uses `--experimental-strip-types`) |
 | EAS project | `@sag3-technologies/sage-pod` (projectId in `app.json` → `extra.eas.projectId`) |
 | Releases | semantic-release on every push to `main`; tags `vX.Y.Z`; version stamped into `app.json`/`package.json` |
@@ -50,13 +50,21 @@ sections, the Queue toolbar, the Now Playing layout); the look stays Sage Pod's
   merge commit (never squash), then confirm the release tag appeared.
   The Codex bot reviews each PR when it is opened. If it is out of quota (it
   says so in a comment), run `/code-review high origin/main...HEAD` yourself,
-  fix what is real, and merge only then.
+  fix what is real, and merge only then. Codex often flags the PR title as
+  "not a Conventional Commit": the title never becomes a commit, so reply
+  saying so and resolve the thread. Dependabot PRs (dev tooling only) may be
+  merged the same way once they're green and lockfile-only.
 - A **new native dependency** (anything that needs a new EAS build), or a
   change to the audio engine (see decision D-004).
 - A **visible design change** beyond moving features into AntennaPod's places
   (new colours, typography, navigation structure).
-- Anything **destructive**: deleting user data paths, force-pushing,
-  rewriting `main`, changing release tooling, secrets.
+- Anything **destructive**: deleting user data paths, force-pushing (never,
+  on any branch), rewriting `main`, changing release tooling, secrets.
+- **Secrets**: the upload keystore, its password and the Play service-account
+  JSON key belong to the owner and live in EAS. Never ask for them in chat and
+  never commit `.jks` or service-account files (`.gitignore` covers them). The
+  public contact address is faithsoul.feed@gmail.com; never put the owner's
+  personal email anywhere.
 - Requirements that contradict this guide, `AGENTS.md` or `DECISIONS.md`.
 
 When you stop, ask one clear question with a recommended answer.
@@ -90,7 +98,7 @@ When you stop, ask one clear question with a recommended answer.
   size tokens in `src/ui/theme.ts`; never duplicate them.
 - **Read before you write.** When porting an AntennaPod feature, read its source
   first, cite the file, and copy its defaults (thresholds, page sizes, order).
-- **Expo SDK 57 specifics**: follow `AGENTS.md`. In particular `Tabs` come from
+- **Expo SDK 58 specifics**: follow `AGENTS.md`. In particular `Tabs` come from
   `expo-router/js-tabs`, audio is `expo-audio`, files use `File`/`Directory`/`Paths`.
 
 ## 4. The phase loop (how every phase ships)
@@ -132,9 +140,8 @@ Conventional Commits are **load-bearing**: they decide the version.
   the PR decide the version and the plain "Merge pull request" commit is
   ignored. A squash would collapse them into the PR title, which isn't a
   Conventional Commit, and no release would be cut.
-- Give phase PRs a `feat:`-style title anyway (e.g. "feat: Phase 10 —
-  per-podcast settings"). The title never reaches `main`, but review bots
-  flag non-conventional titles every time.
+- Phase PR titles like "Phase 24: Expo SDK 58 and a taller widget" are fine:
+  the title never reaches `main`. If a bot flags it, reply and resolve.
 - Never hand-edit versions. `tool/set_app_version.sh` stamps them on release.
 - Don't put bare `#123`-style or `#hex` tokens in commit bodies; the changelog
   turns them into bogus issue links.
@@ -182,9 +189,13 @@ shots-tool/          screenshot harness (see its README)
 | `npx expo export --platform android` | catches Metro resolution errors |
 | `npm run shots -- <name>` / `npm run shots:diff` | before/after screenshots (web; layout, not native look) |
 | EAS `preview` build | installable APK for the owner's device (costs money; ask first) |
+| `./gradlew :expo-audio:compileReleaseKotlin` | compiles the patched expo-audio (see section 10) |
 
-The CI release workflow runs typecheck, tests and the version stamper before
-releasing, so a red check on `main` blocks the release.
+GitHub Actions (`.github/workflows/`): **Checks** (typecheck, tests,
+expo-doctor, export) on every PR, **CodeQL**, and **semantic-release** on
+`main`. The repo is public, so Actions minutes are free. A red check on
+`main` blocks the release. Vercel deploys the static site; its Ignored Build
+Step skips previews when the site didn't change.
 
 ## 8. Builds on a device
 
@@ -195,14 +206,35 @@ releasing, so a red check on `main` blocks the release.
 - A finished preview build gives an `.apk` URL the owner opens on their phone.
 - Native config changes (`app.json` plugins, orientation, permissions, new
   native packages) only take effect in a new build.
+- **Google Play**: run the EAS workflow `.eas/workflows/release-play.yml`
+  (Expo MCP `workflow_run`, on the release tag, after asking the owner). It
+  builds the `production` AAB and submits it to the **internal** track as a
+  **draft**; the owner rolls it out in Play Console. It skips listing
+  metadata and images on purpose (see TASKS.md). `eas-cli` isn't logged in
+  inside cloud sessions, so use EAS workflows, not `eas submit` or the MCP
+  `build_submit` tool.
+- versionCode is derived from the version (0.29.1 → 2901) by
+  `tool/set_app_version.sh`.
+- Play flags implied hardware features: a permission like `ACCESS_WIFI_STATE`
+  makes `android.hardware.wifi` required. Unwanted permissions go in
+  `app.json` › `android.blockedPermissions`; check the merged manifest with
+  `./gradlew :app:processReleaseMainManifest`.
+- EAS build logs download Brotli-compressed; decode them before reading.
 
 ## 9. Known pitfalls
 
-- `expo-router` has no React Navigation dependency in SDK 57; don't import
-  `@react-navigation/*`.
-- expo-audio 57 limits: lock-screen seek is fixed at 10 s; no next/previous or
-  custom lock-screen buttons; no skip-silence; volume can't exceed 1.0; no
-  buffered-position API. Don't promise these without native work (D-004).
+- `expo-router` has no React Navigation dependency; don't import
+  `@react-navigation/*`. The custom tab bar gets `emitter` and
+  `navigateToTab` props in expo-router 58.
+- expo-audio 58 has its own skip intervals, Next button and unplug pause;
+  our patch adds single-player Next (`remoteNext`), skip silence and volume
+  boost on Android (D-032). iOS has no skip silence or volume boost, and the
+  headset's Next can't be told apart from the notification's. Don't promise
+  these without native work.
+- `npx expo install --fix` can fail with ERESOLVE: run it with
+  `--legacy-peer-deps`, then a plain `npm install` so `npm ci` stays clean.
+- expo-audio is pinned to an exact version because the patch is; bump the
+  patch with it.
 - The web screenshot build needs the shims in `metro.config.js`; native builds
   ignore them. After a schema migration, update `shots-tool/seed.mjs`.
 - Don't kill processes with `pkill -f <pattern>` that also matches your own
@@ -222,53 +254,42 @@ releasing, so a red check on `main` blocks the release.
 - The owner usually works from a phone. Prefer EAS builds and links over
   "run this on your laptop".
 
-## 10. Where things stand
+## 10. Where things stand (21 Nov 2026)
 
-- **Done**: Phases 0–4 of `TASKS.md`: six defects fixed (v0.3.1), the
-  screenshot harness, the shared building blocks (long-press action sheet,
-  undo toast, overflow menu, multi-select bar, smart row button, status
-  markers; v0.4.0), Now Playing (speed / sleep / chapters sheets, chapter
-  seek bar, mini player on pushed screens; v0.5.0), the Queue (drag,
-  sort / keep sorted, lock, search, enqueue location; v0.6.0), and the
-  Inbox (AntennaPod swipes with undo, search, sort, remove all, paging;
-  v0.7.0), Home (configurable sections, library search; v0.8.0), Episode
-  details (menu, inline links, timestamps, pager; v0.9.0), and the podcast
-  page (preview, saved filter and sort, banners, info page; v0.10.0), and
-  per-podcast settings (rename, tags, skip ending, volume reduction,
-  new-episode action, auto-download rules, auto-delete; v0.11.0), and
-  search and discovery (fyyd, chart country, subscribed marks, feed
-  autodiscovery, OPML file import with a checklist; v0.12.0), and the
-  Library (display, sort, filter, tags, archive, multi-select, Episodes
-  screen; v0.13.0), and Downloads (in progress, sort, search, delete
-  played, a stored download log; v0.14.0), and Settings (sub-pages, swipe
-  actions per list, smart mark as played, cleanup, mobile data; v0.15.0),
-  and Statistics (Subscriptions / Years / Downloads tabs, filter, reset,
-  per-podcast numbers, release schedule guess; v0.16.0), and Backup
-  (database export and restore, OPML / HTML / favourites exports to a
-  picked folder; v0.17.0), and Phase 17a (notifications, background
-  refresh, automatic backup, protected feeds, podcast links, file sharing,
-  charging-only downloads; v0.18.0; D-024), and Phase 17b (patched
-  expo-audio: lock-screen skip amounts and Next, skip silence, volume
-  boost, pause on unplug; v0.19.0; D-025), and Phase 18a (Android
-  home-screen widget and Quick Settings tile; v0.20.0; D-026), and Phase 18b
-  (chapters read from MP3 / M4A files when the feed has none; v0.21.0;
-  D-027), OTA updates (D-028), and Phase 19 (Android downloads in
-  WorkManager jobs from the local module `modules/episode-downloads`;
-  D-029).
-  Earlier: EAS device builds, stable Surprise Me, tablet layouts.
-- **Phase 20 (Echo, D-030)**: `src/echo/` (pure: window, queue outlook, median delay, verdicts, card text, share text), `src/db/echo.ts` (`getEchoYear`, hidden-year meta), `app/echo.tsx` (story screen; `?card=n&still=1`), `src/ui/echo/EchoBackdrop.tsx`, `echoPalette` in theme. JavaScript only: ships over the air.
-- **Builds**: the latest Android preview is v0.24.1 (EAS build `010f7f23`, runtime `f069fcd…`); over-the-air updates for JavaScript-only changes target that runtime.
-- **Open source / Play**: GPL-3.0-or-later; store listing in `fastlane/metadata`, steps in `docs/PLAY-STORE.md`, repo settings in `docs/GOING-PUBLIC.md`. `eas.json` is part of the runtime fingerprint, so editing it moves the OTA runtime.
-- **Next**: the device checks in TASKS.md (Phases 19 and 20). Over-the-air updates: the owner reconnected the GitHub repo on 6 Nov; confirm a "Publish OTA update" run follows the next push to `main` (TASKS.md, Discovered). Other Phase 18 items are optional, one proposal each. Schema is at version 7; feeds.state can be 'subscribed',
-  'preview' or 'archived'.
-  Building blocks to reuse: `openEpisodeActions`, `runEpisodeAction`,
+- **Released**: v0.29.1. Phases 0–24 of `TASKS.md` are done in code; each
+  phase's summary and decision number is in `TASKS.md` and the index at the
+  top of `docs/DECISIONS.md` (D-001 to D-032). The latest are Phase 21
+  (solid bars, own dialogs, rebuilt swipes; D-031), Phase 22 (paging cursor,
+  smart-mark tail, Podlove chapters), Phase 23 (Ogg/Opus/FLAC chapters) and
+  Phase 24 (Expo SDK 58, expo-audio patch rewritten, taller widget; D-032).
+- **Schema** is at version 8 (`episodes.chapters_json`). `feeds.state` is
+  'subscribed', 'preview' or 'archived'; `feeds.next_page_url` is the paging
+  cursor (`src/feed/pageCursor.ts`).
+- **Builds**: v0.29.1 is EAS production build `9a105a05` (versionCode 2901),
+  submitted to Play's internal track as a draft by the release workflow.
+  Production builds use the `production` update channel, but "Publish OTA
+  update" (`.eas/workflows/publish-update.yml`) publishes only to `preview`,
+  so a fix reaches Play testers and users only in a new store build
+  (`docs/PLAY-STORE.md` › Over-the-air updates). Adding a production update
+  job is the owner's call.
+- **Play**: closed test with 12 testers for 14 days is the owner's job, then
+  Apply for production. Owner items are listed in TASKS.md › Open source and
+  Google Play.
+- **Next** (in order):
+  1. On-device checks for Phases 21–24 (TASKS.md), reported by the owner.
+  2. Replace the undersized screenshots in `fastlane/metadata/.../images` with
+     Play-sized ones from `store-assets/google-play`, then turn listing
+     uploads back on in `release-play.yml`.
+  3. Optional features, one proposal each, owner's go-ahead first: Podcast
+     Index search (API key), sync, Cast, iOS items (paid Apple account).
+- Building blocks to reuse: `openEpisodeActions`, `runEpisodeAction`,
   `showToast`, `OverflowMenu`, `BottomSheet` / `ActionSheet`,
-  `useEpisodeSelection` + `SelectionBar`, `MiniPlayerDock`, `DraggableList`, `NoMatches`, `TextPromptSheet`, `askToUnsubscribe`,
-  `SwipeableEpisodeRow` (pass a `screen`), `SettingsLink` / `SettingsChoice`,
-  `SegmentedTabs`, `DonutChart` / `BarChart` (`src/ui/stats/charts.tsx`) (see
-  `src/actions/` and `src/ui/`). New settings go in `src/db/settingsSchema.ts`;
+  `useEpisodeSelection` + `SelectionBar`, `MiniPlayerDock`, `DraggableList`,
+  `NoMatches`, `TextPromptSheet`, `askToUnsubscribe`, `SwipeableEpisodeRow`
+  (pass a `screen`), `SettingsLink` / `SettingsChoice`, `SegmentedTabs`,
+  `DonutChart` / `BarChart` (`src/ui/stats/charts.tsx`) (see `src/actions/`
+  and `src/ui/`). New settings go in `src/db/settingsSchema.ts`;
   multiple-choice ones also list their choices in `src/settings/options.ts`.
-- **Device build**: one EAS build at the end (D-011).
 - **expo-audio is patched** (D-025, D-032, `patches/expo-audio+58.0.12.patch`).
   To change the patch: edit `node_modules/expo-audio`, then
   `npx patch-package expo-audio`. To compile the Android half locally:
@@ -279,8 +300,12 @@ releasing, so a red check on `main` blocks the release.
   Central answers 429, a Gradle init script in `~/.gradle/init.d/` that
   puts Google's Maven Central mirror first (and keeps `google()` and
   `gradlePluginPortal()`) gets round it. The log must not show expo-audio
-  as prebuilt. The Swift half is only compiled by the EAS build.
+  as prebuilt. The Swift half is only compiled by the EAS build. Delete the
+  generated `android/` folder afterwards; it is not committed.
 - **The owner's preferences** (learned): keep the existing design; match
-  AntennaPod's placement; release per phase, merged by you; show before/after screenshots;
-  explain results in plain language with clear next steps; ask before spending
-  money; the six AntennaPod behaviour changes in `DECISIONS.md` are approved.
+  AntennaPod's placement; one phase per PR, merged by you with a merge
+  commit; show before/after screenshots; explain results in plain language
+  with clear next steps; ask before spending money (every EAS build or
+  workflow run) or adding a native dependency; never force-push. The owner
+  works from an Android tablet with no computer, so give tap-by-tap steps in
+  web pages (GitHub, Play Console, expo.dev), never terminal commands.
