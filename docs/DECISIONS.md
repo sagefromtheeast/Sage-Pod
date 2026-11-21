@@ -841,8 +841,12 @@ resizable, with more controls when larger.
   `audioExtras.ts` uses 58's option names.
 - Sage Pod's own notification icons are dropped: 58 draws numbered skip icons
   itself.
-- Gesture Handler 3 keeps the `Gesture.*` builder API but deprecates it; the
-  swipes, queue drag, seek bar and segmented control use it unchanged for now.
+- Gesture Handler 3 deprecates the `Gesture.*` builder API, so the swipes,
+  queue drag, seek bar and segmented control use its hooks (`usePanGesture`,
+  `useTapGesture`, `useCompetingGestures`): `onStart`/`onEnd(success)` become
+  `onActivate`/`onDeactivate` with `event.canceled`. Each queue drag handle
+  owns its gesture and calls the list through a ref, so a re-render never
+  cancels a drag.
 - RN 0.88 types: list header/empty props take `undefined`, not `null`; the tab
   bars use `emitter` and `navigateToTab` (expo-router 58's tab bar props).
 - The widget may be resized up to 260 dp tall. From 120 dp tall and 250 dp
@@ -856,6 +860,5 @@ Kotlin (the patched expo-audio, the downloads module, the app) compiles
 locally against SDK 58; the Swift half only in the EAS build. Not verified on
 a device yet.
 
-**Revisit** when Gesture Handler removes the builder API (move to its hooks),
-or when expo-audio emits single-player Next and skip silence itself (drop the
+**Revisit** when expo-audio emits single-player Next and skip silence itself (drop the
 patch).
