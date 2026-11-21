@@ -234,7 +234,7 @@ destructive.
 - [x] 24c: widget resizable up to 260 dp tall; two-row layout with Next episode from 120 × 250 dp (`src/widget/layout.ts`, tests)
 - [ ] One EAS production build (owner approved: SDK 58 and widget together)
 - [ ] On device: lock-screen and notification skip amounts and Next; skip silence; volume boost; unplug pauses; swipes, queue drag and seek bar on Gesture Handler 3; widget resized taller, Next from the widget
-- [ ] Later: move `Gesture.*` to Gesture Handler 3's hook API before it is removed
+- [x] Move `Gesture.*` to Gesture Handler 3's hook API (`usePanGesture`, `useTapGesture`, `useCompetingGestures`): swipe rows, queue drag handles, seek bar, glass segmented control
 
 ## Open source and Google Play
 - [x] GPL-3.0-or-later licence; CONTRIBUTING, CODE_OF_CONDUCT, SECURITY, PRIVACY; issue and PR templates
